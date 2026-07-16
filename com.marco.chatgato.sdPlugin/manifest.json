@@ -22,96 +22,6 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/new-task",
-      "Name": "New Task",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/new-task",
-          "Title": "NEW\nTASK",
-          "TitleAlignment": "bottom",
-          "FontSize": 12
-        }
-      ],
-      "Tooltip": "Open a new Codex task, optionally scoped to a workspace with a prefilled prompt.",
-      "UUID": "com.marco.chatgato.new-task"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/run-prompt",
-      "Name": "Run Prompt",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/run-prompt",
-          "Title": "RUN\nPROMPT",
-          "TitleAlignment": "bottom",
-          "FontSize": 12
-        }
-      ],
-      "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
-      "UUID": "com.marco.chatgato.run-prompt"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/fast",
-      "Name": "Fast Mode",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/fast",
-          "Title": "FAST\nOFF",
-          "TitleAlignment": "bottom",
-          "FontSize": 12
-        }
-      ],
-      "Tooltip": "Toggle Codex fast mode with a gray off state and green on state.",
-      "UUID": "com.marco.chatgato.fast-mode"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/push-to-talk",
-      "Name": "Push to Talk",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/push-to-talk",
-          "Title": "HOLD\nTO TALK",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Hold to dictate into the active Codex composer; release to stop.",
-      "UUID": "com.marco.chatgato.push-to-talk"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/push-to-talk",
-      "Name": "Tap to Talk",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/push-to-talk",
-          "Title": "TAP\nTO TALK",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Press once to dictate into the active Codex composer; press again to stop.",
-      "UUID": "com.marco.chatgato.tap-to-talk"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
       "Icon": "imgs/actions/approve",
       "Name": "Allow",
       "PropertyInspectorPath": "ui/pi.html",
@@ -125,6 +35,24 @@
       ],
       "Tooltip": "Allow the request currently waiting in Codex.",
       "UUID": "com.marco.chatgato.approve"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/command",
+      "Name": "Codex Command",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/command",
+          "Title": "CODEX",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Map a Codex command such as Git, attachments, utilities, or navigation.",
+      "UUID": "com.marco.chatgato.command"
     },
     {
       "Controllers": [
@@ -148,19 +76,19 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/submit",
-      "Name": "Submit",
+      "Icon": "imgs/actions/fast",
+      "Name": "Fast Mode",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/submit",
-          "Title": "SUBMIT",
+          "Image": "imgs/actions/fast",
+          "Title": "FAST\nOFF",
           "TitleAlignment": "bottom",
-          "FontSize": 11
+          "FontSize": 12
         }
       ],
-      "Tooltip": "Submit the current Codex composer input.",
-      "UUID": "com.marco.chatgato.submit"
+      "Tooltip": "Toggle Codex fast mode with a gray off state and green on state.",
+      "UUID": "com.marco.chatgato.fast-mode"
     },
     {
       "Controllers": [
@@ -179,132 +107,6 @@
       ],
       "Tooltip": "Copy the current Codex task into a new local task.",
       "UUID": "com.marco.chatgato.fork"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/review-tab",
-      "Name": "Review Tab",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/review-tab",
-          "Title": "REVIEW\nTAB",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Open the review tab for the current Codex task.",
-      "UUID": "com.marco.chatgato.review-tab"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/terminal",
-      "Name": "Toggle Terminal",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/terminal",
-          "Title": "TERMINAL",
-          "TitleAlignment": "bottom",
-          "FontSize": 10
-        }
-      ],
-      "Tooltip": "Show or hide the Codex terminal.",
-      "UUID": "com.marco.chatgato.toggle-terminal"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/open-review",
-      "Name": "Review",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/open-review",
-          "Title": "REVIEW",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Start Codex code review mode for the current task.",
-      "UUID": "com.marco.chatgato.open-review"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/settings",
-      "Name": "Settings",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/settings",
-          "Title": "SETTINGS",
-          "TitleAlignment": "bottom",
-          "FontSize": 10
-        }
-      ],
-      "Tooltip": "Open Codex settings.",
-      "UUID": "com.marco.chatgato.settings"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/plan",
-      "Name": "Plan",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/plan",
-          "Title": "PLAN",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Toggle plan mode for the current Codex task.",
-      "UUID": "com.marco.chatgato.plan"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/skills",
-      "Name": "Skills",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/skills",
-          "Title": "SKILLS",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Open Codex Skills.",
-      "UUID": "com.marco.chatgato.skills"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/scheduled",
-      "Name": "Scheduled",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/scheduled",
-          "Title": "SCHEDULED",
-          "TitleAlignment": "bottom",
-          "FontSize": 9
-        }
-      ],
-      "Tooltip": "Open scheduled Codex automations.",
-      "UUID": "com.marco.chatgato.scheduled"
     },
     {
       "Controllers": [
@@ -346,37 +148,55 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/toggle-sidebar",
-      "Name": "Toggle Sidebar",
+      "Icon": "imgs/actions/new-task",
+      "Name": "New Task",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/toggle-sidebar",
-          "Title": "SIDEBAR",
+          "Image": "imgs/actions/new-task",
+          "Title": "NEW\nTASK",
           "TitleAlignment": "bottom",
-          "FontSize": 10
+          "FontSize": 12
         }
       ],
-      "Tooltip": "Show or hide the Codex sidebar.",
-      "UUID": "com.marco.chatgato.toggle-sidebar"
+      "Tooltip": "Open a new Codex task, optionally scoped to a workspace with a prefilled prompt.",
+      "UUID": "com.marco.chatgato.new-task"
     },
     {
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/command",
-      "Name": "Codex Command",
+      "Icon": "imgs/actions/plan",
+      "Name": "Plan",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/command",
-          "Title": "CODEX",
+          "Image": "imgs/actions/plan",
+          "Title": "PLAN",
           "TitleAlignment": "bottom",
-          "FontSize": 12
+          "FontSize": 11
         }
       ],
-      "Tooltip": "Map a Codex command such as Git, attachments, utilities, or navigation.",
-      "UUID": "com.marco.chatgato.command"
+      "Tooltip": "Toggle plan mode for the current Codex task.",
+      "UUID": "com.marco.chatgato.plan"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/push-to-talk",
+      "Name": "Push to Talk",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/push-to-talk",
+          "Title": "HOLD\nTO TALK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Hold to dictate into the active Codex composer; release to stop.",
+      "UUID": "com.marco.chatgato.push-to-talk"
     },
     {
       "Controllers": [
@@ -406,6 +226,186 @@
       ],
       "Tooltip": "Turn a Stream Deck+ dial to adjust the current Codex task's reasoning effort, or use it as a key.",
       "UUID": "com.marco.chatgato.reasoning"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/open-review",
+      "Name": "Review",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/open-review",
+          "Title": "REVIEW",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Start Codex code review mode for the current task.",
+      "UUID": "com.marco.chatgato.open-review"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/review-tab",
+      "Name": "Review Tab",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/review-tab",
+          "Title": "REVIEW\nTAB",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Open the review tab for the current Codex task.",
+      "UUID": "com.marco.chatgato.review-tab"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/run-prompt",
+      "Name": "Run Prompt",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/run-prompt",
+          "Title": "RUN\nPROMPT",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
+      "UUID": "com.marco.chatgato.run-prompt"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/scheduled",
+      "Name": "Scheduled",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/scheduled",
+          "Title": "SCHEDULED",
+          "TitleAlignment": "bottom",
+          "FontSize": 9
+        }
+      ],
+      "Tooltip": "Open scheduled Codex automations.",
+      "UUID": "com.marco.chatgato.scheduled"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/settings",
+      "Name": "Settings",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/settings",
+          "Title": "SETTINGS",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Open Codex settings.",
+      "UUID": "com.marco.chatgato.settings"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/skills",
+      "Name": "Skills",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/skills",
+          "Title": "SKILLS",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Open Codex Skills.",
+      "UUID": "com.marco.chatgato.skills"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/submit",
+      "Name": "Submit",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/submit",
+          "Title": "SUBMIT",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Submit the current Codex composer input.",
+      "UUID": "com.marco.chatgato.submit"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/push-to-talk",
+      "Name": "Tap to Talk",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/push-to-talk",
+          "Title": "TAP\nTO TALK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Press once to dictate into the active Codex composer; press again to stop.",
+      "UUID": "com.marco.chatgato.tap-to-talk"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/toggle-sidebar",
+      "Name": "Toggle Sidebar",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/toggle-sidebar",
+          "Title": "SIDEBAR",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Show or hide the Codex sidebar.",
+      "UUID": "com.marco.chatgato.toggle-sidebar"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/terminal",
+      "Name": "Toggle Terminal",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/terminal",
+          "Title": "TERMINAL",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Show or hide the Codex terminal.",
+      "UUID": "com.marco.chatgato.toggle-terminal"
     },
     {
       "Controllers": [
