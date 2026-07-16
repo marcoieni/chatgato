@@ -39,8 +39,8 @@
       case "com.marco.chatgato.new-task":
         renderNewTask();
         break;
-      case "com.marco.chatgato.run-prompt":
-        renderRunPrompt();
+      case "com.marco.chatgato.prompt":
+        renderPrompt();
         break;
       case "com.marco.chatgato.command":
         renderCommand();
@@ -138,7 +138,7 @@
     note.textContent = "Without auto-submit, Codex opens with the prompt in the composer so you can review it first.";
   }
 
-  function renderRunPrompt() {
+  function renderPrompt() {
     subtitle.textContent = "Open a task with your prompt";
     form.innerHTML =
       field("Prompt", `<textarea data-setting="prompt" placeholder="What should Codex do? You can include $skill-name.">${escapeHtml(String(selected("prompt", "")))}</textarea>`, "", "top") +

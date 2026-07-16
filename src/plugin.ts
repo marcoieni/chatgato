@@ -27,12 +27,12 @@ import {
 } from "./actions/reasoning.js";
 import { TapToTalkAction } from "./actions/tap-to-talk.js";
 import { UsageAction } from "./actions/usage.js";
-import { RunPromptAction } from "./actions/run-prompt.js";
+import { PromptAction } from "./actions/prompt.js";
 
 streamDeck.logger.setLevel("info");
 streamDeck.actions.registerAction(new AgentStatusAction());
 streamDeck.actions.registerAction(new NewTaskAction());
-streamDeck.actions.registerAction(new RunPromptAction());
+streamDeck.actions.registerAction(new PromptAction());
 streamDeck.actions.registerAction(new FastModeAction());
 streamDeck.actions.registerAction(new PushToTalkAction());
 streamDeck.actions.registerAction(new TapToTalkAction());
