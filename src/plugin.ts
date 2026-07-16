@@ -23,7 +23,7 @@ import { PushToTalkAction } from "./actions/push-to-talk.js";
 import { ReasoningAction } from "./actions/reasoning.js";
 import { TapToTalkAction } from "./actions/tap-to-talk.js";
 import { UsageAction } from "./actions/usage.js";
-import { RunPromptAction } from "./actions/workflow.js";
+import { RunPromptAction } from "./actions/run-prompt.js";
 
 streamDeck.logger.setLevel("info");
 streamDeck.actions.registerAction(new AgentStatusAction());

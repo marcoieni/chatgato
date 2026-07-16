@@ -40,19 +40,19 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/workflow",
+      "Icon": "imgs/actions/run-prompt",
       "Name": "Run Prompt",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/workflow",
+          "Image": "imgs/actions/run-prompt",
           "Title": "RUN\nPROMPT",
           "TitleAlignment": "bottom",
           "FontSize": 12
         }
       ],
       "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
-      "UUID": "com.marco.chatgato.workflow"
+      "UUID": "com.marco.chatgato.run-prompt"
     },
     {
       "Controllers": [

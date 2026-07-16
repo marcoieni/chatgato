@@ -33,19 +33,6 @@ export type NewTaskSettings = {
   submitDelayMs?: number;
 };
 
-export type RunPromptSettings = {
-  prompt?: string;
-  /** @deprecated Kept so existing Workflow keys continue to run after upgrading. */
-  workflow?: string;
-  /** @deprecated Kept so existing Workflow keys continue to run after upgrading. */
-  customPrompt?: string;
-  /** @deprecated Put an explicit $skill mention directly in prompt instead. */
-  skillName?: string;
-  path?: string;
-  autoSubmit?: boolean;
-  submitDelayMs?: number;
-};
-
 export type CommandSettings = {
   command?: string;
   paletteQuery?: string;
