@@ -4,7 +4,7 @@
   <img src="logo.png" alt="ChatGato logo" width="240">
 </p>
 
-A Stream Deck plugin for OpenAI Codex. It turns a standard Stream Deck into a tactile Codex control surface and adds native dial behavior on Stream Deck+.
+A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a standard Stream Deck into a tactile Codex control surface and adds native dial behavior on Stream Deck+.
 
 > [!NOTE]
 > This app was vibe-coded: the maintainer didn't read all its code.
@@ -25,7 +25,7 @@ A Stream Deck plugin for OpenAI Codex. It turns a standard Stream Deck into a ta
 | Dedicated core actions | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
 | More commands | Browser, environment action, commit, pull request, attachments, copy Markdown, archive, pin, feedback, and side chat remain available through Codex Command. |
 
-The public Codex app exposes deep links and keyboard shortcuts, but not a public external command API. Commands without a documented shortcut are therefore invoked through the app's Command Menu. This is configurable for localized command names.
+The ChatGPT desktop app exposes Codex deep links and keyboard shortcuts, but not a public external command API. Commands without a documented shortcut are therefore invoked through the app's Command Menu. This is configurable for localized command names.
 
 ## Requirements
 
@@ -99,7 +99,7 @@ The Usage Limits key reads the latest rate-limit snapshot that Codex writes to l
 - Command Menu labels can vary by app language or release. Use **Menu query** in the property inspector when a palette command does not resolve.
 - Agent status is inferred from internal local Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
 - Usage limits are also read locally from Codex rollout events; no account credentials or usage data are transmitted by the plugin.
-- The plugin controls the current Codex window. If another window is active, Command Menu operations act on whichever Codex window becomes primary.
+- The plugin controls Codex in the current ChatGPT window. If another ChatGPT window is active, Command Menu operations act on whichever window becomes primary.
 
 References: [Codex desktop commands and deep links](https://developers.openai.com/codex/app/commands) and the [Stream Deck SDK](https://docs.elgato.com/streamdeck/sdk/).
 

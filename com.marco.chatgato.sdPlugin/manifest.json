@@ -429,7 +429,7 @@
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
-  "Description": "A tactile Codex control surface for Stream Deck with live agent colors, usage limits, workflows, core commands, push-to-talk, and reasoning control.",
+  "Description": "A tactile Stream Deck control surface for OpenAI Codex in the ChatGPT desktop app, with live agent colors, usage limits, workflows, core commands, push-to-talk, and reasoning control.",
   "Icon": "imgs/plugin",
   "Name": "ChatGato",
   "Nodejs": {
