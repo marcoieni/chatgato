@@ -1,5 +1,9 @@
 # ChatGato
 
+<p align="center">
+  <img src="logo.png" alt="ChatGato logo" width="240">
+</p>
+
 A Stream Deck plugin for OpenAI Codex. It turns a standard Stream Deck into a tactile Codex control surface and adds native dial behavior on Stream Deck+.
 
 > [!NOTE]
