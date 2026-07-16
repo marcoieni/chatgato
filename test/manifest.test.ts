@@ -7,11 +7,7 @@ const manifest = JSON.parse(
     "utf8",
   ),
 ) as {
-  Actions: Array<{
-    Name: string;
-    States: Array<{ Title?: string }>;
-    UUID: string;
-  }>;
+  Actions: Array<{ Name: string }>;
 };
 
 describe("Stream Deck manifest", () => {
