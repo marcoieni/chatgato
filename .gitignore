@@ -1,0 +1,6 @@
+node_modules/
+dist/
+com.marco.chatgato.sdPlugin/bin/
+com.marco.chatgato.sdPlugin/logs/
+.DS_Store
+*.log

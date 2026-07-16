@@ -1,0 +1,454 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Actions": [
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/agent",
+      "Name": "Agent Status",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/agent",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Show and open one of the 20 most recent Codex tasks with live status color.",
+      "UUID": "com.marco.chatgato.agent-status"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/new-task",
+      "Name": "New Task",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/new-task",
+          "Title": "NEW\nTASK",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Open a new Codex task, optionally scoped to a workspace with a prefilled prompt.",
+      "UUID": "com.marco.chatgato.new-task"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/workflow",
+      "Name": "Workflow",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/workflow",
+          "Title": "RUN\nSKILL",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Launch a review, debug, refactor, test, security, docs, or custom Codex workflow.",
+      "UUID": "com.marco.chatgato.workflow"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/fast",
+      "Name": "Fast Mode",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/fast",
+          "Title": "FAST\nOFF",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Toggle Codex fast mode with a gray off state and green on state.",
+      "UUID": "com.marco.chatgato.fast-mode"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/push-to-talk",
+      "Name": "Push to Talk",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/push-to-talk",
+          "Title": "HOLD\nTO TALK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Hold to dictate into the active Codex composer; release to stop.",
+      "UUID": "com.marco.chatgato.push-to-talk"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/push-to-talk",
+      "Name": "Tap to Talk",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/push-to-talk",
+          "Title": "TAP\nTO TALK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Press once to dictate into the active Codex composer; press again to stop.",
+      "UUID": "com.marco.chatgato.tap-to-talk"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/approve",
+      "Name": "Allow",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/approve",
+          "Title": "ALLOW",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Allow the request currently waiting in Codex.",
+      "UUID": "com.marco.chatgato.approve"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/decline",
+      "Name": "Decline",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/decline",
+          "Title": "DECLINE",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Decline the request currently waiting in Codex.",
+      "UUID": "com.marco.chatgato.decline"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/submit",
+      "Name": "Submit",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/submit",
+          "Title": "SUBMIT",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Submit the current Codex composer input.",
+      "UUID": "com.marco.chatgato.submit"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/fork",
+      "Name": "Fork",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/fork",
+          "Title": "FORK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Copy the current Codex task into a new local task.",
+      "UUID": "com.marco.chatgato.fork"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/review-tab",
+      "Name": "Review Tab",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/review-tab",
+          "Title": "REVIEW\nTAB",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Open the review tab for the current Codex task.",
+      "UUID": "com.marco.chatgato.review-tab"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/terminal",
+      "Name": "Toggle Terminal",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/terminal",
+          "Title": "TERMINAL",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Show or hide the Codex terminal.",
+      "UUID": "com.marco.chatgato.toggle-terminal"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/open-review",
+      "Name": "Review",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/open-review",
+          "Title": "REVIEW",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Start Codex code review mode for the current task.",
+      "UUID": "com.marco.chatgato.open-review"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/settings",
+      "Name": "Settings",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/settings",
+          "Title": "SETTINGS",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Open Codex settings.",
+      "UUID": "com.marco.chatgato.settings"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/plan",
+      "Name": "Plan",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/plan",
+          "Title": "PLAN",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Toggle plan mode for the current Codex task.",
+      "UUID": "com.marco.chatgato.plan"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/skills",
+      "Name": "Skills",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/skills",
+          "Title": "SKILLS",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Open Codex Skills.",
+      "UUID": "com.marco.chatgato.skills"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/scheduled",
+      "Name": "Scheduled",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/scheduled",
+          "Title": "SCHEDULED",
+          "TitleAlignment": "bottom",
+          "FontSize": 9
+        }
+      ],
+      "Tooltip": "Open scheduled Codex automations.",
+      "UUID": "com.marco.chatgato.scheduled"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/go-back",
+      "Name": "Go Back",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/go-back",
+          "Title": "GO\nBACK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Go back in Codex navigation history.",
+      "UUID": "com.marco.chatgato.go-back"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/go-forward",
+      "Name": "Go Forward",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/go-forward",
+          "Title": "GO\nFORWARD",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Go forward in Codex navigation history.",
+      "UUID": "com.marco.chatgato.go-forward"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/toggle-sidebar",
+      "Name": "Toggle Sidebar",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/toggle-sidebar",
+          "Title": "SIDEBAR",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Show or hide the Codex sidebar.",
+      "UUID": "com.marco.chatgato.toggle-sidebar"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/command",
+      "Name": "Codex Command",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/command",
+          "Title": "CODEX",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Map a Codex command such as Git, attachments, utilities, or navigation.",
+      "UUID": "com.marco.chatgato.command"
+    },
+    {
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "Encoder": {
+        "background": "imgs/actions/reasoning-background",
+        "Icon": "imgs/actions/reasoning",
+        "layout": "$B1",
+        "TriggerDescription": {
+          "Push": "Adjust reasoning",
+          "Rotate": "Increase / decrease reasoning effort",
+          "Touch": "Adjust reasoning"
+        }
+      },
+      "Icon": "imgs/actions/reasoning",
+      "Name": "Reasoning",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/reasoning",
+          "Title": "THINK\nMORE",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Turn a Stream Deck+ dial to adjust the current Codex task's reasoning effort, or use it as a key.",
+      "UUID": "com.marco.chatgato.reasoning"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/actions/usage",
+      "Name": "Usage Limits",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/usage",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Show how much Codex usage remains in each current rate-limit window.",
+      "UUID": "com.marco.chatgato.usage"
+    }
+  ],
+  "Author": "Marco",
+  "Category": "ChatGato",
+  "CategoryIcon": "imgs/category",
+  "CodePath": "bin/plugin.js",
+  "Description": "A tactile Codex control surface for Stream Deck with live agent colors, usage limits, workflows, core commands, push-to-talk, and reasoning control.",
+  "Icon": "imgs/plugin",
+  "Name": "ChatGato",
+  "Nodejs": {
+    "Version": "24"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "7.1"
+  },
+  "UUID": "com.marco.chatgato",
+  "Version": "0.1.0.0"
+}

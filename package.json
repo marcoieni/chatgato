@@ -1,0 +1,33 @@
+{
+  "name": "chatgato",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Stream Deck control surface for OpenAI Codex.",
+  "engines": {
+    "node": ">=24.11"
+  },
+  "scripts": {
+    "build": "esbuild src/plugin.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=com.marco.chatgato.sdPlugin/bin/plugin.js --sourcemap",
+    "watch": "npm run build -- --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "validate": "streamdeck validate com.marco.chatgato.sdPlugin",
+    "pack": "npm run build && streamdeck pack com.marco.chatgato.sdPlugin --output dist --force",
+    "restart": "streamdeck restart com.marco.chatgato",
+    "link": "npm run build && streamdeck link com.marco.chatgato.sdPlugin && npm run restart"
+  },
+  "dependencies": {
+    "@elgato/streamdeck": "2.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/plugin-proposal-decorators": "^8.0.2",
+    "@elgato/cli": "1.7.4",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@types/node": "^26.1.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

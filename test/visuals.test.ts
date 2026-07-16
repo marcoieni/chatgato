@@ -1,0 +1,90 @@
+import { describe, expect, it } from "vitest";
+import {
+  STATUS_COLORS,
+  FAST_MODE_COLORS,
+  PUSH_TO_TALK_COLORS,
+  agentImage,
+  agentSvg,
+  effectiveStatus,
+  fastModeImage,
+  fastModeSvg,
+  pushToTalkImage,
+  pushToTalkSvg,
+  usageSvg,
+} from "../src/lib/visuals.js";
+import type { CodexThread, CodexUsageSnapshot } from "../src/types.js";
+
+describe("Stream Deck visuals", () => {
+  it("exposes the ChatGato status colors", () => {
+    expect(STATUS_COLORS.working).toBe("#304FFE");
+    expect(STATUS_COLORS.unread).toBe("#00FF4C");
+    expect(STATUS_COLORS["awaiting-approval"]).toBe("#FF6D00");
+    expect(STATUS_COLORS["awaiting-response"]).toBe("#9E5BFF");
+    expect(STATUS_COLORS.error).toBe("#FF0033");
+    expect(new Set(Object.values(STATUS_COLORS))).toHaveLength(Object.keys(STATUS_COLORS).length);
+  });
+
+  it("renders the status color as the full icon background", () => {
+    expect(agentSvg(4, "working")).toContain('<rect width="144" height="144" rx="24" fill="#304FFE"/>');
+    expect(agentSvg(4, "unread")).toContain('<rect width="144" height="144" rx="24" fill="#00FF4C"/>');
+    expect(agentSvg(4, "working")).toContain(">4</text>");
+  });
+
+  it("renders distinct off and on colors for the fast-mode key", () => {
+    expect(FAST_MODE_COLORS).toEqual({ off: "#303840", on: "#00FF4C" });
+    expect(fastModeSvg(false)).toContain('fill="#303840"');
+    expect(fastModeSvg(true)).toContain('fill="#00FF4C"');
+    expect(fastModeSvg(false)).not.toBe(fastModeSvg(true));
+    expect(fastModeImage(true)).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(Buffer.from(fastModeImage(true).split(",")[1]!, "base64").toString()).toBe(
+      fastModeSvg(true),
+    );
+  });
+
+  it("renders a yellow microphone key while push-to-talk is active", () => {
+    expect(PUSH_TO_TALK_COLORS).toEqual({ idle: "#071018", active: "#FFD600" });
+    expect(pushToTalkSvg(false)).toContain('fill="#071018"');
+    expect(pushToTalkSvg(true)).toContain('fill="#FFD600"');
+    expect(pushToTalkSvg(true)).toContain('stroke="#071018"');
+    expect(pushToTalkSvg(false)).not.toBe(pushToTalkSvg(true));
+    expect(Buffer.from(pushToTalkImage(true).split(",")[1]!, "base64").toString()).toBe(
+      pushToTalkSvg(true),
+    );
+  });
+
+  it("encodes generated SVGs as images for Stream Deck", () => {
+    const image = agentImage(2, "unread");
+    expect(image).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toBe(agentSvg(2, "unread"));
+  });
+
+  it("clears unread after the matching task is acknowledged", () => {
+    const thread: CodexThread = {
+      id: "thread-1",
+      title: "Task",
+      cwd: "/tmp",
+      rolloutPath: "/tmp/rollout",
+      updatedAtMs: 1000,
+      reasoningEffort: null,
+      spawnStatus: null,
+      status: "unread",
+    };
+    expect(effectiveStatus(thread, "thread-1", 1000)).toBe("idle");
+    expect(effectiveStatus(thread, "another", 2000)).toBe("unread");
+  });
+
+  it("renders remaining usage for both rate-limit windows", () => {
+    const usage: CodexUsageSnapshot = {
+      updatedAtMs: 1,
+      primary: { usedPercent: 18, windowMinutes: 300, resetsAtMs: null },
+      secondary: { usedPercent: 61, windowMinutes: 10_080, resetsAtMs: null },
+      planType: "pro",
+      credits: null,
+    };
+    const svg = usageSvg(usage);
+    expect(svg).toContain(">5H</text>");
+    expect(svg).toContain(">82%</text>");
+    expect(svg).toContain(">1W</text>");
+    expect(svg).toContain(">39%</text>");
+  });
+});
