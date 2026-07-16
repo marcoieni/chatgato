@@ -81,12 +81,14 @@ export function keyTitle(thread: CodexThread, status: AgentStatus): string {
 }
 
 export function reasoningSvg(direction: "increase" | "decrease" = "increase"): string {
-  const arrow = direction === "increase" ? "↑" : "↓";
+  const arrow = direction === "increase"
+    ? "M66 93V65H53l19-20 19 20H78v28z"
+    : "M66 51v28H53l19 20 19-20H78V51z";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs>
     <rect width="144" height="144" rx="24" fill="#071018"/>
     <path d="M45 72c-12-8-8-28 7-30 3-15 26-18 34-5 15-5 29 10 23 24 15 8 10 31-7 33-5 15-28 16-35 3-17 5-31-10-22-25z" fill="url(#g)"/>
-    <text x="72" y="90" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="54" text-anchor="middle">${arrow}</text>
+    <path d="${arrow}" fill="#fff"/>
   </svg>`;
 }
 

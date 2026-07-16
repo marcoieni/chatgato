@@ -46,7 +46,6 @@ export type FastModeSettings = {
 };
 
 export type ReasoningSettings = {
-  keyDirection?: "increase" | "decrease";
   maxStepsPerGesture?: number;
 };
 
