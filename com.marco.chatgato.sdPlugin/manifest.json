@@ -41,17 +41,17 @@
         "Keypad"
       ],
       "Icon": "imgs/actions/workflow",
-      "Name": "Workflow",
+      "Name": "Run Prompt",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
           "Image": "imgs/actions/workflow",
-          "Title": "RUN\nSKILL",
+          "Title": "RUN\nPROMPT",
           "TitleAlignment": "bottom",
           "FontSize": 12
         }
       ],
-      "Tooltip": "Launch a review, debug, refactor, test, security, docs, or custom Codex workflow.",
+      "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
       "UUID": "com.marco.chatgato.workflow"
     },
     {
@@ -429,7 +429,7 @@
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
-  "Description": "A tactile Stream Deck control surface for OpenAI Codex in the ChatGPT desktop app, with live agent colors, usage limits, workflows, core commands, push-to-talk, and reasoning control.",
+  "Description": "A tactile Stream Deck control surface for OpenAI Codex in the ChatGPT desktop app, with live agent colors, usage limits, custom prompts, core commands, push-to-talk, and reasoning control.",
   "Icon": "imgs/plugin",
   "Name": "ChatGato",
   "Nodejs": {

@@ -1,6 +1,8 @@
-import type { NewTaskSettings, WorkflowSettings } from "../types.js";
+import type { NewTaskSettings, RunPromptSettings } from "../types.js";
 
-export const WORKFLOW_PROMPTS: Record<string, string> = {
+// Compatibility only: older plugin versions stored a workflow name instead of
+// the prompt itself. New and edited keys store exactly what the user entered.
+const LEGACY_WORKFLOW_PROMPTS: Record<string, string> = {
   reviewPr:
     "Review the current pull request. Inspect the diff, identify correctness issues and regressions, and report findings ordered by severity.",
   debug:
@@ -29,19 +31,36 @@ export function buildNewTaskUrl(settings: NewTaskSettings): string {
   return `codex://threads/new?${params.toString()}`;
 }
 
-export function buildWorkflowPrompt(settings: WorkflowSettings): string {
+function buildLegacyWorkflowPrompt(settings: RunPromptSettings): string {
+  if (
+    settings.workflow === undefined &&
+    settings.customPrompt === undefined &&
+    settings.skillName === undefined
+  ) {
+    return "";
+  }
+
   const base =
     settings.workflow === "custom"
       ? settings.customPrompt?.trim() ?? ""
-      : WORKFLOW_PROMPTS[settings.workflow ?? "reviewPr"] ?? WORKFLOW_PROMPTS.reviewPr ?? "";
+      : LEGACY_WORKFLOW_PROMPTS[settings.workflow ?? "reviewPr"] ??
+        LEGACY_WORKFLOW_PROMPTS.reviewPr ??
+        "";
   const skill = settings.skillName?.trim().replace(/^\$/, "");
   return skill ? `$${skill} ${base}`.trim() : base;
 }
 
-export function buildWorkflowUrl(settings: WorkflowSettings): string {
+export function buildRunPrompt(settings: RunPromptSettings): string {
+  if (settings.prompt !== undefined) {
+    return settings.prompt.trim();
+  }
+  return buildLegacyWorkflowPrompt(settings);
+}
+
+export function buildRunPromptUrl(settings: RunPromptSettings): string {
   return buildNewTaskUrl({
     path: settings.path,
-    prompt: buildWorkflowPrompt(settings),
+    prompt: buildRunPrompt(settings),
   });
 }
 

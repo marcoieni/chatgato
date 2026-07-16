@@ -16,7 +16,7 @@ A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a sta
 | 20 live Agent Keys | 20 configurable **Agent Status** actions read local Codex task state, show the task's project, and open it on press. |
 | Live RGB status | Key backgrounds show working `#304FFE`, completed/unread `#00FF4C`, approval `#FF6D00`, needs response `#9E5BFF`, error `#FF0033`, and idle white. |
 | Usage limits | **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data. |
-| Skill joystick | **Workflow** launches PR review, debug, refactor, tests, security, docs, custom prompts, or any installed `$skill`. |
+| Prompt launcher | **Run Prompt** starts a task with any custom prompt; include `$skill-name` in the prompt to invoke a skill explicitly. |
 | Accept / reject | Dedicated **Allow** and **Decline** actions expose Codex's context-sensitive shortcuts. |
 | Dictation controls | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow. |
 | Fast mode | A dedicated **Fast Mode** key toggles `/fast`, showing gray while off and green while on. |
@@ -69,7 +69,7 @@ npm run pack
 | --- | --- |
 | 1 | Agent 1 · Agent 2 · Agent 3 · Agent 4 · Agent 5 |
 | 2 | Agent 6 · Allow · Decline · Push to talk · New task |
-| 3 | Workflow · Fast mode · Review · Usage Limits · Reasoning |
+| 3 | Run Prompt · Fast mode · Review · Usage Limits · Reasoning |
 
 For each Agent Status key, choose a different slot from 1–20. Optionally set an absolute workspace path to filter the keys to one project.
 

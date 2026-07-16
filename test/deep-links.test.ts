@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildNewTaskUrl,
+  buildRunPrompt,
+  buildRunPromptUrl,
   buildThreadUrl,
-  buildWorkflowPrompt,
-  buildWorkflowUrl,
 } from "../src/lib/deep-links.js";
 
 describe("Codex deep links", () => {
@@ -17,10 +17,21 @@ describe("Codex deep links", () => {
     expect(url).toContain("path=%2Ftmp%2Fmy+project");
   });
 
-  it("prefixes an installed skill mention", () => {
-    const settings = { workflow: "debug", skillName: "$debugger", path: "/tmp/repo" };
-    expect(buildWorkflowPrompt(settings)).toMatch(/^\$debugger Debug the current error/);
-    expect(buildWorkflowUrl(settings)).toContain("%24debugger+Debug");
+  it("runs the custom prompt exactly as entered", () => {
+    const settings = { prompt: "  $debugger Investigate the flaky test  ", path: "/tmp/repo" };
+    expect(buildRunPrompt(settings)).toBe("$debugger Investigate the flaky test");
+    expect(buildRunPromptUrl(settings)).toContain(
+      "prompt=%24debugger+Investigate+the+flaky+test",
+    );
+  });
+
+  it("keeps explicitly configured legacy workflow keys working", () => {
+    const settings = { workflow: "debug", skillName: "$debugger" };
+    expect(buildRunPrompt(settings)).toMatch(/^\$debugger Debug the current error/);
+  });
+
+  it("does not restore a legacy workflow after a prompt is cleared", () => {
+    expect(buildRunPrompt({ prompt: "", workflow: "debug" })).toBe("");
   });
 
   it("rejects unsafe thread ids", () => {

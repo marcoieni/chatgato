@@ -1,18 +1,18 @@
 import { action, SingletonAction, type KeyDownEvent } from "@elgato/streamdeck";
 import { openAndMaybeSubmit } from "../lib/codex-controller.js";
-import { buildWorkflowPrompt, buildWorkflowUrl } from "../lib/deep-links.js";
-import type { WorkflowSettings } from "../types.js";
+import { buildRunPrompt, buildRunPromptUrl } from "../lib/deep-links.js";
+import type { RunPromptSettings } from "../types.js";
 
 @action({ UUID: "com.marco.chatgato.workflow" })
-export class WorkflowAction extends SingletonAction<WorkflowSettings> {
-  override async onKeyDown(ev: KeyDownEvent<WorkflowSettings>): Promise<void> {
-    if (!buildWorkflowPrompt(ev.payload.settings)) {
+export class RunPromptAction extends SingletonAction<RunPromptSettings> {
+  override async onKeyDown(ev: KeyDownEvent<RunPromptSettings>): Promise<void> {
+    if (!buildRunPrompt(ev.payload.settings)) {
       await ev.action.showAlert();
       return;
     }
     try {
       await openAndMaybeSubmit(
-        buildWorkflowUrl(ev.payload.settings),
+        buildRunPromptUrl(ev.payload.settings),
         ev.payload.settings.autoSubmit,
         ev.payload.settings.submitDelayMs,
       );
