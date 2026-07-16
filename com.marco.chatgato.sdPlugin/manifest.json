@@ -220,6 +220,24 @@
       "Controllers": [
         "Keypad"
       ],
+      "Icon": "imgs/actions/prompt",
+      "Name": "Prompt",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/prompt",
+          "Title": "PROMPT",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
+      "UUID": "com.marco.chatgato.prompt"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
       "Icon": "imgs/actions/push-to-talk",
       "Name": "Push to Talk",
       "PropertyInspectorPath": "ui/pi.html",
@@ -294,24 +312,6 @@
       ],
       "Tooltip": "Open the review tab for the current Codex task.",
       "UUID": "com.marco.chatgato.review-tab"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
-      "Icon": "imgs/actions/run-prompt",
-      "Name": "Run Prompt",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/run-prompt",
-          "Title": "RUN\nPROMPT",
-          "TitleAlignment": "bottom",
-          "FontSize": 12
-        }
-      ],
-      "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
-      "UUID": "com.marco.chatgato.run-prompt"
     },
     {
       "Controllers": [

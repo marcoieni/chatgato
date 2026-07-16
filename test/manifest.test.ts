@@ -6,7 +6,9 @@ const manifest = JSON.parse(
     new URL("../com.marco.chatgato.sdPlugin/manifest.json", import.meta.url),
     "utf8",
   ),
-) as { Actions: Array<{ Name: string }> };
+) as {
+  Actions: Array<{ Name: string }>;
+};
 
 describe("Stream Deck manifest", () => {
   it("lists sidebar actions alphabetically", () => {
