@@ -1,7 +1,6 @@
 import streamDeck from "@elgato/streamdeck";
 import { AgentStatusAction } from "./actions/agent-status.js";
 import { ApproveAction } from "./actions/approve.js";
-import { CommandAction } from "./actions/command.js";
 import { DeclineAction } from "./actions/decline.js";
 import {
   ForkAction,
@@ -50,7 +49,6 @@ streamDeck.actions.registerAction(new ScheduledAction());
 streamDeck.actions.registerAction(new GoBackAction());
 streamDeck.actions.registerAction(new GoForwardAction());
 streamDeck.actions.registerAction(new ToggleSidebarAction());
-streamDeck.actions.registerAction(new CommandAction());
 streamDeck.actions.registerAction(new DecreaseReasoningAction());
 streamDeck.actions.registerAction(new IncreaseReasoningAction());
 streamDeck.actions.registerAction(new ReasoningAction());

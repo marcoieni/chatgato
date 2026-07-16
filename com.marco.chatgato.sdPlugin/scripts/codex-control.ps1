@@ -3,10 +3,6 @@ param(
   [Parameter(Mandatory = $true)][string]$Payload
 )
 
-if ($Mode -eq "palette" -and $Payload -match '[\x00-\x1F\x7F{}]') {
-  throw "Command Menu query contains unsupported SendKeys characters"
-}
-
 $shell = New-Object -ComObject WScript.Shell
 
 if ($Mode -eq "shortcut" -and $Payload -in @("dictationDown", "dictationUp")) {
@@ -44,18 +40,6 @@ if ($Mode -eq "shortcut" -and $Payload -eq "dictationDown") {
   exit 0
 }
 
-if ($Mode -eq "palette") {
-  $shell.SendKeys("^k")
-  Start-Sleep -Milliseconds 220
-  $escaped = $Payload.Replace("+", "{+}").Replace("^", "{^}").Replace("%", "{%}")
-  $escaped = $escaped.Replace("~", "{~}").Replace("(", "{(}").Replace(")", "{)}")
-  $escaped = $escaped.Replace("[", "{[}").Replace("]", "{]}")
-  $shell.SendKeys($escaped)
-  Start-Sleep -Milliseconds 280
-  $shell.SendKeys("{ENTER}")
-  exit 0
-}
-
 if ($Mode -eq "slash") {
   if ($Payload -notmatch '^/[a-z][a-z-]*$') { throw "Invalid Codex slash command" }
   $shell.SendKeys($Payload)
@@ -88,11 +72,7 @@ $shortcuts = @{
   decline = "{ESC}"
   submit = "{ENTER}"
   terminal = '^`'
-  searchTasks = "^g"
-  previousTask = "^+{[}"
-  nextTask = "^+{]}"
   review = "^+g"
-  openFolder = "^o"
   navigateBack = "^{[}"
   navigateForward = "^{]}"
   toggleSidebar = "^b"

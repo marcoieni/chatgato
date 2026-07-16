@@ -108,18 +108,12 @@ describe("Reasoning actions", () => {
     expect(action.showAlert).toHaveBeenCalledOnce();
   });
 
-  it("does not offer reasoning changes in the generic command or a direction selector", () => {
-    const commandGroups = propertyInspector.slice(
-      propertyInspector.indexOf("const commandGroups"),
-      propertyInspector.indexOf("const dedicatedCommandLabels"),
-    );
+  it("does not offer a direction selector", () => {
     const reasoningInspector = propertyInspector.slice(
       propertyInspector.indexOf("function renderReasoning"),
       propertyInspector.indexOf("function renderUsage"),
     );
 
-    expect(commandGroups).not.toContain('"reasoningUp"');
-    expect(commandGroups).not.toContain('"reasoningDown"');
     expect(reasoningInspector).not.toContain("keyDirection");
   });
 });

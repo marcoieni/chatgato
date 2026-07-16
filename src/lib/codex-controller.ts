@@ -6,42 +6,20 @@ import { CodexStore, type ReasoningDirection } from "./codex-store.js";
 import { ReasoningTracker } from "./reasoning-tracker.js";
 
 export type ControllerCommand = {
-  kind: "url" | "shortcut" | "palette" | "slash" | "reasoning";
+  kind: "url" | "shortcut" | "slash";
   value: string;
 };
 
 export const COMMANDS: Record<string, ControllerCommand> = {
-  // Some commands are kept here for existing Command keys even though dedicated actions now own
-  // their UI. The dedicated actions also share this dispatch path so behavior stays consistent.
-  fast: { kind: "slash", value: "/fast" },
   approve: { kind: "shortcut", value: "approve" },
   decline: { kind: "shortcut", value: "decline" },
   forkThread: { kind: "slash", value: "/fork" },
   submit: { kind: "shortcut", value: "submit" },
-  feedback: { kind: "palette", value: "Feedback" },
-  docs: { kind: "url", value: "https://developers.openai.com" },
   terminal: { kind: "shortcut", value: "terminal" },
-  copyMarkdown: { kind: "palette", value: "Copy conversation as Markdown" },
-  archiveThread: { kind: "shortcut", value: "archiveThread" },
-  newTask: { kind: "url", value: "codex://threads/new" },
-  searchTasks: { kind: "shortcut", value: "searchTasks" },
-  previousTask: { kind: "shortcut", value: "previousTask" },
-  nextTask: { kind: "shortcut", value: "nextTask" },
-  openBrowser: { kind: "shortcut", value: "openBrowser" },
-  togglePin: { kind: "shortcut", value: "togglePin" },
   review: { kind: "shortcut", value: "review" },
   openReview: { kind: "slash", value: "/review" },
-  environmentAction: { kind: "shortcut", value: "environmentAction" },
-  commit: { kind: "palette", value: "Commit or push" },
-  pullRequest: { kind: "palette", value: "Create PR" },
-  addPhotos: { kind: "palette", value: "Add photos" },
   settings: { kind: "url", value: "codex://settings" },
-  sideChat: { kind: "shortcut", value: "sideChat" },
   scheduled: { kind: "url", value: "codex://automations" },
-  reasoningUp: { kind: "reasoning", value: "increase" },
-  reasoningDown: { kind: "reasoning", value: "decrease" },
-  openFolder: { kind: "shortcut", value: "openFolder" },
-  addFiles: { kind: "palette", value: "Add files" },
   skills: { kind: "url", value: "codex://skills" },
   togglePlan: { kind: "slash", value: "/plan" },
   navigateBack: { kind: "shortcut", value: "navigateBack" },
@@ -84,7 +62,7 @@ function run(executable: string, args: string[]): Promise<void> {
 }
 
 async function runControlScript(
-  mode: "shortcut" | "palette" | "slash" | "reasoning",
+  mode: "shortcut" | "slash" | "reasoning",
   payload: string,
   capability: string,
 ): Promise<void> {
@@ -138,32 +116,12 @@ export async function setPushToTalk(active: boolean): Promise<void> {
   await runShortcut(pushToTalkPayload(active));
 }
 
-export function normalizePaletteQuery(
-  query: string,
-  platform: NodeJS.Platform = process.platform,
-): string {
-  const clean = query.trim();
-  if (!clean) throw new Error("Command Menu query is empty");
-  if (/[\u0000-\u001f\u007f]/u.test(clean)) {
-    throw new Error("Command Menu query contains control characters");
-  }
-  if (platform === "win32" && /[{}]/u.test(clean)) {
-    throw new Error("Command Menu query contains unsupported SendKeys characters");
-  }
-  return clean;
-}
-
 export function normalizeSlashCommand(command: string): string {
   const clean = command.trim();
   if (!/^\/[a-z][a-z-]*$/u.test(clean)) {
     throw new Error("Invalid Codex slash command");
   }
   return clean;
-}
-
-export async function runPalette(query: string): Promise<void> {
-  const clean = normalizePaletteQuery(query);
-  await runControlScript("palette", clean, "Command Menu control");
 }
 
 export async function runSlash(command: string): Promise<void> {
@@ -193,17 +151,12 @@ async function runReasoningNow(
   return true;
 }
 
-export async function executeCommand(commandId: string, paletteOverride?: string): Promise<void> {
+export async function executeCommand(commandId: string): Promise<void> {
   const command = COMMANDS[commandId];
   if (!command) throw new Error(`Unknown Codex command: ${commandId}`);
   if (command.kind === "url") return openUrl(command.value);
   if (command.kind === "shortcut") return runShortcut(command.value);
-  if (command.kind === "slash") return runSlash(command.value);
-  if (command.kind === "reasoning") {
-    await runReasoning(command.value === "increase" ? "increase" : "decrease");
-    return;
-  }
-  return runPalette(paletteOverride?.trim() || command.value);
+  return runSlash(command.value);
 }
 
 export async function openAndMaybeSubmit(
