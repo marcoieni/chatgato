@@ -33,15 +33,6 @@ export type NewTaskSettings = {
   submitDelayMs?: number;
 };
 
-export type WorkflowSettings = {
-  workflow?: string;
-  customPrompt?: string;
-  skillName?: string;
-  path?: string;
-  autoSubmit?: boolean;
-  submitDelayMs?: number;
-};
-
 export type CommandSettings = {
   command?: string;
   paletteQuery?: string;

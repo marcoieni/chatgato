@@ -39,8 +39,8 @@
       case "com.marco.chatgato.new-task":
         renderNewTask();
         break;
-      case "com.marco.chatgato.workflow":
-        renderWorkflow();
+      case "com.marco.chatgato.run-prompt":
+        renderRunPrompt();
         break;
       case "com.marco.chatgato.command":
         renderCommand();
@@ -132,22 +132,14 @@
     note.textContent = "Without auto-submit, Codex opens with the prompt in the composer so you can review it first.";
   }
 
-  function renderWorkflow() {
-    subtitle.textContent = "Launch a repeatable Codex workflow";
-    const workflow = String(selected("workflow", "reviewPr"));
+  function renderRunPrompt() {
+    subtitle.textContent = "Open a task with your prompt";
     form.innerHTML =
-      field("Workflow", `<select data-setting="workflow">
-        ${option("reviewPr", "Review pull request", workflow)}${option("debug", "Debug error", workflow)}
-        ${option("refactor", "Refactor", workflow)}${option("tests", "Add tests", workflow)}
-        ${option("security", "Security review", workflow)}${option("docs", "Update docs", workflow)}
-        ${option("custom", "Custom prompt", workflow)}
-      </select>`) +
-      field("Skill", input("skillName", selected("skillName", ""), "text", 'placeholder="Optional skill name"'), "Prefixes the prompt with $skill-name.") +
+      field("Prompt", `<textarea data-setting="prompt" placeholder="What should Codex do? You can include $skill-name.">${escapeHtml(String(selected("prompt", "")))}</textarea>`, "", "top") +
       field("Workspace", input("path", selected("path", ""), "text", 'placeholder="/absolute/path/to/project"')) +
-      field("Custom prompt", `<textarea data-setting="customPrompt" placeholder="Used by Custom prompt">${escapeHtml(String(selected("customPrompt", "")))}</textarea>`, "", "top") +
-      field("Auto-submit", checkbox("autoSubmit", Boolean(selected("autoSubmit", false))), "Starts the workflow immediately.", "check") +
+      field("Auto-submit", checkbox("autoSubmit", Boolean(selected("autoSubmit", false))), "Runs the prompt immediately.", "check") +
       field("Submit delay", input("submitDelayMs", selected("submitDelayMs", 900), "number", 'min="300" max="5000" step="100"'));
-    note.textContent = "The predefined workflows include review, debug, and refactor launchers and can also invoke any installed Codex skill.";
+    note.innerHTML = "Codex receives this prompt as written. Include <code>$skill-name</code> to invoke a skill explicitly; Codex may also choose a matching skill automatically.";
   }
 
   const commandGroups = [

@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildNewTaskUrl,
-  buildThreadUrl,
-  buildWorkflowPrompt,
-  buildWorkflowUrl,
-} from "../src/lib/deep-links.js";
+import { buildNewTaskUrl, buildThreadUrl } from "../src/lib/deep-links.js";
 
 describe("Codex deep links", () => {
   it("uses the canonical empty-task link", () => {
@@ -17,10 +12,13 @@ describe("Codex deep links", () => {
     expect(url).toContain("path=%2Ftmp%2Fmy+project");
   });
 
-  it("prefixes an installed skill mention", () => {
-    const settings = { workflow: "debug", skillName: "$debugger", path: "/tmp/repo" };
-    expect(buildWorkflowPrompt(settings)).toMatch(/^\$debugger Debug the current error/);
-    expect(buildWorkflowUrl(settings)).toContain("%24debugger+Debug");
+  it("encodes an explicit skill mention in a custom prompt", () => {
+    const url = buildNewTaskUrl({
+      prompt: "  $debugger Investigate the flaky test  ",
+      path: "/tmp/repo",
+    });
+    expect(url).toContain("prompt=%24debugger+Investigate+the+flaky+test");
+    expect(url).toContain("path=%2Ftmp%2Frepo");
   });
 
   it("rejects unsafe thread ids", () => {
