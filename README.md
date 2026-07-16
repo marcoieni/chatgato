@@ -21,7 +21,7 @@ A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a sta
 | Dictation controls | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow. |
 | Fast mode | A dedicated **Fast Mode** key toggles `/fast`, showing gray while off and green while on. |
 | New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls. |
-| Reasoning dial | A Stream Deck+ encoder raises/lowers reasoning effort; the same action works as an increase/decrease key on standard decks. |
+| Reasoning controls | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction. |
 | Dedicated core actions | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
 | More commands | Browser, environment action, commit, pull request, attachments, copy Markdown, archive, pin, feedback, and side chat remain available through Codex Command. |
 
@@ -51,7 +51,7 @@ npm run link
 
 After linking, drag actions from that category onto keys or a Stream Deck+ dial.
 
-On macOS, keyboard-driven actions such as Submit, Fork, Review Tab, Toggle Terminal, Review, Allow, Decline, Push to Talk, Tap to Talk, Command, and Reasoning may prompt for Accessibility permission. Agent Status and deep-link actions do not require Accessibility permission.
+On macOS, keyboard-driven actions such as Submit, Fork, Review Tab, Toggle Terminal, Review, Allow, Decline, Push to Talk, Tap to Talk, Command, and the reasoning controls may prompt for Accessibility permission. Agent Status and deep-link actions do not require Accessibility permission.
 
 If a command key shows a warning triangle, check
 `com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log`. Command failures include
@@ -69,7 +69,7 @@ npm run pack
 | --- | --- |
 | 1 | Agent 1 · Agent 2 · Agent 3 · Agent 4 · Agent 5 |
 | 2 | Agent 6 · Allow · Decline · Push to talk · New task |
-| 3 | Run Prompt · Fast mode · Review · Usage Limits · Reasoning |
+| 3 | Run Prompt · Fast mode · Usage Limits · Think More · Think Less |
 
 For each Agent Status key, choose a different slot from 1–20. Optionally set an absolute workspace path to filter the keys to one project.
 

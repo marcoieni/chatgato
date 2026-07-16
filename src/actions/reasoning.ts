@@ -8,7 +8,45 @@ import {
 } from "@elgato/streamdeck";
 import { runReasoning } from "../lib/codex-controller.js";
 import { reasoningSvg } from "../lib/visuals.js";
+import type { ReasoningDirection } from "../lib/codex-store.js";
 import type { ReasoningSettings } from "../types.js";
+
+type ReasoningKeySettings = Record<string, never>;
+
+abstract class ReasoningKeyAction extends SingletonAction<ReasoningKeySettings> {
+  protected constructor(private readonly direction: ReasoningDirection) {
+    super();
+  }
+
+  override async onWillAppear(ev: WillAppearEvent<ReasoningKeySettings>): Promise<void> {
+    await Promise.all([
+      ev.action.setImage(reasoningSvg(this.direction)),
+      ev.action.setTitle(this.direction === "increase" ? "THINK\nMORE" : "THINK\nLESS"),
+    ]);
+  }
+
+  override async onKeyDown(ev: KeyDownEvent<ReasoningKeySettings>): Promise<void> {
+    try {
+      await runReasoning(this.direction);
+    } catch {
+      await ev.action.showAlert();
+    }
+  }
+}
+
+@action({ UUID: "com.marco.chatgato.decrease-reasoning" })
+export class DecreaseReasoningAction extends ReasoningKeyAction {
+  constructor() {
+    super("decrease");
+  }
+}
+
+@action({ UUID: "com.marco.chatgato.increase-reasoning" })
+export class IncreaseReasoningAction extends ReasoningKeyAction {
+  constructor() {
+    super("increase");
+  }
+}
 
 type DialAccumulator = {
   ticks: number;
@@ -27,15 +65,6 @@ export class ReasoningAction extends SingletonAction<ReasoningSettings> {
 
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<ReasoningSettings>): Promise<void> {
     await this.render(ev.action, ev.payload.settings);
-  }
-
-  override async onKeyDown(ev: KeyDownEvent<ReasoningSettings>): Promise<void> {
-    const direction = ev.payload.settings.keyDirection ?? "increase";
-    try {
-      await this.adjust(direction, ev.payload.settings);
-    } catch {
-      await ev.action.showAlert();
-    }
   }
 
   override async onDialRotate(ev: DialRotateEvent<ReasoningSettings>): Promise<void> {
@@ -92,15 +121,9 @@ export class ReasoningAction extends SingletonAction<ReasoningSettings> {
 
   private async render(
     actionInstance: WillAppearEvent<ReasoningSettings>["action"],
-    settings: ReasoningSettings,
+    _settings: ReasoningSettings,
   ): Promise<void> {
-    const direction = settings.keyDirection ?? "increase";
-    if (actionInstance.isKey()) {
-      await Promise.all([
-        actionInstance.setImage(reasoningSvg(direction)),
-        actionInstance.setTitle(direction === "increase" ? "THINK\nMORE" : "THINK\nLESS"),
-      ]);
-    } else {
+    if (!actionInstance.isKey()) {
       await actionInstance.setFeedback({
         title: "Reasoning",
         value: "Turn to adjust",

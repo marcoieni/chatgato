@@ -76,6 +76,24 @@
       "Controllers": [
         "Keypad"
       ],
+      "Icon": "imgs/actions/reasoning-decrease",
+      "Name": "Decrease Reasoning",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/reasoning-decrease",
+          "Title": "THINK\nLESS",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Lower the current Codex task's reasoning effort by one level.",
+      "UUID": "com.marco.chatgato.decrease-reasoning"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
       "Icon": "imgs/actions/fast",
       "Name": "Fast Mode",
       "PropertyInspectorPath": "ui/pi.html",
@@ -148,6 +166,24 @@
       "Controllers": [
         "Keypad"
       ],
+      "Icon": "imgs/actions/reasoning-increase",
+      "Name": "Increase Reasoning",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/reasoning-increase",
+          "Title": "THINK\nMORE",
+          "TitleAlignment": "bottom",
+          "FontSize": 12
+        }
+      ],
+      "Tooltip": "Raise the current Codex task's reasoning effort by one level.",
+      "UUID": "com.marco.chatgato.increase-reasoning"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
       "Icon": "imgs/actions/new-task",
       "Name": "New Task",
       "PropertyInspectorPath": "ui/pi.html",
@@ -200,7 +236,6 @@
     },
     {
       "Controllers": [
-        "Keypad",
         "Encoder"
       ],
       "Encoder": {
@@ -214,17 +249,14 @@
         }
       },
       "Icon": "imgs/actions/reasoning",
-      "Name": "Reasoning",
+      "Name": "Reasoning Dial",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/reasoning",
-          "Title": "THINK\nMORE",
-          "TitleAlignment": "bottom",
-          "FontSize": 12
+          "Image": "imgs/actions/reasoning"
         }
       ],
-      "Tooltip": "Turn a Stream Deck+ dial to adjust the current Codex task's reasoning effort, or use it as a key.",
+      "Tooltip": "Turn a Stream Deck+ dial to increase or decrease the current Codex task's reasoning effort.",
       "UUID": "com.marco.chatgato.reasoning"
     },
     {

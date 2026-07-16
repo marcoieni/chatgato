@@ -96,6 +96,12 @@
       case "com.marco.chatgato.fast-mode":
         renderFastMode();
         break;
+      case "com.marco.chatgato.decrease-reasoning":
+        renderDedicatedCommand("Decrease Reasoning", "Lower the current task's reasoning effort by one level.");
+        break;
+      case "com.marco.chatgato.increase-reasoning":
+        renderDedicatedCommand("Increase Reasoning", "Raise the current task's reasoning effort by one level.");
+        break;
       case "com.marco.chatgato.reasoning":
         renderReasoning();
         break;
@@ -218,12 +224,10 @@
   }
 
   function renderReasoning() {
-    subtitle.textContent = "Set the brainpower in the moment";
-    const direction = String(selected("keyDirection", "increase"));
+    subtitle.textContent = "Adjust reasoning with a dial";
     form.innerHTML =
-      field("Key press", `<select data-setting="keyDirection">${option("increase","Increase",direction)}${option("decrease","Decrease",direction)}</select>`) +
       field("Max steps", input("maxStepsPerGesture", selected("maxStepsPerGesture", 3), "number", 'min="1" max="5" step="1"'), "Caps commands from one fast dial gesture.");
-    note.textContent = "On Stream Deck+, turn right to increase reasoning and left to decrease it. On a standard key, the selected Key press direction is used.";
+    note.textContent = "Turn right to increase reasoning and left to decrease it. Standard decks use the separate Increase Reasoning and Decrease Reasoning actions.";
   }
 
   function renderUsage() {

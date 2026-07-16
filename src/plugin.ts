@@ -20,7 +20,11 @@ import {
 import { FastModeAction } from "./actions/fast-mode.js";
 import { NewTaskAction } from "./actions/new-task.js";
 import { PushToTalkAction } from "./actions/push-to-talk.js";
-import { ReasoningAction } from "./actions/reasoning.js";
+import {
+  DecreaseReasoningAction,
+  IncreaseReasoningAction,
+  ReasoningAction,
+} from "./actions/reasoning.js";
 import { TapToTalkAction } from "./actions/tap-to-talk.js";
 import { UsageAction } from "./actions/usage.js";
 import { RunPromptAction } from "./actions/run-prompt.js";
@@ -47,6 +51,8 @@ streamDeck.actions.registerAction(new GoBackAction());
 streamDeck.actions.registerAction(new GoForwardAction());
 streamDeck.actions.registerAction(new ToggleSidebarAction());
 streamDeck.actions.registerAction(new CommandAction());
+streamDeck.actions.registerAction(new DecreaseReasoningAction());
+streamDeck.actions.registerAction(new IncreaseReasoningAction());
 streamDeck.actions.registerAction(new ReasoningAction());
 streamDeck.actions.registerAction(new UsageAction());
 
