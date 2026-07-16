@@ -7,7 +7,7 @@ const manifest = JSON.parse(
     "utf8",
   ),
 ) as {
-  Actions: Array<{ Name: string }>;
+  Actions: Array<{ Name: string; UUID: string }>;
   SDKVersion: number;
 };
 
@@ -20,5 +20,11 @@ describe("Stream Deck manifest", () => {
     const actionNames = manifest.Actions.map(({ Name }) => Name);
 
     expect(actionNames).toEqual([...actionNames].sort((left, right) => left.localeCompare(right)));
+  });
+
+  it("does not expose the removed generic Codex Command action", () => {
+    expect(manifest.Actions).not.toContainEqual(
+      expect.objectContaining({ UUID: "com.marco.chatgato.command" }),
+    );
   });
 });

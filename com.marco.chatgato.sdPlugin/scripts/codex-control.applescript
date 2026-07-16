@@ -15,13 +15,7 @@ on run argv
 	delay 0.18
 
 	tell application "System Events"
-		if controlMode is "palette" then
-			keystroke "k" using {command down}
-			delay 0.22
-			keystroke payload
-			delay 0.28
-			key code 36
-		else if controlMode is "slash" then
+		if controlMode is "slash" then
 			keystroke payload
 			delay 0.18
 			key code 36
@@ -49,16 +43,8 @@ on run argv
 				key code 36
 			else if payload is "terminal" then
 				key code 50 using {control down}
-			else if payload is "searchTasks" then
-				keystroke "g" using {command down}
-			else if payload is "previousTask" then
-				key code 33 using {command down, shift down}
-			else if payload is "nextTask" then
-				key code 30 using {command down, shift down}
 			else if payload is "review" then
 				keystroke "g" using {control down, shift down}
-			else if payload is "openFolder" then
-				keystroke "o" using {command down}
 			else if payload is "navigateBack" then
 				key code 33 using {command down}
 			else if payload is "navigateForward" then

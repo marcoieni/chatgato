@@ -8,11 +8,6 @@ const manifest = JSON.parse(
   ),
 ) as { Actions: Array<{ Name: string; UUID: string }> };
 
-const propertyInspector = readFileSync(
-  new URL("../com.marco.chatgato.sdPlugin/ui/pi.js", import.meta.url),
-  "utf8",
-);
-
 describe("Push to Talk action", () => {
   it("is exposed as a dedicated Stream Deck action", () => {
     expect(manifest.Actions).toContainEqual(
@@ -21,14 +16,5 @@ describe("Push to Talk action", () => {
         UUID: "com.marco.chatgato.push-to-talk",
       }),
     );
-  });
-
-  it("is not offered by the generic Codex Command selector", () => {
-    const commandGroups = propertyInspector.slice(
-      propertyInspector.indexOf("const commandGroups"),
-      propertyInspector.indexOf("function renderCommand"),
-    );
-    expect(commandGroups).not.toContain('"ptt"');
-    expect(commandGroups).not.toContain("Push to talk (hold)");
   });
 });

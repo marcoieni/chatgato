@@ -33,11 +33,6 @@ export type NewTaskSettings = {
   submitDelayMs?: number;
 };
 
-export type CommandSettings = {
-  command?: string;
-  paletteQuery?: string;
-};
-
 export type PushToTalkSettings = Record<string, never>;
 
 export type FastModeSettings = {

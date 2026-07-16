@@ -42,9 +42,6 @@
       case "com.marco.chatgato.prompt":
         renderPrompt();
         break;
-      case "com.marco.chatgato.command":
-        renderCommand();
-        break;
       case "com.marco.chatgato.submit":
         renderDedicatedCommand("Submit", "Submit the current composer input.");
         break;
@@ -146,49 +143,6 @@
       field("Auto-submit", checkbox("autoSubmit", Boolean(selected("autoSubmit", false))), "Runs the prompt immediately.", "check") +
       field("Submit delay", input("submitDelayMs", selected("submitDelayMs", 900), "number", 'min="300" max="5000" step="100"'));
     note.innerHTML = "Codex receives this prompt as written. Include <code>$skill-name</code> to invoke a skill explicitly; Codex may also choose a matching skill automatically.";
-  }
-
-  const commandGroups = [
-    ["Workspace", [["environmentAction","Run environment action"],["openFolder","Open folder"],["openBrowser","Open browser"],["addFiles","Add files"],["addPhotos","Add photos"]]],
-    ["Git", [["commit","Commit"],["pullRequest","Create pull request"]]],
-    ["Navigation", [["searchTasks","Search tasks"],["previousTask","Previous task"],["nextTask","Next task"],["togglePin","Pin task"]]],
-    ["Utilities", [["copyMarkdown","Copy conversation Markdown"],["archiveThread","Archive task"],["feedback","Send feedback"],["sideChat","Open side chat"],["docs","OpenAI developer docs"]]],
-  ];
-
-  const dedicatedCommandLabels = {
-    approve: "Allow",
-    decline: "Decline",
-    submit: "Submit",
-    forkThread: "Fork",
-    review: "Review Tab",
-    terminal: "Toggle Terminal",
-    openReview: "Review",
-    settings: "Settings",
-    togglePlan: "Plan",
-    skills: "Skills",
-    scheduled: "Scheduled",
-    navigateBack: "Go Back",
-    navigateForward: "Go Forward",
-    toggleSidebar: "Toggle Sidebar",
-    newTask: "New Task",
-    reasoningUp: "Increase Reasoning",
-    reasoningDown: "Decrease Reasoning",
-  };
-
-  function renderCommand() {
-    subtitle.textContent = "Map a Codex command";
-    const command = String(selected("command", "environmentAction"));
-    const dedicatedLabel = dedicatedCommandLabels[command];
-    const legacyDedicated = dedicatedLabel
-      ? `<optgroup label="Existing configuration"><option value="${command}" selected disabled>${dedicatedLabel} (legacy)</option></optgroup>`
-      : "";
-    const options = legacyDedicated + commandGroups.map(([group, values]) => `<optgroup label="${group}">${values.map(([value, label]) => option(value, label, command)).join("")}</optgroup>`).join("");
-    form.innerHTML =
-      field("Command", `<select data-setting="command">${options}</select>`) +
-      field("Menu query", input("paletteQuery", selected("paletteQuery", ""), "text", 'placeholder="Optional localized command name"'), "Overrides Command Menu text for palette-based commands.");
-    note.innerHTML = legacyDedicated
-      ? `This existing key will keep working. Use the dedicated <strong>${dedicatedLabel}</strong> action for new keys.`
-      : "Commands without public deep links use the Codex <strong>Command Menu</strong>. macOS may ask you to grant Stream Deck accessibility control.";
   }
 
   function renderDedicatedCommand(label, description) {

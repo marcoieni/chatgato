@@ -23,9 +23,8 @@ A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a sta
 | New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls. |
 | Reasoning controls | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction. |
 | Dedicated core actions | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
-| More commands | Browser, environment action, commit, pull request, attachments, copy Markdown, archive, pin, feedback, and side chat remain available through Codex Command. |
 
-The ChatGPT desktop app exposes Codex deep links and keyboard shortcuts, but not a public external command API. Commands without a documented shortcut are therefore invoked through the app's Command Menu. This is configurable for localized command names.
+The ChatGPT desktop app exposes Codex deep links and keyboard shortcuts, but not a public external command API. ChatGato combines those entry points with operating-system automation for actions that require keyboard control.
 
 ## Requirements
 
@@ -51,11 +50,11 @@ npm run link
 
 After linking, drag actions from that category onto keys or a Stream Deck+ dial.
 
-On macOS, keyboard-driven actions such as Submit, Fork, Review Tab, Toggle Terminal, Review, Allow, Decline, Push to Talk, Tap to Talk, Command, and the reasoning controls may prompt for Accessibility permission. Agent Status and deep-link actions do not require Accessibility permission.
+On macOS, keyboard-driven actions such as Submit, Fork, Review Tab, Toggle Terminal, Review, Allow, Decline, Push to Talk, Tap to Talk, and the reasoning controls may prompt for Accessibility permission. Agent Status and deep-link actions do not require Accessibility permission.
 
-If a command key shows a warning triangle, check
-`com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log`. Command failures include
-the selected command and the operating-system automation error.
+If a key shows a warning triangle, check
+`com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log`. Automation failures include
+the selected action and the operating-system error.
 
 To create a distributable plugin:
 
@@ -96,10 +95,9 @@ The Usage Limits key reads the latest rate-limit snapshot that Codex writes to l
 
 - ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
 - Auto-submit is off by default. With it off, deep-linked prompts are placed in the composer for review, matching Codex's documented behavior.
-- Command Menu labels can vary by app language or release. Use **Menu query** in the property inspector when a palette command does not resolve.
 - Agent status is inferred from internal local Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
 - Usage limits are also read locally from Codex rollout events; no account credentials or usage data are transmitted by the plugin.
-- The plugin controls Codex in the current ChatGPT window. If another ChatGPT window is active, Command Menu operations act on whichever window becomes primary.
+- The plugin controls Codex in the current ChatGPT window. If another ChatGPT window is active, keyboard operations act on whichever window becomes primary.
 
 References: [Codex desktop commands and deep links](https://developers.openai.com/codex/app/commands) and the [Stream Deck SDK](https://docs.elgato.com/streamdeck/sdk/).
 

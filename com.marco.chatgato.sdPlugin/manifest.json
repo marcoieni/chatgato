@@ -40,24 +40,6 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/command",
-      "Name": "Codex Command",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/command",
-          "Title": "CODEX",
-          "TitleAlignment": "bottom",
-          "FontSize": 12
-        }
-      ],
-      "Tooltip": "Map a Codex command such as Git, attachments, utilities, or navigation.",
-      "UUID": "com.marco.chatgato.command"
-    },
-    {
-      "Controllers": [
-        "Keypad"
-      ],
       "Icon": "imgs/actions/decline",
       "Name": "Decline",
       "PropertyInspectorPath": "ui/pi.html",
