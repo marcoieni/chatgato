@@ -5,7 +5,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/agent",
+      "Icon": "imgs/action-list/agent",
       "Name": "Agent Status",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -22,7 +22,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/approve",
+      "Icon": "imgs/action-list/approve",
       "Name": "Allow",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -40,7 +40,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/decline",
+      "Icon": "imgs/action-list/decline",
       "Name": "Decline",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -58,7 +58,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/reasoning-decrease",
+      "Icon": "imgs/action-list/reasoning-decrease",
       "Name": "Decrease Reasoning",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -76,7 +76,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/fast",
+      "Icon": "imgs/action-list/fast",
       "Name": "Fast Mode",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -94,7 +94,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/fork",
+      "Icon": "imgs/action-list/fork",
       "Name": "Fork",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -112,7 +112,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/go-back",
+      "Icon": "imgs/action-list/go-back",
       "Name": "Go Back",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -130,7 +130,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/go-forward",
+      "Icon": "imgs/action-list/go-forward",
       "Name": "Go Forward",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -148,7 +148,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/reasoning-increase",
+      "Icon": "imgs/action-list/reasoning-increase",
       "Name": "Increase Reasoning",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -166,7 +166,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/new-task",
+      "Icon": "imgs/action-list/new-task",
       "Name": "New Task",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -184,7 +184,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/plan",
+      "Icon": "imgs/action-list/plan",
       "Name": "Plan",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -202,7 +202,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/prompt",
+      "Icon": "imgs/action-list/prompt",
       "Name": "Prompt",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -220,7 +220,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/push-to-talk",
+      "Icon": "imgs/action-list/push-to-talk",
       "Name": "Push to Talk",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -248,7 +248,7 @@
           "Touch": "Adjust reasoning"
         }
       },
-      "Icon": "imgs/actions/reasoning",
+      "Icon": "imgs/action-list/reasoning",
       "Name": "Reasoning Dial",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -263,7 +263,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/open-review",
+      "Icon": "imgs/action-list/open-review",
       "Name": "Review",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -281,7 +281,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/review-tab",
+      "Icon": "imgs/action-list/review-tab",
       "Name": "Review Tab",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -299,7 +299,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/scheduled",
+      "Icon": "imgs/action-list/scheduled",
       "Name": "Scheduled",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -317,7 +317,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/settings",
+      "Icon": "imgs/action-list/settings",
       "Name": "Settings",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -335,7 +335,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/skills",
+      "Icon": "imgs/action-list/skills",
       "Name": "Skills",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -353,7 +353,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/submit",
+      "Icon": "imgs/action-list/submit",
       "Name": "Submit",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -371,7 +371,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/push-to-talk",
+      "Icon": "imgs/action-list/push-to-talk",
       "Name": "Tap to Talk",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -389,7 +389,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/toggle-sidebar",
+      "Icon": "imgs/action-list/toggle-sidebar",
       "Name": "Toggle Sidebar",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -407,7 +407,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/terminal",
+      "Icon": "imgs/action-list/terminal",
       "Name": "Toggle Terminal",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
@@ -425,7 +425,7 @@
       "Controllers": [
         "Keypad"
       ],
-      "Icon": "imgs/actions/usage",
+      "Icon": "imgs/action-list/usage",
       "Name": "Usage Limits",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
