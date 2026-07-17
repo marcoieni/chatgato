@@ -27,7 +27,9 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
   private readonly poller = new ActionPoller();
   private toggling = false;
 
-  override async onWillAppear(ev: WillAppearEvent<PlanModeSettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<PlanModeSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action);
   }
 
@@ -89,7 +91,10 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
     return enabled;
   }
 
-  private async render(actionInstance: VisibleAction, enabled: boolean): Promise<void> {
+  private async render(
+    actionInstance: VisibleAction,
+    enabled: boolean,
+  ): Promise<void> {
     await Promise.all([
       actionInstance.setImage(planModeImage(enabled)),
       actionInstance.setTitle(enabled ? "PLAN\nON" : "PLAN\nOFF"),

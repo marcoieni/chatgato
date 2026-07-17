@@ -29,7 +29,8 @@ export class PushToTalkSession {
   }
 
   async release(actionId: string): Promise<boolean> {
-    if (!this.activeActions.delete(actionId) || this.activeActions.size > 0) return false;
+    if (!this.activeActions.delete(actionId) || this.activeActions.size > 0)
+      return false;
     await this.setActive(false);
     return true;
   }

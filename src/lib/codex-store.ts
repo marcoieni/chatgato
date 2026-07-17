@@ -9,7 +9,11 @@ import {
   parseRolloutLines,
   planModeFromRollout,
 } from "./rollout-status.js";
-import type { CodexThread, CodexUsageSnapshot, RolloutRecord } from "../types.js";
+import type {
+  CodexThread,
+  CodexUsageSnapshot,
+  RolloutRecord,
+} from "../types.js";
 
 type ThreadRow = {
   id: string;
@@ -71,17 +75,24 @@ export class CodexStore {
 
   async recentThreads(limit = 12, cwdFilter?: string): Promise<CodexThread[]> {
     return Promise.all(
-      this.recentThreadRows(limit, cwdFilter).map((row) => this.hydrateThread(row)),
+      this.recentThreadRows(limit, cwdFilter).map((row) =>
+        this.hydrateThread(row),
+      ),
     );
   }
 
-  async threadAtSlot(slot: number, cwdFilter?: string): Promise<CodexThread | null> {
+  async threadAtSlot(
+    slot: number,
+    cwdFilter?: string,
+  ): Promise<CodexThread | null> {
     const row = this.recentThreadRows(slot, cwdFilter)[slot - 1];
     return row ? this.hydrateThread(row) : null;
   }
 
   private recentThreadRows(limit: number, cwdFilter?: string): ThreadRow[] {
-    const rowLimit = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : 0;
+    const rowLimit = Number.isFinite(limit)
+      ? Math.max(0, Math.trunc(limit))
+      : 0;
     if (rowLimit === 0) return [];
     const filter = cwdFilter?.trim() ? resolve(cwdFilter.trim()) : null;
     return this.withDatabase((db) => {
@@ -119,29 +130,37 @@ export class CodexStore {
       updatedAtMs: Number(row.updated_at_ms) || 0,
       reasoningEffort: row.reasoning_effort,
       spawnStatus: row.spawn_status,
-      status: inferRolloutStatus(await this.readRolloutTail(row.rollout_path), row.spawn_status),
+      status: inferRolloutStatus(
+        await this.readRolloutTail(row.rollout_path),
+        row.spawn_status,
+      ),
     };
   }
 
   async latestUsage(limit = 12): Promise<CodexUsageSnapshot | null> {
-    const rows = this.withDatabase((db) =>
-      db
-        .prepare(
-          `SELECT rollout_path
+    const rows = this.withDatabase(
+      (db) =>
+        db
+          .prepare(
+            `SELECT rollout_path
              FROM threads
             WHERE rollout_path <> ''
          ORDER BY recency_at_ms DESC, id DESC
             LIMIT ?`,
-        )
-        .all(Math.max(1, limit)) as unknown as RolloutPathRow[],
+          )
+          .all(Math.max(1, limit)) as unknown as RolloutPathRow[],
     );
 
     const snapshots = await Promise.all(
-      rows.map(async (row) => usageFromRollout(await this.readRolloutTail(row.rollout_path))),
+      rows.map(async (row) =>
+        usageFromRollout(await this.readRolloutTail(row.rollout_path)),
+      ),
     );
-    return snapshots
-      .filter((snapshot): snapshot is CodexUsageSnapshot => snapshot !== null)
-      .sort((left, right) => right.updatedAtMs - left.updatedAtMs)[0] ?? null;
+    return (
+      snapshots
+        .filter((snapshot): snapshot is CodexUsageSnapshot => snapshot !== null)
+        .sort((left, right) => right.updatedAtMs - left.updatedAtMs)[0] ?? null
+    );
   }
 
   async fastModeEnabled(): Promise<boolean> {
@@ -157,36 +176,41 @@ export class CodexStore {
     const featureEnabled = readTomlBoolean(config, "features", "fast_mode");
     // Codex CLI documents "fast"; the desktop app currently persists the same mode as
     // "priority". Accept both representations so the Stream Deck state follows either surface.
-    return (serviceTier === "fast" || serviceTier === "priority") && featureEnabled !== false;
+    return (
+      (serviceTier === "fast" || serviceTier === "priority") &&
+      featureEnabled !== false
+    );
   }
 
   async planModeEnabled(): Promise<boolean> {
-    const row = this.withDatabase((db) =>
-      db
-        .prepare(
-          `SELECT rollout_path
+    const row = this.withDatabase(
+      (db) =>
+        db
+          .prepare(
+            `SELECT rollout_path
              FROM threads
             WHERE archived = 0 AND preview <> ''
          ORDER BY recency_at_ms DESC, id DESC
             LIMIT 1`,
-        )
-        .get() as RolloutPathRow | undefined,
+          )
+          .get() as RolloutPathRow | undefined,
     );
     if (!row) return false;
     return planModeFromRollout(await this.readRolloutTail(row.rollout_path));
   }
 
   async reasoningSnapshot(): Promise<ReasoningSnapshot> {
-    const row = this.withDatabase((db) =>
-      db
-        .prepare(
-          `SELECT id, model, reasoning_effort
+    const row = this.withDatabase(
+      (db) =>
+        db
+          .prepare(
+            `SELECT id, model, reasoning_effort
              FROM threads
             WHERE archived = 0
          ORDER BY recency_at_ms DESC, id DESC
             LIMIT 1`,
-        )
-        .get() as ReasoningRow | undefined,
+          )
+          .get() as ReasoningRow | undefined,
     );
 
     if (!row?.model || !row.reasoning_effort) {
@@ -196,12 +220,19 @@ export class CodexStore {
     const cache = JSON.parse(
       await readFile(join(this.codexHome, "models_cache.json"), "utf8"),
     ) as ModelsCache;
-    const model = cache.models?.find((candidate) => candidate.slug === row.model);
+    const model = cache.models?.find(
+      (candidate) => candidate.slug === row.model,
+    );
     const efforts = (model?.supported_reasoning_levels ?? [])
       .map((level) => level.effort)
-      .filter((effort): effort is string => typeof effort === "string" && effort.length > 0);
+      .filter(
+        (effort): effort is string =>
+          typeof effort === "string" && effort.length > 0,
+      );
     if (!efforts.includes(row.reasoning_effort)) {
-      throw new Error(`Unsupported reasoning effort for ${row.model}: ${row.reasoning_effort}`);
+      throw new Error(
+        `Unsupported reasoning effort for ${row.model}: ${row.reasoning_effort}`,
+      );
     }
 
     return {
@@ -212,7 +243,10 @@ export class CodexStore {
     };
   }
 
-  async reasoningTarget(direction: ReasoningDirection, steps = 1): Promise<ReasoningTarget> {
+  async reasoningTarget(
+    direction: ReasoningDirection,
+    steps = 1,
+  ): Promise<ReasoningTarget> {
     const snapshot = await this.reasoningSnapshot();
     const currentIndex = snapshot.efforts.indexOf(snapshot.currentEffort);
     const optionIndex = reasoningTargetIndex(
@@ -229,7 +263,9 @@ export class CodexStore {
   }
 
   private withDatabase<T>(read: (db: DatabaseSync) => T): T {
-    const db = new DatabaseSync(join(this.sqliteHome, "state_5.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(this.sqliteHome, "state_5.sqlite"), {
+      readOnly: true,
+    });
     try {
       return read(db);
     } finally {
@@ -278,7 +314,11 @@ function readRootTomlString(config: string, key: string): string | undefined {
   return undefined;
 }
 
-function readTomlBoolean(config: string, table: string, key: string): boolean | undefined {
+function readTomlBoolean(
+  config: string,
+  table: string,
+  key: string,
+): boolean | undefined {
   const escapedTable = table.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
   const tablePattern = new RegExp(
@@ -340,7 +380,10 @@ function parseTomlString(value: string): string | undefined {
 
     const digits = escape === "u" ? 4 : escape === "U" ? 8 : 0;
     const codePoint = value.slice(index + 1, index + 1 + digits);
-    if (!digits || !new RegExp(`^[0-9a-fA-F]{${digits}}$`, "u").test(codePoint)) {
+    if (
+      !digits ||
+      !new RegExp(`^[0-9a-fA-F]{${digits}}$`, "u").test(codePoint)
+    ) {
       return undefined;
     }
     try {
@@ -379,7 +422,8 @@ export function reasoningTargetIndex(
   steps = 1,
 ): number {
   const currentIndex = efforts.indexOf(currentEffort);
-  if (currentIndex < 0) throw new Error(`Unknown reasoning effort: ${currentEffort}`);
+  if (currentIndex < 0)
+    throw new Error(`Unknown reasoning effort: ${currentEffort}`);
   const distance = Math.max(1, Math.trunc(Math.abs(steps)) || 1);
   const delta = direction === "increase" ? distance : -distance;
   return Math.min(efforts.length - 1, Math.max(0, currentIndex + delta));

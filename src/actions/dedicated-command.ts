@@ -1,8 +1,4 @@
-import {
-  action,
-  SingletonAction,
-  type KeyDownEvent,
-} from "@elgato/streamdeck";
+import { action, SingletonAction, type KeyDownEvent } from "@elgato/streamdeck";
 import streamDeck from "@elgato/streamdeck";
 import { executeCommand } from "../lib/codex-controller.js";
 
@@ -19,7 +15,9 @@ export abstract class DedicatedCommandAction extends SingletonAction<DedicatedCo
     this.logger = streamDeck.logger.createScope(label);
   }
 
-  override async onKeyDown(ev: KeyDownEvent<DedicatedCommandSettings>): Promise<void> {
+  override async onKeyDown(
+    ev: KeyDownEvent<DedicatedCommandSettings>,
+  ): Promise<void> {
     try {
       await executeCommand(this.command);
       this.logger.info(`Ran command '${this.command}'`);

@@ -18,7 +18,9 @@ export class UsageAction extends SingletonAction<UsageSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
 
-  override async onWillAppear(ev: WillAppearEvent<UsageSettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<UsageSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
@@ -26,7 +28,9 @@ export class UsageAction extends SingletonAction<UsageSettings> {
     this.poller.stop(ev.action.id);
   }
 
-  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<UsageSettings>): Promise<void> {
+  override async onDidReceiveSettings(
+    ev: DidReceiveSettingsEvent<UsageSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
@@ -34,7 +38,10 @@ export class UsageAction extends SingletonAction<UsageSettings> {
     await this.refresh(ev.action);
   }
 
-  private async startPolling(actionInstance: VisibleAction, settings: UsageSettings): Promise<void> {
+  private async startPolling(
+    actionInstance: VisibleAction,
+    settings: UsageSettings,
+  ): Promise<void> {
     await this.poller.start(
       actionInstance.id,
       () => this.refresh(actionInstance),

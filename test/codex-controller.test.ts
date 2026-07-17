@@ -22,8 +22,12 @@ describe("Codex controller", () => {
   });
 
   it("rejects slash-command arguments and injected input", () => {
-    expect(() => normalizeSlashCommand("/fast on")).toThrow("Invalid Codex slash command");
-    expect(() => normalizeSlashCommand("/fast\n/plan")).toThrow("Invalid Codex slash command");
+    expect(() => normalizeSlashCommand("/fast on")).toThrow(
+      "Invalid Codex slash command",
+    );
+    expect(() => normalizeSlashCommand("/fast\n/plan")).toThrow(
+      "Invalid Codex slash command",
+    );
   });
 
   it("maps push-to-talk state to distinct key-down and key-up events", () => {

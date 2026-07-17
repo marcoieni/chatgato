@@ -5,7 +5,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
-  action: () => <T>(target: T) => target,
+  action:
+    () =>
+    <T>(target: T) =>
+      target,
   SingletonAction: class {},
   default: {
     logger: {
@@ -56,19 +59,28 @@ describe("dedicated command actions", () => {
     [GoBackAction, "navigateBack"],
     [GoForwardAction, "navigateForward"],
     [ToggleSidebarAction, "toggleSidebar"],
-  ])("routes %s through the shared controller", async (ActionClass, command) => {
-    const dedicatedAction = new ActionClass();
+  ])(
+    "routes %s through the shared controller",
+    async (ActionClass, command) => {
+      const dedicatedAction = new ActionClass();
 
-    await dedicatedAction.onKeyDown({ action: actionInstance(), payload: { settings: {} } } as never);
+      await dedicatedAction.onKeyDown({
+        action: actionInstance(),
+        payload: { settings: {} },
+      } as never);
 
-    expect(mocks.executeCommand).toHaveBeenCalledWith(command);
-  });
+      expect(mocks.executeCommand).toHaveBeenCalledWith(command);
+    },
+  );
 
   it("shows an alert when a command fails", async () => {
     const action = actionInstance();
     mocks.executeCommand.mockRejectedValueOnce(new Error("automation failed"));
 
-    await new SubmitAction().onKeyDown({ action, payload: { settings: {} } } as never);
+    await new SubmitAction().onKeyDown({
+      action,
+      payload: { settings: {} },
+    } as never);
 
     expect(action.showAlert).toHaveBeenCalledOnce();
   });

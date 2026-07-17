@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
-  action: () => <T>(target: T) => target,
+  action:
+    () =>
+    <T>(target: T) =>
+      target,
   SingletonAction: class {},
   default: {
     logger: {
@@ -59,7 +62,9 @@ describe("PlanModeAction", () => {
 
     expect(mocks.executeCommand).toHaveBeenCalledWith("togglePlan");
     const image = harness.action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain("#9E5BFF");
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
+      "#9E5BFF",
+    );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
     expect(harness.action.showAlert).not.toHaveBeenCalled();
   });
@@ -69,10 +74,15 @@ describe("PlanModeAction", () => {
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
-    await planMode.onKeyDown({ action: harness.action, payload: { settings: {} } } as never);
+    await planMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
 
     const image = harness.action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain("#303840");
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
+      "#303840",
+    );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
   });
 
@@ -82,10 +92,15 @@ describe("PlanModeAction", () => {
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
-    await planMode.onKeyDown({ action: harness.action, payload: { settings: {} } } as never);
+    await planMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
 
     const image = harness.action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain("#303840");
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
+      "#303840",
+    );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
     expect(harness.action.showAlert).toHaveBeenCalledOnce();
   });
@@ -96,7 +111,10 @@ describe("PlanModeAction", () => {
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
-    await planMode.onWillAppear({ action: harness.action, payload: { settings: {} } } as never);
+    await planMode.onWillAppear({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
 
     await vi.advanceTimersByTimeAsync(1_000);

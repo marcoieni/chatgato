@@ -24,12 +24,18 @@ describe("Stream Deck visuals", () => {
     expect(STATUS_COLORS["awaiting-approval"]).toBe("#FF6D00");
     expect(STATUS_COLORS["awaiting-response"]).toBe("#9E5BFF");
     expect(STATUS_COLORS.error).toBe("#FF0033");
-    expect(new Set(Object.values(STATUS_COLORS))).toHaveLength(Object.keys(STATUS_COLORS).length);
+    expect(new Set(Object.values(STATUS_COLORS))).toHaveLength(
+      Object.keys(STATUS_COLORS).length,
+    );
   });
 
   it("renders the status color as the full icon background", () => {
-    expect(agentSvg(4, "working")).toContain('<rect width="144" height="144" rx="24" fill="#304FFE"/>');
-    expect(agentSvg(4, "unread")).toContain('<rect width="144" height="144" rx="24" fill="#00FF4C"/>');
+    expect(agentSvg(4, "working")).toContain(
+      '<rect width="144" height="144" rx="24" fill="#304FFE"/>',
+    );
+    expect(agentSvg(4, "unread")).toContain(
+      '<rect width="144" height="144" rx="24" fill="#00FF4C"/>',
+    );
     expect(agentSvg(4, "working")).toContain(">4</text>");
   });
 
@@ -39,9 +45,9 @@ describe("Stream Deck visuals", () => {
     expect(fastModeSvg(true)).toContain('fill="#00FF4C"');
     expect(fastModeSvg(false)).not.toBe(fastModeSvg(true));
     expect(fastModeImage(true)).toMatch(/^data:image\/svg\+xml;base64,/);
-    expect(Buffer.from(fastModeImage(true).split(",")[1]!, "base64").toString()).toBe(
-      fastModeSvg(true),
-    );
+    expect(
+      Buffer.from(fastModeImage(true).split(",")[1]!, "base64").toString(),
+    ).toBe(fastModeSvg(true));
   });
 
   it("renders distinct off and on colors for the plan-mode key", () => {
@@ -49,9 +55,9 @@ describe("Stream Deck visuals", () => {
     expect(planModeSvg(false)).toContain('fill="#303840"');
     expect(planModeSvg(true)).toContain('fill="#9E5BFF"');
     expect(planModeSvg(false)).not.toBe(planModeSvg(true));
-    expect(Buffer.from(planModeImage(true).split(",")[1]!, "base64").toString()).toBe(
-      planModeSvg(true),
-    );
+    expect(
+      Buffer.from(planModeImage(true).split(",")[1]!, "base64").toString(),
+    ).toBe(planModeSvg(true));
   });
 
   it("renders a yellow microphone key while push-to-talk is active", () => {
@@ -60,15 +66,17 @@ describe("Stream Deck visuals", () => {
     expect(pushToTalkSvg(true)).toContain('fill="#FFD600"');
     expect(pushToTalkSvg(true)).toContain('stroke="#071018"');
     expect(pushToTalkSvg(false)).not.toBe(pushToTalkSvg(true));
-    expect(Buffer.from(pushToTalkImage(true).split(",")[1]!, "base64").toString()).toBe(
-      pushToTalkSvg(true),
-    );
+    expect(
+      Buffer.from(pushToTalkImage(true).split(",")[1]!, "base64").toString(),
+    ).toBe(pushToTalkSvg(true));
   });
 
   it("encodes generated SVGs as images for Stream Deck", () => {
     const image = agentImage(2, "unread");
     expect(image).toMatch(/^data:image\/svg\+xml;base64,/);
-    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toBe(agentSvg(2, "unread"));
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toBe(
+      agentSvg(2, "unread"),
+    );
   });
 
   it("clears unread after the matching task is acknowledged", () => {

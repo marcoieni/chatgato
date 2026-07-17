@@ -85,7 +85,8 @@ async function runControlScript(
 }
 
 export async function openUrl(url: string): Promise<void> {
-  if (!/^(codex|https):\/\//.test(url)) throw new Error("Unsupported URL scheme");
+  if (!/^(codex|https):\/\//.test(url))
+    throw new Error("Unsupported URL scheme");
   if (process.platform === "darwin") {
     await run("/usr/bin/open", [url]);
     return;
@@ -108,7 +109,9 @@ export async function runShortcut(shortcut: string): Promise<void> {
   await runControlScript("shortcut", shortcut, "keyboard control");
 }
 
-export function pushToTalkPayload(active: boolean): "dictationDown" | "dictationUp" {
+export function pushToTalkPayload(
+  active: boolean,
+): "dictationDown" | "dictationUp" {
   return active ? "dictationDown" : "dictationUp";
 }
 

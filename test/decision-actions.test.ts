@@ -5,7 +5,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
-  action: () => <T>(target: T) => target,
+  action:
+    () =>
+    <T>(target: T) =>
+      target,
   SingletonAction: class {},
   default: {
     logger: {
@@ -36,7 +39,10 @@ describe("decision actions", () => {
   it("approves from its dedicated action", async () => {
     const action = actionInstance();
 
-    await new ApproveAction().onKeyDown({ action, payload: { settings: {} } } as never);
+    await new ApproveAction().onKeyDown({
+      action,
+      payload: { settings: {} },
+    } as never);
 
     expect(mocks.executeCommand).toHaveBeenCalledWith("approve");
     expect(action.showAlert).not.toHaveBeenCalled();
@@ -45,7 +51,10 @@ describe("decision actions", () => {
   it("declines from its dedicated action", async () => {
     const action = actionInstance();
 
-    await new DeclineAction().onKeyDown({ action, payload: { settings: {} } } as never);
+    await new DeclineAction().onKeyDown({
+      action,
+      payload: { settings: {} },
+    } as never);
 
     expect(mocks.executeCommand).toHaveBeenCalledWith("decline");
     expect(action.showAlert).not.toHaveBeenCalled();
@@ -55,7 +64,10 @@ describe("decision actions", () => {
     mocks.executeCommand.mockRejectedValueOnce(new Error("Codex unavailable"));
     const action = actionInstance();
 
-    await new ApproveAction().onKeyDown({ action, payload: { settings: {} } } as never);
+    await new ApproveAction().onKeyDown({
+      action,
+      payload: { settings: {} },
+    } as never);
 
     expect(action.showAlert).toHaveBeenCalledOnce();
   });
