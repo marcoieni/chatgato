@@ -8,32 +8,147 @@
   --blue: #304ffe;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-main { padding: 14px 12px 20px; }
-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-h1 { margin: 0; font-size: 15px; letter-spacing: .01em; }
-p { margin: 1px 0 0; color: var(--muted); }
-.mark { display: grid; grid-template-columns: repeat(2, 10px); gap: 3px; padding: 6px; background: #071018; border-radius: 8px; }
-.mark i { width: 10px; height: 10px; border-radius: 3px; }
-.mark i:nth-child(1) { background: #304ffe; }
-.mark i:nth-child(2) { background: #00ff4c; }
-.mark i:nth-child(3) { background: #ff6d00; }
-.mark i:nth-child(4) { background: #fff; }
-form { display: grid; gap: 11px; }
-label { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 9px; color: #d8dee4; }
-label.top { align-items: start; }
-input, select, textarea { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); padding: 7px 8px; font: inherit; outline: none; }
-input:focus, select:focus, textarea:focus { border-color: #677dff; box-shadow: 0 0 0 2px #304ffe33; }
-textarea { min-height: 78px; resize: vertical; }
-input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--blue); }
-.check { grid-template-columns: 92px auto 1fr; }
-.hint { grid-column: 2; margin-top: -5px; color: var(--muted); font-size: 11px; }
-.check .hint { grid-column: 3; margin: 0; }
-.note { margin-top: 15px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: #0d1013; }
-.note:empty { display: none; }
-.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
-.legend span { display: flex; align-items: center; gap: 6px; }
-.legend i { width: 9px; height: 9px; border-radius: 50%; }
-.hidden { display: none; }
-strong { color: var(--text); font-weight: 600; }
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    12px/1.45 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+main {
+  padding: 14px 12px 20px;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+h1 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+p {
+  margin: 1px 0 0;
+  color: var(--muted);
+}
+.mark {
+  display: grid;
+  grid-template-columns: repeat(2, 10px);
+  gap: 3px;
+  padding: 6px;
+  background: #071018;
+  border-radius: 8px;
+}
+.mark i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.mark i:nth-child(1) {
+  background: #304ffe;
+}
+.mark i:nth-child(2) {
+  background: #00ff4c;
+}
+.mark i:nth-child(3) {
+  background: #ff6d00;
+}
+.mark i:nth-child(4) {
+  background: #fff;
+}
+form {
+  display: grid;
+  gap: 11px;
+}
+label {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  color: #d8dee4;
+}
+label.top {
+  align-items: start;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 7px 8px;
+  font: inherit;
+  outline: none;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #677dff;
+  box-shadow: 0 0 0 2px #304ffe33;
+}
+textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--blue);
+}
+.check {
+  grid-template-columns: 92px auto 1fr;
+}
+.hint {
+  grid-column: 2;
+  margin-top: -5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.check .hint {
+  grid-column: 3;
+  margin: 0;
+}
+.note {
+  margin-top: 15px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #0d1013;
+}
+.note:empty {
+  display: none;
+}
+.legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.hidden {
+  display: none;
+}
+strong {
+  color: var(--text);
+  font-weight: 600;
+}

@@ -11,18 +11,26 @@ describe("Codex rollout status", () => {
       inferRolloutStatus([
         { type: "event_msg", payload: { type: "task_started" } },
         { type: "response_item", payload: { type: "reasoning" } },
-        { type: "response_item", payload: { type: "custom_tool_call", name: "exec" } },
+        {
+          type: "response_item",
+          payload: { type: "custom_tool_call", name: "exec" },
+        },
       ]),
     ).toBe("working");
   });
 
   it("distinguishes approval and user-input waits", () => {
     expect(
-      inferRolloutStatus([{ type: "event_msg", payload: { type: "exec_approval_request" } }]),
+      inferRolloutStatus([
+        { type: "event_msg", payload: { type: "exec_approval_request" } },
+      ]),
     ).toBe("awaiting-approval");
     expect(
       inferRolloutStatus([
-        { type: "response_item", payload: { type: "function_call", name: "request_user_input" } },
+        {
+          type: "response_item",
+          payload: { type: "function_call", name: "request_user_input" },
+        },
       ]),
     ).toBe("awaiting-response");
   });
@@ -81,7 +89,10 @@ describe("Codex rollout status", () => {
     expect(
       inferRolloutStatus([
         { type: "event_msg", payload: { type: "task_started" } },
-        { type: "response_item", payload: { type: "message", phase: "final_answer" } },
+        {
+          type: "response_item",
+          payload: { type: "message", phase: "final_answer" },
+        },
       ]),
     ).toBe("unread");
   });
@@ -105,7 +116,11 @@ describe("Codex rollout status", () => {
       inferRolloutStatus(records, null, startedAtMs + STALE_WORKING_TIMEOUT_MS),
     ).toBe("working");
     expect(
-      inferRolloutStatus(records, null, startedAtMs + 1_000 + STALE_WORKING_TIMEOUT_MS),
+      inferRolloutStatus(
+        records,
+        null,
+        startedAtMs + 1_000 + STALE_WORKING_TIMEOUT_MS,
+      ),
     ).toBe("unread");
   });
 
@@ -116,21 +131,39 @@ describe("Codex rollout status", () => {
 
     expect(
       inferRolloutStatus(
-        [{ timestamp: atStart, type: "event_msg", payload: { type: "exec_approval_request" } }],
+        [
+          {
+            timestamp: atStart,
+            type: "event_msg",
+            payload: { type: "exec_approval_request" },
+          },
+        ],
         null,
         staleNowMs,
       ),
     ).toBe("awaiting-approval");
     expect(
       inferRolloutStatus(
-        [{ timestamp: atStart, type: "response_item", payload: { type: "custom_tool_call" } }],
+        [
+          {
+            timestamp: atStart,
+            type: "response_item",
+            payload: { type: "custom_tool_call" },
+          },
+        ],
         null,
         staleNowMs,
       ),
     ).toBe("working");
     expect(
       inferRolloutStatus(
-        [{ timestamp: atStart, type: "response_item", payload: { type: "custom_tool_call_output" } }],
+        [
+          {
+            timestamp: atStart,
+            type: "response_item",
+            payload: { type: "custom_tool_call_output" },
+          },
+        ],
         "running",
         staleNowMs,
       ),

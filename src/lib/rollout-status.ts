@@ -1,6 +1,11 @@
 import type { AgentStatus, RolloutRecord } from "../types.js";
 
-const COMPLETED = new Set(["task_complete", "task_completed", "turn_complete", "turn_completed"]);
+const COMPLETED = new Set([
+  "task_complete",
+  "task_completed",
+  "turn_complete",
+  "turn_completed",
+]);
 const ABORTED = new Set([
   "task_aborted",
   "task_cancelled",
@@ -14,7 +19,11 @@ const WAITING_APPROVAL = new Set([
   "mcp_approval_request",
   "approval_request",
 ]);
-const WAITING_RESPONSE = new Set(["request_user_input", "elicitation_request", "user_input_request"]);
+const WAITING_RESPONSE = new Set([
+  "request_user_input",
+  "elicitation_request",
+  "user_input_request",
+]);
 const ESCALATED_SANDBOX_PROPERTY =
   /(?:^|[{,]\s*)["']?sandbox_permissions["']?\s*:\s*["']require_escalated["'](?=\s*[,}])/u;
 export const STALE_WORKING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -26,7 +35,10 @@ function timestampMs(record: RolloutRecord): number | null {
 
 function isApprovalToolCall(record: RolloutRecord): boolean {
   if (record.type !== "response_item") return false;
-  if (record.payload?.type !== "function_call" && record.payload?.type !== "custom_tool_call") {
+  if (
+    record.payload?.type !== "function_call" &&
+    record.payload?.type !== "custom_tool_call"
+  ) {
     return false;
   }
 
@@ -34,7 +46,9 @@ function isApprovalToolCall(record: RolloutRecord): boolean {
   return typeof input === "string" && ESCALATED_SANDBOX_PROPERTY.test(input);
 }
 
-export function statusFromSpawnEdge(spawnStatus?: string | null): AgentStatus | null {
+export function statusFromSpawnEdge(
+  spawnStatus?: string | null,
+): AgentStatus | null {
   switch (spawnStatus?.toLowerCase()) {
     case "queued":
     case "pending":
@@ -74,7 +88,8 @@ export function inferRolloutStatus(
     const outer = record.type ?? "";
     const payloadType = record.payload?.type ?? "";
     const name = record.payload?.name ?? "";
-    const phase = typeof record.payload?.phase === "string" ? record.payload.phase : "";
+    const phase =
+      typeof record.payload?.phase === "string" ? record.payload.phase : "";
     const recordAtMs = timestampMs(record);
 
     if (payloadType === "task_started" || payloadType === "user_message") {
@@ -110,7 +125,10 @@ export function inferRolloutStatus(
           status = "working";
           lastWorkingAtMs = recordAtMs ?? lastWorkingAtMs;
         }
-      } else if (payloadType === "function_call" || payloadType === "custom_tool_call") {
+      } else if (
+        payloadType === "function_call" ||
+        payloadType === "custom_tool_call"
+      ) {
         status = isApprovalToolCall(record)
           ? "awaiting-approval"
           : WAITING_RESPONSE.has(name)

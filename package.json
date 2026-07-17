@@ -10,6 +10,9 @@
   "scripts": {
     "build": "esbuild src/plugin.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=com.marco.chatgato.sdPlugin/bin/plugin.js --sourcemap",
     "watch": "npm run build -- --watch",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "validate": "streamdeck validate com.marco.chatgato.sdPlugin",
@@ -22,11 +25,16 @@
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
+    "@babel/eslint-parser": "^8.0.1",
     "@babel/plugin-proposal-decorators": "^8.0.2",
     "@elgato/cli": "1.7.4",
+    "@eslint/js": "^10.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@types/node": "^26.1.1",
     "esbuild": "^0.28.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }

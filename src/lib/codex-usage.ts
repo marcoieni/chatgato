@@ -10,11 +10,14 @@ function finiteNumber(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
-function parseWindow(window: RawRateLimitWindow | null | undefined): CodexUsageWindow | null {
+function parseWindow(
+  window: RawRateLimitWindow | null | undefined,
+): CodexUsageWindow | null {
   if (!window) return null;
   const usedPercent = finiteNumber(window.used_percent);
   const windowMinutes = finiteNumber(window.window_minutes);
-  if (usedPercent === null || windowMinutes === null || windowMinutes <= 0) return null;
+  if (usedPercent === null || windowMinutes === null || windowMinutes <= 0)
+    return null;
 
   const resetsAtSeconds = finiteNumber(window.resets_at);
   return {
@@ -24,7 +27,9 @@ function parseWindow(window: RawRateLimitWindow | null | undefined): CodexUsageW
   };
 }
 
-export function usageFromRollout(records: readonly RolloutRecord[]): CodexUsageSnapshot | null {
+export function usageFromRollout(
+  records: readonly RolloutRecord[],
+): CodexUsageSnapshot | null {
   let latest: CodexUsageSnapshot | null = null;
 
   for (const record of records) {
@@ -38,15 +43,18 @@ export function usageFromRollout(records: readonly RolloutRecord[]): CodexUsageS
           hasCredits: limits.credits.has_credits === true,
           unlimited: limits.credits.unlimited === true,
           balance:
-            limits.credits.balance === undefined || limits.credits.balance === null
+            limits.credits.balance === undefined ||
+            limits.credits.balance === null
               ? null
               : String(limits.credits.balance),
         }
       : null;
 
-    if (!primary && !secondary && !credits?.unlimited && !credits?.hasCredits) continue;
+    if (!primary && !secondary && !credits?.unlimited && !credits?.hasCredits)
+      continue;
 
-    const timestamp = typeof record.timestamp === "string" ? Date.parse(record.timestamp) : NaN;
+    const timestamp =
+      typeof record.timestamp === "string" ? Date.parse(record.timestamp) : NaN;
     latest = {
       updatedAtMs: Number.isFinite(timestamp) ? timestamp : 0,
       primary,

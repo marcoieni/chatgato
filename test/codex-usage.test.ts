@@ -14,8 +14,16 @@ describe("Codex usage", () => {
         payload: {
           type: "token_count",
           rate_limits: {
-            primary: { used_percent: 18.4, window_minutes: 300, resets_at: 1_784_000_000 },
-            secondary: { used_percent: 61, window_minutes: 10_080, resets_at: 1_784_500_000 },
+            primary: {
+              used_percent: 18.4,
+              window_minutes: 300,
+              resets_at: 1_784_000_000,
+            },
+            secondary: {
+              used_percent: 61,
+              window_minutes: 10_080,
+              resets_at: 1_784_500_000,
+            },
             plan_type: "pro",
           },
         },
