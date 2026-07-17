@@ -8,7 +8,7 @@ import {
 } from "@elgato/streamdeck";
 import streamDeck from "@elgato/streamdeck";
 import { setTimeout as delay } from "node:timers/promises";
-import { runSlash } from "../lib/codex-controller.js";
+import { setMode } from "../lib/codex-controller.js";
 import { ActionPoller } from "../lib/action-poller.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { fastModeImage } from "../lib/visuals.js";
@@ -50,7 +50,7 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     try {
       const previous = await this.store.fastModeEnabled();
       const expected = !previous;
-      await runSlash("/fast");
+      await setMode("fast", expected);
       const enabled = await this.waitForState(expected);
       await this.render(ev.action, enabled);
       if (enabled !== expected) {

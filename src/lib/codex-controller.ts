@@ -5,6 +5,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import { CodexStore, type ReasoningDirection } from "./codex-store.js";
 import { ReasoningTracker } from "./reasoning-tracker.js";
 
+export type CodexMode = "fast" | "plan";
+
 export type ControllerCommand = {
   kind: "url" | "shortcut" | "slash";
   value: string;
@@ -34,21 +36,26 @@ const reasoningTracker = new ReasoningTracker();
 // Stream Deck can deliver adjacent key/dial events before the first automation finishes.
 let reasoningQueue: Promise<unknown> = Promise.resolve();
 
-function run(executable: string, args: string[]): Promise<void> {
+function run(executable: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
-      stdio: ["ignore", "ignore", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
+    let stdout = "";
     let stderr = "";
 
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout = (stdout + chunk).slice(-4000);
+    });
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk: string) => {
       stderr = (stderr + chunk).slice(-4000);
     });
     child.once("error", reject);
     child.once("exit", (code) => {
-      if (code === 0) resolve();
+      if (code === 0) resolve(stdout.trim());
       else {
         const detail = stderr.trim();
         reject(
@@ -62,16 +69,15 @@ function run(executable: string, args: string[]): Promise<void> {
 }
 
 async function runControlScript(
-  mode: "shortcut" | "slash" | "reasoning",
+  mode: "shortcut" | "slash" | "reasoning" | "mode",
   payload: string,
   capability: string,
-): Promise<void> {
+): Promise<string> {
   if (process.platform === "darwin") {
-    await run("/usr/bin/osascript", [appleScript, mode, payload]);
-    return;
+    return run("/usr/bin/osascript", [appleScript, mode, payload]);
   }
   if (process.platform === "win32") {
-    await run("powershell.exe", [
+    return run("powershell.exe", [
       "-NoProfile",
       "-NonInteractive",
       "-File",
@@ -79,7 +85,6 @@ async function runControlScript(
       mode,
       payload,
     ]);
-    return;
   }
   throw new Error(`Codex ${capability} is supported on macOS and Windows`);
 }
@@ -130,6 +135,39 @@ export function normalizeSlashCommand(command: string): string {
 export async function runSlash(command: string): Promise<void> {
   const clean = normalizeSlashCommand(command);
   await runControlScript("slash", clean, "slash-command control");
+}
+
+export function modePayload(
+  mode: CodexMode,
+  enabled: boolean,
+): `${CodexMode}${"On" | "Off"}` {
+  if (mode !== "fast" && mode !== "plan") {
+    throw new Error("Invalid Codex mode");
+  }
+  return `${mode}${enabled ? "On" : "Off"}`;
+}
+
+export async function setMode(
+  mode: CodexMode,
+  enabled: boolean,
+): Promise<void> {
+  await runControlScript("mode", modePayload(mode, enabled), "mode control");
+}
+
+export async function togglePlanMode(): Promise<boolean> {
+  if (process.platform === "darwin") {
+    const state = await runControlScript(
+      "mode",
+      "planToggle",
+      "Plan-mode control",
+    );
+    if (state === "on") return true;
+    if (state === "off") return false;
+    throw new Error(`Unexpected Codex Plan-mode state: ${state || "empty"}`);
+  }
+  const fallbackTarget = !(await new CodexStore().planModeEnabled());
+  await setMode("plan", fallbackTarget);
+  return fallbackTarget;
 }
 
 export async function runReasoning(

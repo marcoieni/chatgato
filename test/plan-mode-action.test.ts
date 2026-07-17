@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlanModeSettings } from "../src/types.js";
 
 const mocks = vi.hoisted(() => ({
-  executeCommand: vi.fn<(command: string) => Promise<void>>(),
+  togglePlanMode: vi.fn<() => Promise<boolean>>(),
   planModeEnabled: vi.fn<() => Promise<boolean>>(),
 }));
 
@@ -20,7 +20,7 @@ vi.mock("@elgato/streamdeck", () => ({
 }));
 
 vi.mock("../src/lib/codex-controller.js", () => ({
-  executeCommand: mocks.executeCommand,
+  togglePlanMode: mocks.togglePlanMode,
 }));
 
 vi.mock("../src/lib/codex-store.js", () => ({
@@ -44,13 +44,13 @@ function actionHarness() {
 describe("PlanModeAction", () => {
   beforeEach(() => {
     vi.useRealTimers();
-    mocks.executeCommand.mockReset();
-    mocks.executeCommand.mockResolvedValue();
+    mocks.togglePlanMode.mockReset();
+    mocks.togglePlanMode.mockResolvedValue(true);
     mocks.planModeEnabled.mockReset();
     mocks.planModeEnabled.mockResolvedValue(false);
   });
 
-  it("runs /plan and changes from the off visual to the on visual after confirmation", async () => {
+  it("toggles Plan mode without submitting the draft and confirms the on visual", async () => {
     mocks.planModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
     const harness = actionHarness();
     const planMode = new PlanModeAction();
@@ -60,7 +60,7 @@ describe("PlanModeAction", () => {
       payload: { settings: {} satisfies PlanModeSettings },
     } as never);
 
-    expect(mocks.executeCommand).toHaveBeenCalledWith("togglePlan");
+    expect(mocks.togglePlanMode).toHaveBeenCalledOnce();
     const image = harness.action.setImage.mock.calls.at(-1)![0];
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
       "#9E5BFF",
@@ -71,6 +71,7 @@ describe("PlanModeAction", () => {
 
   it("changes back to the off visual on the next press", async () => {
     mocks.planModeEnabled.mockResolvedValueOnce(true).mockResolvedValue(false);
+    mocks.togglePlanMode.mockResolvedValueOnce(false);
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
@@ -79,6 +80,7 @@ describe("PlanModeAction", () => {
       payload: { settings: {} },
     } as never);
 
+    expect(mocks.togglePlanMode).toHaveBeenCalledOnce();
     const image = harness.action.setImage.mock.calls.at(-1)![0];
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
       "#303840",
@@ -88,7 +90,7 @@ describe("PlanModeAction", () => {
 
   it("keeps Codex's current visual and alerts when the command fails", async () => {
     mocks.planModeEnabled.mockResolvedValue(false);
-    mocks.executeCommand.mockRejectedValueOnce(new Error("Codex unavailable"));
+    mocks.togglePlanMode.mockRejectedValueOnce(new Error("Codex unavailable"));
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 

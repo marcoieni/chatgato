@@ -5,6 +5,46 @@ param(
 
 $shell = New-Object -ComObject WScript.Shell
 
+function Invoke-SlashModeToggle([string]$ModeCommand) {
+  Add-Type -AssemblyName System.Windows.Forms
+  $clipboardMarker = "__CHATGATO_EMPTY_DRAFT_$([Guid]::NewGuid())__"
+  $savedClipboard = [System.Windows.Forms.Clipboard]::GetDataObject()
+
+  try {
+    [System.Windows.Forms.Clipboard]::SetText($clipboardMarker)
+    $shell.SendKeys("^a")
+    $shell.SendKeys("^x")
+    Start-Sleep -Milliseconds 100
+    $draftText = [System.Windows.Forms.Clipboard]::GetText()
+
+    $shell.SendKeys($ModeCommand)
+    Start-Sleep -Milliseconds 180
+    $shell.SendKeys("{ENTER}")
+    Start-Sleep -Milliseconds 220
+
+    if ($draftText -ne $clipboardMarker) {
+      [System.Windows.Forms.Clipboard]::SetText($draftText)
+      $shell.SendKeys("^v")
+      Start-Sleep -Milliseconds 100
+    }
+  }
+  finally {
+    if ($null -eq $savedClipboard) {
+      [System.Windows.Forms.Clipboard]::Clear()
+    }
+    else {
+      [System.Windows.Forms.Clipboard]::SetDataObject($savedClipboard, $true)
+    }
+  }
+}
+
+function Exit-PlanMode {
+  $shell.SendKeys("^{HOME}")
+  Start-Sleep -Milliseconds 50
+  $shell.SendKeys("{BACKSPACE}")
+  Start-Sleep -Milliseconds 350
+}
+
 if ($Mode -eq "shortcut" -and $Payload -in @("dictationDown", "dictationUp")) {
   Add-Type @"
 using System;
@@ -38,6 +78,22 @@ if ($Mode -eq "shortcut" -and $Payload -eq "dictationDown") {
   [ChatGatoKeyboard]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)
   [ChatGatoKeyboard]::keybd_event(0x44, 0, 0, [UIntPtr]::Zero)
   exit 0
+}
+
+if ($Mode -eq "mode") {
+  if ($Payload -in @("fastOn", "fastOff")) {
+    Invoke-SlashModeToggle "/fast"
+    exit 0
+  }
+  if ($Payload -eq "planOn") {
+    Invoke-SlashModeToggle "/plan"
+    exit 0
+  }
+  if ($Payload -eq "planOff") {
+    Exit-PlanMode
+    exit 0
+  }
+  throw "Unknown Codex mode: $Payload"
 }
 
 if ($Mode -eq "slash") {

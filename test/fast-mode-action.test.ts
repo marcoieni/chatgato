@@ -3,11 +3,11 @@ import type { FastModeSettings } from "../src/types.js";
 
 const mocks = vi.hoisted(() => ({
   fastModeEnabled: vi.fn<() => Promise<boolean>>(),
-  runSlash: vi.fn<(command: string) => Promise<void>>(),
+  setMode: vi.fn<(mode: "fast" | "plan", enabled: boolean) => Promise<void>>(),
 }));
 
 vi.mock("../src/lib/codex-controller.js", () => ({
-  runSlash: mocks.runSlash,
+  setMode: mocks.setMode,
 }));
 
 vi.mock("../src/lib/codex-store.js", () => ({
@@ -38,11 +38,11 @@ describe("FastModeAction", () => {
     vi.useRealTimers();
     mocks.fastModeEnabled.mockReset();
     mocks.fastModeEnabled.mockResolvedValue(false);
-    mocks.runSlash.mockReset();
-    mocks.runSlash.mockResolvedValue();
+    mocks.setMode.mockReset();
+    mocks.setMode.mockResolvedValue();
   });
 
-  it("runs /fast and changes from the off color to the on color", async () => {
+  it("toggles Fast mode without submitting the draft and changes to the on color", async () => {
     mocks.fastModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
     const harness = actionHarness();
     const fastMode = new FastModeAction();
@@ -52,7 +52,7 @@ describe("FastModeAction", () => {
       payload: { settings: {} },
     } as never);
 
-    expect(mocks.runSlash).toHaveBeenCalledWith("/fast");
+    expect(mocks.setMode).toHaveBeenCalledWith("fast", true);
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     expect(harness.action.setImage).toHaveBeenLastCalledWith(
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
@@ -74,6 +74,7 @@ describe("FastModeAction", () => {
       payload: { settings: { enabled: true } },
     } as never);
 
+    expect(mocks.setMode).toHaveBeenCalledWith("fast", false);
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     const offImage = harness.action.setImage.mock.calls.at(-1)![0];
     expect(Buffer.from(offImage.split(",")[1]!, "base64").toString()).toContain(
@@ -83,7 +84,7 @@ describe("FastModeAction", () => {
   });
 
   it("keeps the previous state and alerts when Codex cannot toggle", async () => {
-    mocks.runSlash.mockRejectedValueOnce(new Error("Codex unavailable"));
+    mocks.setMode.mockRejectedValueOnce(new Error("Codex unavailable"));
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 

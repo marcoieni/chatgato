@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   COMMANDS,
+  modePayload,
   normalizeSlashCommand,
   pushToTalkPayload,
 } from "../src/lib/codex-controller.js";
@@ -14,6 +15,13 @@ describe("Codex controller", () => {
   it("keeps the review tab and code review commands distinct", () => {
     expect(COMMANDS.review).toEqual({ kind: "shortcut", value: "review" });
     expect(COMMANDS.openReview).toEqual({ kind: "slash", value: "/review" });
+  });
+
+  it("maps desired Fast and Plan states to state-aware controls", () => {
+    expect(modePayload("fast", true)).toBe("fastOn");
+    expect(modePayload("fast", false)).toBe("fastOff");
+    expect(modePayload("plan", true)).toBe("planOn");
+    expect(modePayload("plan", false)).toBe("planOff");
   });
 
   it("normalizes supported slash commands", () => {
