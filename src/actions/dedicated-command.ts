@@ -70,13 +70,6 @@ export class SettingsAction extends DedicatedCommandAction {
   }
 }
 
-@action({ UUID: "com.marco.chatgato.plan" })
-export class PlanAction extends DedicatedCommandAction {
-  constructor() {
-    super("togglePlan", "Plan");
-  }
-}
-
 @action({ UUID: "com.marco.chatgato.skills" })
 export class SkillsAction extends DedicatedCommandAction {
   constructor() {

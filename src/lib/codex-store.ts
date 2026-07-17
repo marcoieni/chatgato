@@ -4,7 +4,11 @@ import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { usageFromRollout } from "./codex-usage.js";
-import { inferRolloutStatus, parseRolloutLines } from "./rollout-status.js";
+import {
+  inferRolloutStatus,
+  parseRolloutLines,
+  planModeFromRollout,
+} from "./rollout-status.js";
 import type {
   CodexThread,
   CodexUsageSnapshot,
@@ -176,6 +180,23 @@ export class CodexStore {
       (serviceTier === "fast" || serviceTier === "priority") &&
       featureEnabled !== false
     );
+  }
+
+  async planModeEnabled(): Promise<boolean> {
+    const row = this.withDatabase(
+      (db) =>
+        db
+          .prepare(
+            `SELECT rollout_path
+             FROM threads
+            WHERE archived = 0 AND preview <> ''
+         ORDER BY recency_at_ms DESC, id DESC
+            LIMIT 1`,
+          )
+          .get() as RolloutPathRow | undefined,
+    );
+    if (!row) return false;
+    return planModeFromRollout(await this.readRolloutTail(row.rollout_path));
   }
 
   async reasoningSnapshot(): Promise<ReasoningSnapshot> {

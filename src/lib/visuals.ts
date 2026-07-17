@@ -28,6 +28,11 @@ export const FAST_MODE_COLORS = {
   on: "#00FF4C",
 } as const;
 
+export const PLAN_MODE_COLORS = {
+  off: "#303840",
+  on: "#9E5BFF",
+} as const;
+
 export const PUSH_TO_TALK_COLORS = {
   idle: "#071018",
   active: "#FFD600",
@@ -109,6 +114,20 @@ export function fastModeSvg(enabled: boolean): string {
 
 export function fastModeImage(enabled: boolean): string {
   return svgDataUri(fastModeSvg(enabled));
+}
+
+export function planModeSvg(enabled: boolean): string {
+  const color = enabled ? PLAN_MODE_COLORS.on : PLAN_MODE_COLORS.off;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    <rect width="144" height="144" rx="24" fill="${color}"/>
+    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".18" stroke-width="2"/>
+    <rect x="30" y="22" width="84" height="100" rx="16" fill="none" stroke="#FFFFFF" stroke-width="7"/>
+    <path d="M45 53l7 7 12-14M45 84l7 7 12-14M76 54h23M76 85h23" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+export function planModeImage(enabled: boolean): string {
+  return svgDataUri(planModeSvg(enabled));
 }
 
 export function pushToTalkSvg(active: boolean): string {

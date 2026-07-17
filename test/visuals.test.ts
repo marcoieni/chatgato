@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   STATUS_COLORS,
   FAST_MODE_COLORS,
+  PLAN_MODE_COLORS,
   PUSH_TO_TALK_COLORS,
   agentImage,
   agentSvg,
   effectiveStatus,
   fastModeImage,
   fastModeSvg,
+  planModeImage,
+  planModeSvg,
   pushToTalkImage,
   pushToTalkSvg,
   usageSvg,
@@ -45,6 +48,16 @@ describe("Stream Deck visuals", () => {
     expect(
       Buffer.from(fastModeImage(true).split(",")[1]!, "base64").toString(),
     ).toBe(fastModeSvg(true));
+  });
+
+  it("renders distinct off and on colors for the plan-mode key", () => {
+    expect(PLAN_MODE_COLORS).toEqual({ off: "#303840", on: "#9E5BFF" });
+    expect(planModeSvg(false)).toContain('fill="#303840"');
+    expect(planModeSvg(true)).toContain('fill="#9E5BFF"');
+    expect(planModeSvg(false)).not.toBe(planModeSvg(true));
+    expect(
+      Buffer.from(planModeImage(true).split(",")[1]!, "base64").toString(),
+    ).toBe(planModeSvg(true));
   });
 
   it("renders a yellow microphone key while push-to-talk is active", () => {
