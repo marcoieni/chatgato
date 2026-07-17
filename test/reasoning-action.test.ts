@@ -61,19 +61,19 @@ describe("Reasoning actions", () => {
       expect.arrayContaining([
         expect.objectContaining({
           Controllers: ["Keypad"],
-          Icon: "imgs/actions/reasoning-decrease",
+          Icon: "imgs/action-list/reasoning-decrease",
           Name: "Decrease Reasoning",
           UUID: "com.marco.chatgato.decrease-reasoning",
         }),
         expect.objectContaining({
           Controllers: ["Keypad"],
-          Icon: "imgs/actions/reasoning-increase",
+          Icon: "imgs/action-list/reasoning-increase",
           Name: "Increase Reasoning",
           UUID: "com.marco.chatgato.increase-reasoning",
         }),
         expect.objectContaining({
           Controllers: ["Encoder"],
-          Icon: "imgs/actions/reasoning",
+          Icon: "imgs/action-list/reasoning",
           Name: "Reasoning Dial",
           UUID: "com.marco.chatgato.reasoning",
         }),
