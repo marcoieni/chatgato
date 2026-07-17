@@ -22,7 +22,9 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
   private readonly poller = new ActionPoller();
   private readonly visibleThreads = new Map<string, CodexThread>();
 
-  override async onWillAppear(ev: WillAppearEvent<AgentSettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<AgentSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
@@ -31,14 +33,19 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
     this.visibleThreads.delete(ev.action.id);
   }
 
-  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<AgentSettings>): Promise<void> {
+  override async onDidReceiveSettings(
+    ev: DidReceiveSettingsEvent<AgentSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
   override async onKeyDown(ev: KeyDownEvent<AgentSettings>): Promise<void> {
     const thread =
       this.visibleThreads.get(ev.action.id) ??
-      (await this.store.threadAtSlot(this.slot(ev.payload.settings), ev.payload.settings.cwdFilter));
+      (await this.store.threadAtSlot(
+        this.slot(ev.payload.settings),
+        ev.payload.settings.cwdFilter,
+      ));
     if (!thread) {
       await ev.action.showAlert();
       return;
@@ -52,7 +59,10 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
     await openUrl(buildThreadUrl(thread.id));
   }
 
-  private async startPolling(actionInstance: VisibleAction, settings: AgentSettings): Promise<void> {
+  private async startPolling(
+    actionInstance: VisibleAction,
+    settings: AgentSettings,
+  ): Promise<void> {
     let firstRun = true;
     await this.poller.start(
       actionInstance.id,
@@ -68,7 +78,10 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
     );
   }
 
-  private async refresh(actionInstance: VisibleAction, settings: AgentSettings): Promise<void> {
+  private async refresh(
+    actionInstance: VisibleAction,
+    settings: AgentSettings,
+  ): Promise<void> {
     const slot = this.slot(settings);
     try {
       const thread = await this.store.threadAtSlot(slot, settings.cwdFilter);

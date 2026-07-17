@@ -47,7 +47,10 @@ describe("FastModeAction", () => {
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
-    await fastMode.onKeyDown({ action: harness.action, payload: { settings: {} } } as never);
+    await fastMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
 
     expect(mocks.runSlash).toHaveBeenCalledWith("/fast");
     expect(harness.action.setSettings).not.toHaveBeenCalled();
@@ -55,7 +58,9 @@ describe("FastModeAction", () => {
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
     );
     const onImage = harness.action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(onImage.split(",")[1]!, "base64").toString()).toContain("#00FF4C");
+    expect(Buffer.from(onImage.split(",")[1]!, "base64").toString()).toContain(
+      "#00FF4C",
+    );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
   });
 
@@ -71,7 +76,9 @@ describe("FastModeAction", () => {
 
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     const offImage = harness.action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(offImage.split(",")[1]!, "base64").toString()).toContain("#303840");
+    expect(Buffer.from(offImage.split(",")[1]!, "base64").toString()).toContain(
+      "#303840",
+    );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nOFF");
   });
 
@@ -80,7 +87,10 @@ describe("FastModeAction", () => {
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
-    await fastMode.onKeyDown({ action: harness.action, payload: { settings: {} } } as never);
+    await fastMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
 
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     expect(harness.settings()).toEqual({});
@@ -108,7 +118,10 @@ describe("FastModeAction", () => {
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
-    await fastMode.onWillAppear({ action: harness.action, payload: { settings: {} } } as never);
+    await fastMode.onWillAppear({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nOFF");
 
     await vi.advanceTimersByTimeAsync(1_000);

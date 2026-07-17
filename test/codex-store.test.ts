@@ -53,11 +53,13 @@ type ThreadFixture = {
 function insertThread(db: DatabaseSync, fixture: ThreadFixture): void {
   const title = fixture.title ?? fixture.id;
   const updatedAtMs = fixture.updatedAtMs ?? 1_000;
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO threads
     (id, title, cwd, rollout_path, updated_at, updated_at_ms, recency_at_ms, model, reasoning_effort, archived, preview)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `,
+  ).run(
     fixture.id,
     title,
     fixture.cwd ?? "/tmp/project",
@@ -75,7 +77,9 @@ function insertThread(db: DatabaseSync, fixture: ThreadFixture): void {
 afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
-  await Promise.all(temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })));
+  await Promise.all(
+    temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })),
+  );
 });
 
 describe("CodexStore", () => {
@@ -86,19 +90,28 @@ describe("CodexStore", () => {
     vi.stubEnv("CODEX_SQLITE_HOME", sqliteHome);
 
     const db = createThreadDatabase(sqliteHome);
-    insertThread(db, { id: "environment-thread", rolloutPath: join(home, "rollout.jsonl") });
+    insertThread(db, {
+      id: "environment-thread",
+      rolloutPath: join(home, "rollout.jsonl"),
+    });
     db.close();
 
     const store = new CodexStore(home);
 
     expect(store.sqliteHome).toBe(sqliteHome);
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({ id: "environment-thread" });
+    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+      id: "environment-thread",
+    });
   });
 
   it("prefers the sqlite_home config setting over CODEX_SQLITE_HOME", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-home-"));
-    const environmentHome = await mkdtemp(join(tmpdir(), "chatgato-environment-sqlite-"));
-    const configuredHome = await mkdtemp(join(tmpdir(), "chatgato-configured-sqlite-"));
+    const environmentHome = await mkdtemp(
+      join(tmpdir(), "chatgato-environment-sqlite-"),
+    );
+    const configuredHome = await mkdtemp(
+      join(tmpdir(), "chatgato-configured-sqlite-"),
+    );
     temporaryDirectories.push(home, environmentHome, configuredHome);
     vi.stubEnv("CODEX_SQLITE_HOME", environmentHome);
     await writeFile(
@@ -107,13 +120,18 @@ describe("CodexStore", () => {
     );
 
     const db = createThreadDatabase(configuredHome);
-    insertThread(db, { id: "configured-thread", rolloutPath: join(home, "rollout.jsonl") });
+    insertThread(db, {
+      id: "configured-thread",
+      rolloutPath: join(home, "rollout.jsonl"),
+    });
     db.close();
 
     const store = new CodexStore(home);
 
     expect(store.sqliteHome).toBe(configuredHome);
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({ id: "configured-thread" });
+    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+      id: "configured-thread",
+    });
   });
 
   it("resolves relative SQLite locations from the current working directory", async () => {
@@ -122,7 +140,9 @@ describe("CodexStore", () => {
     await mkdir(join(home, "configured"));
     await writeFile(join(home, "config.toml"), "sqlite_home = 'configured'\n");
 
-    expect(resolveCodexSqliteHome(home, "environment", home)).toBe(join(home, "configured"));
+    expect(resolveCodexSqliteHome(home, "environment", home)).toBe(
+      join(home, "configured"),
+    );
   });
 
   it("reads a recent thread and derives its live status", async () => {
@@ -133,18 +153,27 @@ describe("CodexStore", () => {
       rollout,
       [
         { type: "event_msg", payload: { type: "task_started" } },
-        { type: "response_item", payload: { type: "custom_tool_call", name: "exec" } },
+        {
+          type: "response_item",
+          payload: { type: "custom_tool_call", name: "exec" },
+        },
         {
           timestamp: "2026-07-16T08:00:00.000Z",
           type: "event_msg",
           payload: {
             type: "token_count",
             rate_limits: {
-              primary: { used_percent: 18, window_minutes: 300, resets_at: 1_784_000_000 },
+              primary: {
+                used_percent: 18,
+                window_minutes: 300,
+                resets_at: 1_784_000_000,
+              },
             },
           },
         },
-      ].map((record) => JSON.stringify(record)).join("\n"),
+      ]
+        .map((record) => JSON.stringify(record))
+        .join("\n"),
     );
 
     const db = createThreadDatabase(home);
@@ -234,10 +263,14 @@ describe("CodexStore", () => {
     }
     db.close();
 
-    const readRolloutTail = vi.fn(async (_path: string): Promise<RolloutRecord[]> => []);
+    const readRolloutTail = vi.fn(
+      async (_path: string): Promise<RolloutRecord[]> => [],
+    );
     const store = new CodexStore(home, readRolloutTail);
 
-    await expect(store.threadAtSlot(4)).resolves.toMatchObject({ id: "thread-4" });
+    await expect(store.threadAtSlot(4)).resolves.toMatchObject({
+      id: "thread-4",
+    });
     expect(readRolloutTail).toHaveBeenCalledOnce();
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "rollout-4.jsonl"));
   });
@@ -328,14 +361,18 @@ describe("CodexStore", () => {
       namedParameters?: Record<string, SQLInputValue>,
       ...anonymousParameters: SQLInputValue[]
     ) {
-      const parameters = namedParameters === undefined
-        ? []
-        : [namedParameters, ...anonymousParameters];
+      const parameters =
+        namedParameters === undefined
+          ? []
+          : [namedParameters, ...anonymousParameters];
       const iterate = originalIterate as (
         ...values: Array<SQLInputValue | Record<string, SQLInputValue>>
       ) => NodeJS.Iterator<Record<string, SQLOutputValue>>;
       const rows = iterate.apply(this, parameters);
-      return (function* (): Generator<Record<string, SQLOutputValue>, undefined> {
+      return (function* (): Generator<
+        Record<string, SQLOutputValue>,
+        undefined
+      > {
         let visited = 0;
         for (const row of rows) {
           visited += 1;
@@ -351,7 +388,9 @@ describe("CodexStore", () => {
 
     try {
       const store = new CodexStore(home);
-      await expect(store.threadAtSlot(1, "/tmp/project")).resolves.toMatchObject({
+      await expect(
+        store.threadAtSlot(1, "/tmp/project"),
+      ).resolves.toMatchObject({
         id: "matching-thread",
       });
       expect(reordered).toBe(true);

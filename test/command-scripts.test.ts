@@ -9,7 +9,10 @@ const appleScript = readFileSync(
   "utf8",
 );
 const powerShell = readFileSync(
-  new URL("../com.marco.chatgato.sdPlugin/scripts/codex-control.ps1", import.meta.url),
+  new URL(
+    "../com.marco.chatgato.sdPlugin/scripts/codex-control.ps1",
+    import.meta.url,
+  ),
   "utf8",
 );
 
@@ -31,7 +34,9 @@ describe("Codex control scripts", () => {
   it("selects an exact reasoning option through the supported slash picker on macOS", () => {
     expect(appleScript).toMatch(/controlMode is "reasoning"/u);
     expect(appleScript).toContain('keystroke "/reasoning"');
-    expect(appleScript).toMatch(/key code 115\s+repeat optionIndex times\s+key code 125/u);
+    expect(appleScript).toMatch(
+      /key code 115\s+repeat optionIndex times\s+key code 125/u,
+    );
   });
 
   it("selects an exact reasoning option through the supported slash picker on Windows", () => {

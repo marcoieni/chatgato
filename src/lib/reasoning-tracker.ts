@@ -32,7 +32,9 @@ export class ReasoningTracker {
       previous?.model === snapshot.model &&
       previous.effortsKey === effortsKey &&
       previous.seenEfforts.has(snapshot.currentEffort);
-    const currentEffort = canUseTracked ? previous.currentEffort : snapshot.currentEffort;
+    const currentEffort = canUseTracked
+      ? previous.currentEffort
+      : snapshot.currentEffort;
     const currentIndex = snapshot.efforts.indexOf(currentEffort);
     const optionIndex = reasoningTargetIndex(
       snapshot.efforts,

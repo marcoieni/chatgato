@@ -50,7 +50,8 @@ export function effectiveStatus(
 
 export function agentSvg(slot: number, status: AgentStatus): string {
   const color = STATUS_COLORS[status];
-  const darkText = status === "idle" || status === "unread" || status === "awaiting-approval";
+  const darkText =
+    status === "idle" || status === "unread" || status === "awaiting-approval";
   const foreground = darkText ? "#071018" : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     <rect width="144" height="144" rx="24" fill="${color}"/>
@@ -76,14 +77,18 @@ export function emptyAgentSvg(slot: number): string {
 
 export function keyTitle(thread: CodexThread, status: AgentStatus): string {
   const project = basename(thread.cwd) || "Codex";
-  const compactProject = project.length > 10 ? `${project.slice(0, 9)}…` : project;
+  const compactProject =
+    project.length > 10 ? `${project.slice(0, 9)}…` : project;
   return `${STATUS_LABELS[status]}\n${compactProject}`;
 }
 
-export function reasoningSvg(direction: "increase" | "decrease" = "increase"): string {
-  const arrow = direction === "increase"
-    ? "M66 93V65H53l19-20 19 20H78v28z"
-    : "M66 51v28H53l19 20 19-20H78V51z";
+export function reasoningSvg(
+  direction: "increase" | "decrease" = "increase",
+): string {
+  const arrow =
+    direction === "increase"
+      ? "M66 93V65H53l19-20 19 20H78v28z"
+      : "M66 51v28H53l19 20 19-20H78V51z";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs>
     <rect width="144" height="144" rx="24" fill="#071018"/>
@@ -127,7 +132,10 @@ function usageColor(percent: number): string {
   return "#00FF4C";
 }
 
-export function usageSvg(usage: CodexUsageSnapshot | null, failed = false): string {
+export function usageSvg(
+  usage: CodexUsageSnapshot | null,
+  failed = false,
+): string {
   const shell = `<rect width="144" height="144" rx="24" fill="#071018"/>
     <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>`;
   if (failed) {
@@ -138,7 +146,9 @@ export function usageSvg(usage: CodexUsageSnapshot | null, failed = false): stri
     </svg>`;
   }
 
-  const windows = usage ? [usage.primary, usage.secondary].filter((window) => window !== null) : [];
+  const windows = usage
+    ? [usage.primary, usage.secondary].filter((window) => window !== null)
+    : [];
   if (usage?.credits?.unlimited && windows.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
       ${shell}
@@ -154,16 +164,19 @@ export function usageSvg(usage: CodexUsageSnapshot | null, failed = false): stri
     </svg>`;
   }
 
-  const rows = windows.slice(0, 2).map((window, index) => {
-    const remaining = remainingPercent(window);
-    const color = usageColor(remaining);
-    const y = windows.length === 1 ? 66 : 50 + index * 45;
-    const width = Math.round(104 * remaining / 100);
-    return `<text x="20" y="${y}" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="14">${usageWindowLabel(window.windowMinutes)}</text>
+  const rows = windows
+    .slice(0, 2)
+    .map((window, index) => {
+      const remaining = remainingPercent(window);
+      const color = usageColor(remaining);
+      const y = windows.length === 1 ? 66 : 50 + index * 45;
+      const width = Math.round((104 * remaining) / 100);
+      return `<text x="20" y="${y}" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="14">${usageWindowLabel(window.windowMinutes)}</text>
       <text x="124" y="${y}" fill="${color}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="21" text-anchor="end">${remaining}%</text>
       <rect x="20" y="${y + 8}" width="104" height="7" rx="3.5" fill="#303840"/>
       <rect x="20" y="${y + 8}" width="${width}" height="7" rx="3.5" fill="${color}"/>`;
-  }).join("\n");
+    })
+    .join("\n");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${shell}
@@ -172,6 +185,9 @@ export function usageSvg(usage: CodexUsageSnapshot | null, failed = false): stri
   </svg>`;
 }
 
-export function usageImage(usage: CodexUsageSnapshot | null, failed = false): string {
+export function usageImage(
+  usage: CodexUsageSnapshot | null,
+  failed = false,
+): string {
   return svgDataUri(usageSvg(usage, failed));
 }

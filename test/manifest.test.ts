@@ -19,7 +19,9 @@ describe("Stream Deck manifest", () => {
   it("lists sidebar actions alphabetically", () => {
     const actionNames = manifest.Actions.map(({ Name }) => Name);
 
-    expect(actionNames).toEqual([...actionNames].sort((left, right) => left.localeCompare(right)));
+    expect(actionNames).toEqual(
+      [...actionNames].sort((left, right) => left.localeCompare(right)),
+    );
   });
 
   it("does not expose the removed generic Codex Command action", () => {

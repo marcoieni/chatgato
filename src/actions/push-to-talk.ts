@@ -26,11 +26,15 @@ export class PushToTalkAction extends SingletonAction<PushToTalkSettings> {
     return `push-to-talk:${id}`;
   }
 
-  override async onWillAppear(ev: WillAppearEvent<PushToTalkSettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<PushToTalkSettings>,
+  ): Promise<void> {
     await this.render(ev.action, false);
   }
 
-  override async onKeyDown(ev: KeyDownEvent<PushToTalkSettings>): Promise<void> {
+  override async onKeyDown(
+    ev: KeyDownEvent<PushToTalkSettings>,
+  ): Promise<void> {
     try {
       if (await this.session.press(this.actionId(ev.action.id))) {
         logger.info("Started push-to-talk");
@@ -58,13 +62,18 @@ export class PushToTalkAction extends SingletonAction<PushToTalkSettings> {
     }
   }
 
-  override async onWillDisappear(ev: WillDisappearEvent<PushToTalkSettings>): Promise<void> {
+  override async onWillDisappear(
+    ev: WillDisappearEvent<PushToTalkSettings>,
+  ): Promise<void> {
     try {
       if (await this.session.release(this.actionId(ev.action.id))) {
         logger.info("Released push-to-talk while action disappeared");
       }
     } catch (error) {
-      logger.error("Failed to release push-to-talk while action disappeared", error);
+      logger.error(
+        "Failed to release push-to-talk while action disappeared",
+        error,
+      );
     }
   }
 

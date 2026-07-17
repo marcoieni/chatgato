@@ -30,11 +30,18 @@ export class TapToTalkAction extends SingletonAction<PushToTalkSettings> {
     return `tap-to-talk:${id}`;
   }
 
-  override async onWillAppear(ev: WillAppearEvent<PushToTalkSettings>): Promise<void> {
-    await this.render(ev.action, this.activeActions.has(this.actionId(ev.action.id)));
+  override async onWillAppear(
+    ev: WillAppearEvent<PushToTalkSettings>,
+  ): Promise<void> {
+    await this.render(
+      ev.action,
+      this.activeActions.has(this.actionId(ev.action.id)),
+    );
   }
 
-  override async onKeyDown(ev: KeyDownEvent<PushToTalkSettings>): Promise<void> {
+  override async onKeyDown(
+    ev: KeyDownEvent<PushToTalkSettings>,
+  ): Promise<void> {
     const actionId = this.actionId(ev.action.id);
     if (this.pressedActions.has(actionId)) return;
     this.pressedActions.add(actionId);
@@ -73,7 +80,9 @@ export class TapToTalkAction extends SingletonAction<PushToTalkSettings> {
     this.pressedActions.delete(this.actionId(ev.action.id));
   }
 
-  override async onWillDisappear(ev: WillDisappearEvent<PushToTalkSettings>): Promise<void> {
+  override async onWillDisappear(
+    ev: WillDisappearEvent<PushToTalkSettings>,
+  ): Promise<void> {
     const actionId = this.actionId(ev.action.id);
     this.pressedActions.delete(actionId);
     if (!this.activeActions.delete(actionId)) return;

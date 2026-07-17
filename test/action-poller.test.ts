@@ -25,9 +25,10 @@ describe("ActionPoller", () => {
     const poller = new ActionPoller();
     let finishFirstRun!: () => void;
     const firstTask = vi.fn(
-      () => new Promise<void>((resolve) => {
-        finishFirstRun = resolve;
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          finishFirstRun = resolve;
+        }),
     );
     const secondTask = vi.fn(async () => undefined);
 
@@ -47,9 +48,10 @@ describe("ActionPoller", () => {
     const poller = new ActionPoller();
     const finishes: Array<() => void> = [];
     const task = vi.fn(
-      () => new Promise<void>((resolve) => {
-        finishes.push(resolve);
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          finishes.push(resolve);
+        }),
     );
 
     const start = poller.start("agent", task, 1_000);
