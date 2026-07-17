@@ -24,7 +24,11 @@ describe("Tap to Talk action", () => {
   });
 
   it("explains its toggle behavior in the property inspector", () => {
-    expect(propertyInspector).toContain('case "com.marco.chatgato.tap-to-talk"');
-    expect(propertyInspector).toContain("Press once to start dictation, then press again to stop it.");
+    expect(propertyInspector).toContain(
+      'case "com.marco.chatgato.tap-to-talk"',
+    );
+    expect(propertyInspector).toContain(
+      "Press once to start dictation, then press again to stop it.",
+    );
   });
 });

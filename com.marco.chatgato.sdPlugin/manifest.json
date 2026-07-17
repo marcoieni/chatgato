@@ -2,9 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "Actions": [
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/agent",
       "Name": "Agent Status",
       "PropertyInspectorPath": "ui/pi.html",
@@ -19,9 +17,7 @@
       "UUID": "com.marco.chatgato.agent-status"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/approve",
       "Name": "Allow",
       "PropertyInspectorPath": "ui/pi.html",
@@ -37,9 +33,7 @@
       "UUID": "com.marco.chatgato.approve"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/decline",
       "Name": "Decline",
       "PropertyInspectorPath": "ui/pi.html",
@@ -55,9 +49,7 @@
       "UUID": "com.marco.chatgato.decline"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/reasoning-decrease",
       "Name": "Decrease Reasoning",
       "PropertyInspectorPath": "ui/pi.html",
@@ -73,9 +65,7 @@
       "UUID": "com.marco.chatgato.decrease-reasoning"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/fast",
       "Name": "Fast Mode",
       "PropertyInspectorPath": "ui/pi.html",
@@ -91,9 +81,7 @@
       "UUID": "com.marco.chatgato.fast-mode"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/fork",
       "Name": "Fork",
       "PropertyInspectorPath": "ui/pi.html",
@@ -109,9 +97,7 @@
       "UUID": "com.marco.chatgato.fork"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/go-back",
       "Name": "Go Back",
       "PropertyInspectorPath": "ui/pi.html",
@@ -127,9 +113,7 @@
       "UUID": "com.marco.chatgato.go-back"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/go-forward",
       "Name": "Go Forward",
       "PropertyInspectorPath": "ui/pi.html",
@@ -145,9 +129,7 @@
       "UUID": "com.marco.chatgato.go-forward"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/reasoning-increase",
       "Name": "Increase Reasoning",
       "PropertyInspectorPath": "ui/pi.html",
@@ -163,9 +145,7 @@
       "UUID": "com.marco.chatgato.increase-reasoning"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/new-task",
       "Name": "New Task",
       "PropertyInspectorPath": "ui/pi.html",
@@ -181,9 +161,7 @@
       "UUID": "com.marco.chatgato.new-task"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/plan",
       "Name": "Plan",
       "PropertyInspectorPath": "ui/pi.html",
@@ -199,9 +177,7 @@
       "UUID": "com.marco.chatgato.plan"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/prompt",
       "Name": "Prompt",
       "PropertyInspectorPath": "ui/pi.html",
@@ -217,9 +193,7 @@
       "UUID": "com.marco.chatgato.prompt"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/push-to-talk",
       "Name": "Push to Talk",
       "PropertyInspectorPath": "ui/pi.html",
@@ -235,9 +209,7 @@
       "UUID": "com.marco.chatgato.push-to-talk"
     },
     {
-      "Controllers": [
-        "Encoder"
-      ],
+      "Controllers": ["Encoder"],
       "Encoder": {
         "background": "imgs/actions/reasoning-background",
         "Icon": "imgs/actions/reasoning",
@@ -260,9 +232,7 @@
       "UUID": "com.marco.chatgato.reasoning"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/open-review",
       "Name": "Review",
       "PropertyInspectorPath": "ui/pi.html",
@@ -278,9 +248,7 @@
       "UUID": "com.marco.chatgato.open-review"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/review-tab",
       "Name": "Review Tab",
       "PropertyInspectorPath": "ui/pi.html",
@@ -296,9 +264,7 @@
       "UUID": "com.marco.chatgato.review-tab"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/scheduled",
       "Name": "Scheduled",
       "PropertyInspectorPath": "ui/pi.html",
@@ -314,9 +280,7 @@
       "UUID": "com.marco.chatgato.scheduled"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/settings",
       "Name": "Settings",
       "PropertyInspectorPath": "ui/pi.html",
@@ -332,9 +296,7 @@
       "UUID": "com.marco.chatgato.settings"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/skills",
       "Name": "Skills",
       "PropertyInspectorPath": "ui/pi.html",
@@ -350,9 +312,7 @@
       "UUID": "com.marco.chatgato.skills"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/submit",
       "Name": "Submit",
       "PropertyInspectorPath": "ui/pi.html",
@@ -368,9 +328,7 @@
       "UUID": "com.marco.chatgato.submit"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/push-to-talk",
       "Name": "Tap to Talk",
       "PropertyInspectorPath": "ui/pi.html",
@@ -386,9 +344,7 @@
       "UUID": "com.marco.chatgato.tap-to-talk"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/toggle-sidebar",
       "Name": "Toggle Sidebar",
       "PropertyInspectorPath": "ui/pi.html",
@@ -404,9 +360,7 @@
       "UUID": "com.marco.chatgato.toggle-sidebar"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/terminal",
       "Name": "Toggle Terminal",
       "PropertyInspectorPath": "ui/pi.html",
@@ -422,9 +376,7 @@
       "UUID": "com.marco.chatgato.toggle-terminal"
     },
     {
-      "Controllers": [
-        "Keypad"
-      ],
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/usage",
       "Name": "Usage Limits",
       "PropertyInspectorPath": "ui/pi.html",

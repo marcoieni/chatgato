@@ -5,7 +5,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
-  action: () => <T>(target: T) => target,
+  action:
+    () =>
+    <T>(target: T) =>
+      target,
   SingletonAction: class {},
   default: {
     logger: {
@@ -37,7 +40,9 @@ describe("PushToTalkAction", () => {
 
   it("starts dictation on key-down and stops it on key-up", async () => {
     const action = actionInstance("push-to-talk-test");
-    const pushToTalk = new PushToTalkAction(new PushToTalkSession(mocks.setPushToTalk));
+    const pushToTalk = new PushToTalkAction(
+      new PushToTalkSession(mocks.setPushToTalk),
+    );
 
     await pushToTalk.onKeyDown({ action, payload: { settings: {} } } as never);
     await pushToTalk.onKeyUp({ action, payload: { settings: {} } } as never);
@@ -53,17 +58,26 @@ describe("PushToTalkAction", () => {
 
   it("starts with the idle microphone color", async () => {
     const action = actionInstance("push-to-talk-test");
-    const pushToTalk = new PushToTalkAction(new PushToTalkSession(mocks.setPushToTalk));
+    const pushToTalk = new PushToTalkAction(
+      new PushToTalkSession(mocks.setPushToTalk),
+    );
 
-    await pushToTalk.onWillAppear({ action, payload: { settings: {} } } as never);
+    await pushToTalk.onWillAppear({
+      action,
+      payload: { settings: {} },
+    } as never);
 
     const image = action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain("#071018");
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
+      "#071018",
+    );
   });
 
   it("ignores key-repeat events", async () => {
     const action = actionInstance("push-to-talk-test");
-    const pushToTalk = new PushToTalkAction(new PushToTalkSession(mocks.setPushToTalk));
+    const pushToTalk = new PushToTalkAction(
+      new PushToTalkSession(mocks.setPushToTalk),
+    );
 
     await pushToTalk.onKeyDown({ action, payload: { settings: {} } } as never);
     await pushToTalk.onKeyDown({ action, payload: { settings: {} } } as never);
@@ -75,24 +89,43 @@ describe("PushToTalkAction", () => {
   it("keeps dictation active until every held Push to Talk key is released", async () => {
     const first = actionInstance("first");
     const second = actionInstance("second");
-    const pushToTalk = new PushToTalkAction(new PushToTalkSession(mocks.setPushToTalk));
+    const pushToTalk = new PushToTalkAction(
+      new PushToTalkSession(mocks.setPushToTalk),
+    );
 
-    await pushToTalk.onKeyDown({ action: first, payload: { settings: {} } } as never);
-    await pushToTalk.onKeyDown({ action: second, payload: { settings: {} } } as never);
-    await pushToTalk.onKeyUp({ action: first, payload: { settings: {} } } as never);
+    await pushToTalk.onKeyDown({
+      action: first,
+      payload: { settings: {} },
+    } as never);
+    await pushToTalk.onKeyDown({
+      action: second,
+      payload: { settings: {} },
+    } as never);
+    await pushToTalk.onKeyUp({
+      action: first,
+      payload: { settings: {} },
+    } as never);
 
     expect(mocks.setPushToTalk.mock.calls).toEqual([[true]]);
 
-    await pushToTalk.onKeyUp({ action: second, payload: { settings: {} } } as never);
+    await pushToTalk.onKeyUp({
+      action: second,
+      payload: { settings: {} },
+    } as never);
     expect(mocks.setPushToTalk.mock.calls).toEqual([[true], [false]]);
   });
 
   it("releases dictation if the held action disappears", async () => {
     const action = actionInstance("push-to-talk-test");
-    const pushToTalk = new PushToTalkAction(new PushToTalkSession(mocks.setPushToTalk));
+    const pushToTalk = new PushToTalkAction(
+      new PushToTalkSession(mocks.setPushToTalk),
+    );
 
     await pushToTalk.onKeyDown({ action, payload: { settings: {} } } as never);
-    await pushToTalk.onWillDisappear({ action, payload: { settings: {} } } as never);
+    await pushToTalk.onWillDisappear({
+      action,
+      payload: { settings: {} },
+    } as never);
 
     expect(mocks.setPushToTalk.mock.calls).toEqual([[true], [false]]);
   });
@@ -100,13 +133,17 @@ describe("PushToTalkAction", () => {
   it("alerts and releases the shortcut when dictation cannot start", async () => {
     mocks.setPushToTalk.mockRejectedValueOnce(new Error("Codex unavailable"));
     const action = actionInstance("push-to-talk-test");
-    const pushToTalk = new PushToTalkAction(new PushToTalkSession(mocks.setPushToTalk));
+    const pushToTalk = new PushToTalkAction(
+      new PushToTalkSession(mocks.setPushToTalk),
+    );
 
     await pushToTalk.onKeyDown({ action, payload: { settings: {} } } as never);
 
     expect(mocks.setPushToTalk.mock.calls).toEqual([[true], [false]]);
     const image = action.setImage.mock.calls.at(-1)![0];
-    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain("#071018");
+    expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
+      "#071018",
+    );
     expect(action.showAlert).toHaveBeenCalledOnce();
   });
 });

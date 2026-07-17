@@ -18,14 +18,20 @@ abstract class ReasoningKeyAction extends SingletonAction<ReasoningKeySettings> 
     super();
   }
 
-  override async onWillAppear(ev: WillAppearEvent<ReasoningKeySettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<ReasoningKeySettings>,
+  ): Promise<void> {
     await Promise.all([
       ev.action.setImage(reasoningSvg(this.direction)),
-      ev.action.setTitle(this.direction === "increase" ? "THINK\nMORE" : "THINK\nLESS"),
+      ev.action.setTitle(
+        this.direction === "increase" ? "THINK\nMORE" : "THINK\nLESS",
+      ),
     ]);
   }
 
-  override async onKeyDown(ev: KeyDownEvent<ReasoningKeySettings>): Promise<void> {
+  override async onKeyDown(
+    ev: KeyDownEvent<ReasoningKeySettings>,
+  ): Promise<void> {
     try {
       await runReasoning(this.direction);
     } catch {
@@ -59,15 +65,21 @@ type DialAccumulator = {
 export class ReasoningAction extends SingletonAction<ReasoningSettings> {
   private readonly accumulators = new Map<string, DialAccumulator>();
 
-  override async onWillAppear(ev: WillAppearEvent<ReasoningSettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<ReasoningSettings>,
+  ): Promise<void> {
     await this.render(ev.action, ev.payload.settings);
   }
 
-  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<ReasoningSettings>): Promise<void> {
+  override async onDidReceiveSettings(
+    ev: DidReceiveSettingsEvent<ReasoningSettings>,
+  ): Promise<void> {
     await this.render(ev.action, ev.payload.settings);
   }
 
-  override async onDialRotate(ev: DialRotateEvent<ReasoningSettings>): Promise<void> {
+  override async onDialRotate(
+    ev: DialRotateEvent<ReasoningSettings>,
+  ): Promise<void> {
     const current = this.accumulators.get(ev.action.id);
     if (current) clearTimeout(current.timer);
     const ticks = (current?.ticks ?? 0) + ev.payload.ticks;
@@ -90,7 +102,10 @@ export class ReasoningAction extends SingletonAction<ReasoningSettings> {
     const pending = this.accumulators.get(id);
     if (!pending) return;
     this.accumulators.delete(id);
-    const limit = Math.min(5, Math.max(1, Number(pending.settings.maxStepsPerGesture) || 3));
+    const limit = Math.min(
+      5,
+      Math.max(1, Number(pending.settings.maxStepsPerGesture) || 3),
+    );
     const steps = Math.min(limit, Math.max(1, Math.abs(pending.ticks)));
     const direction = pending.ticks > 0 ? "increase" : "decrease";
     try {

@@ -27,7 +27,9 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
   private readonly poller = new ActionPoller();
   private toggling = false;
 
-  override async onWillAppear(ev: WillAppearEvent<FastModeSettings>): Promise<void> {
+  override async onWillAppear(
+    ev: WillAppearEvent<FastModeSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action);
   }
 
@@ -35,7 +37,9 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     this.poller.stop(ev.action.id);
   }
 
-  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<FastModeSettings>): Promise<void> {
+  override async onDidReceiveSettings(
+    ev: DidReceiveSettingsEvent<FastModeSettings>,
+  ): Promise<void> {
     await this.startPolling(ev.action);
   }
 

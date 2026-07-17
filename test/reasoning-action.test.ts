@@ -2,11 +2,15 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  runReasoning: vi.fn<(direction: "increase" | "decrease") => Promise<boolean>>(),
+  runReasoning:
+    vi.fn<(direction: "increase" | "decrease") => Promise<boolean>>(),
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
-  action: () => <T>(target: T) => target,
+  action:
+    () =>
+    <T>(target: T) =>
+      target,
   SingletonAction: class {},
 }));
 
@@ -53,34 +57,40 @@ describe("Reasoning actions", () => {
   });
 
   it("exposes separate increase and decrease keys plus an encoder-only dial", () => {
-    expect(manifest.Actions).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        Controllers: ["Keypad"],
-        Icon: "imgs/action-list/reasoning-decrease",
-        Name: "Decrease Reasoning",
-        UUID: "com.marco.chatgato.decrease-reasoning",
-      }),
-      expect.objectContaining({
-        Controllers: ["Keypad"],
-        Icon: "imgs/action-list/reasoning-increase",
-        Name: "Increase Reasoning",
-        UUID: "com.marco.chatgato.increase-reasoning",
-      }),
-      expect.objectContaining({
-        Controllers: ["Encoder"],
-        Icon: "imgs/action-list/reasoning",
-        Name: "Reasoning Dial",
-        UUID: "com.marco.chatgato.reasoning",
-      }),
-    ]));
+    expect(manifest.Actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          Controllers: ["Keypad"],
+          Icon: "imgs/action-list/reasoning-decrease",
+          Name: "Decrease Reasoning",
+          UUID: "com.marco.chatgato.decrease-reasoning",
+        }),
+        expect.objectContaining({
+          Controllers: ["Keypad"],
+          Icon: "imgs/action-list/reasoning-increase",
+          Name: "Increase Reasoning",
+          UUID: "com.marco.chatgato.increase-reasoning",
+        }),
+        expect.objectContaining({
+          Controllers: ["Encoder"],
+          Icon: "imgs/action-list/reasoning",
+          Name: "Reasoning Dial",
+          UUID: "com.marco.chatgato.reasoning",
+        }),
+      ]),
+    );
   });
 
   it("routes each key through its fixed reasoning direction", async () => {
     const decrease = actionHarness();
     const increase = actionHarness();
 
-    await new DecreaseReasoningAction().onKeyDown({ action: decrease } as never);
-    await new IncreaseReasoningAction().onKeyDown({ action: increase } as never);
+    await new DecreaseReasoningAction().onKeyDown({
+      action: decrease,
+    } as never);
+    await new IncreaseReasoningAction().onKeyDown({
+      action: increase,
+    } as never);
 
     expect(mocks.runReasoning.mock.calls).toEqual([["decrease"], ["increase"]]);
   });
@@ -89,14 +99,24 @@ describe("Reasoning actions", () => {
     const decrease = actionHarness();
     const increase = actionHarness();
 
-    await new DecreaseReasoningAction().onWillAppear({ action: decrease } as never);
-    await new IncreaseReasoningAction().onWillAppear({ action: increase } as never);
+    await new DecreaseReasoningAction().onWillAppear({
+      action: decrease,
+    } as never);
+    await new IncreaseReasoningAction().onWillAppear({
+      action: increase,
+    } as never);
 
     expect(decrease.setTitle).toHaveBeenCalledWith("THINK\nLESS");
     expect(increase.setTitle).toHaveBeenCalledWith("THINK\nMORE");
-    expect(decrease.setImage.mock.calls[0]![0]).not.toBe(increase.setImage.mock.calls[0]![0]);
-    expect(decrease.setImage).toHaveBeenCalledWith(expect.stringContaining('fill="#fff"'));
-    expect(increase.setImage).toHaveBeenCalledWith(expect.stringContaining('fill="#fff"'));
+    expect(decrease.setImage.mock.calls[0]![0]).not.toBe(
+      increase.setImage.mock.calls[0]![0],
+    );
+    expect(decrease.setImage).toHaveBeenCalledWith(
+      expect.stringContaining('fill="#fff"'),
+    );
+    expect(increase.setImage).toHaveBeenCalledWith(
+      expect.stringContaining('fill="#fff"'),
+    );
   });
 
   it("shows an alert when a reasoning change fails", async () => {

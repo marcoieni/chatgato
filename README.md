@@ -11,18 +11,18 @@ A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a sta
 
 ## Features
 
-| Capability | Stream Deck implementation |
-| --- | --- |
-| 20 live Agent Keys | 20 configurable **Agent Status** actions read local Codex task state, show the task's project, and open it on press. |
-| Live RGB status | Key backgrounds show working `#304FFE`, completed/unread `#00FF4C`, approval `#FF6D00`, needs response `#9E5BFF`, error `#FF0033`, and idle white. |
-| Usage limits | **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data. |
-| Prompt launcher | **Prompt** starts a task with any custom prompt; include `$skill-name` in the prompt to invoke a skill explicitly. |
-| Accept / reject | Dedicated **Allow** and **Decline** actions expose Codex's context-sensitive shortcuts. |
-| Dictation controls | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow. |
-| Fast mode | A dedicated **Fast Mode** key toggles `/fast`, showing gray while off and green while on. |
-| New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls. |
-| Reasoning controls | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction. |
-| Dedicated core actions | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
+| Capability              | Stream Deck implementation                                                                                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 20 live Agent Keys      | 20 configurable **Agent Status** actions read local Codex task state, show the task's project, and open it on press.                                                                 |
+| Live RGB status         | Key backgrounds show working `#304FFE`, completed/unread `#00FF4C`, approval `#FF6D00`, needs response `#9E5BFF`, error `#FF0033`, and idle white.                                   |
+| Usage limits            | **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.                                                           |
+| Prompt launcher         | **Prompt** starts a task with any custom prompt; include `$skill-name` in the prompt to invoke a skill explicitly.                                                                   |
+| Accept / reject         | Dedicated **Allow** and **Decline** actions expose Codex's context-sensitive shortcuts.                                                                                              |
+| Dictation controls      | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow.                                     |
+| Fast mode               | A dedicated **Fast Mode** key toggles `/fast`, showing gray while off and green while on.                                                                                            |
+| New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls.                                                          |
+| Reasoning controls      | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction.                      |
+| Dedicated core actions  | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
 
 The ChatGPT desktop app exposes Codex deep links and keyboard shortcuts, but not a public external command API. ChatGato combines those entry points with operating-system automation for actions that require keyboard control.
 
@@ -64,11 +64,11 @@ npm run pack
 
 ## Suggested 15-key layout
 
-| Row | Keys |
-| --- | --- |
-| 1 | Agent 1 · Agent 2 · Agent 3 · Agent 4 · Agent 5 |
-| 2 | Agent 6 · Allow · Decline · Push to talk · New task |
-| 3 | Prompt · Fast mode · Usage Limits · Think More · Think Less |
+| Row | Keys                                                        |
+| --- | ----------------------------------------------------------- |
+| 1   | Agent 1 · Agent 2 · Agent 3 · Agent 4 · Agent 5             |
+| 2   | Agent 6 · Allow · Decline · Push to talk · New task         |
+| 3   | Prompt · Fast mode · Usage Limits · Think More · Think Less |
 
 For each Agent Status key, choose a different slot from 1–20. Optionally set an absolute workspace path to filter the keys to one project.
 
@@ -105,5 +105,5 @@ References: [Codex desktop commands and deep links](https://developers.openai.co
 
 The name **ChatGato** combines both:
 
-* the words for “cat” in French (`chat`), and Spanish (`gato`).
-* the words ChatGPT and Elgato, the makers of the Stream Deck.
+- the words for “cat” in French (`chat`), and Spanish (`gato`).
+- the words ChatGPT and Elgato, the makers of the Stream Deck.
