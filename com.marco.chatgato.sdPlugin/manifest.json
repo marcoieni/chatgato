@@ -190,12 +190,12 @@
       "States": [
         {
           "Image": "imgs/actions/plan",
-          "Title": "PLAN",
+          "Title": "PLAN\nOFF",
           "TitleAlignment": "bottom",
           "FontSize": 11
         }
       ],
-      "Tooltip": "Toggle plan mode for the current Codex task.",
+      "Tooltip": "Toggle Codex plan mode with a gray off state and purple on state.",
       "UUID": "com.marco.chatgato.plan"
     },
     {

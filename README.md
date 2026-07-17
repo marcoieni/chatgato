@@ -20,6 +20,7 @@ A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a sta
 | Accept / reject | Dedicated **Allow** and **Decline** actions expose Codex's context-sensitive shortcuts. |
 | Dictation controls | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow. |
 | Fast mode | A dedicated **Fast Mode** key toggles `/fast`, showing gray while off and green while on. |
+| Plan mode | A dedicated **Plan** key toggles `/plan`, showing gray while off and purple while on. |
 | New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls. |
 | Reasoning controls | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction. |
 | Dedicated core actions | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |

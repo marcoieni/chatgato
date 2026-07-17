@@ -19,6 +19,21 @@ const ESCALATED_SANDBOX_PROPERTY =
   /(?:^|[{,]\s*)["']?sandbox_permissions["']?\s*:\s*["']require_escalated["'](?=\s*[,}])/u;
 export const STALE_WORKING_TIMEOUT_MS = 10 * 60 * 1000;
 
+export function planModeFromRollout(records: readonly RolloutRecord[]): boolean {
+  let mode = "default";
+
+  for (const record of records) {
+    const candidate = record.type === "turn_context"
+      ? record.payload?.collaboration_mode?.mode
+      : record.type === "event_msg" && record.payload?.type === "thread_settings_applied"
+        ? record.payload.thread_settings?.collaboration_mode?.mode
+        : undefined;
+    if (candidate === "default" || candidate === "plan") mode = candidate;
+  }
+
+  return mode === "plan";
+}
+
 function timestampMs(record: RolloutRecord): number | null {
   const parsed = Date.parse(record.timestamp ?? "");
   return Number.isFinite(parsed) ? parsed : null;

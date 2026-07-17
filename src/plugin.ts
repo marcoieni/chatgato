@@ -7,7 +7,6 @@ import {
   GoBackAction,
   GoForwardAction,
   OpenReviewAction,
-  PlanAction,
   ReviewTabAction,
   ScheduledAction,
   SettingsAction,
@@ -18,6 +17,7 @@ import {
 } from "./actions/dedicated-command.js";
 import { FastModeAction } from "./actions/fast-mode.js";
 import { NewTaskAction } from "./actions/new-task.js";
+import { PlanModeAction } from "./actions/plan-mode.js";
 import { PushToTalkAction } from "./actions/push-to-talk.js";
 import {
   DecreaseReasoningAction,
@@ -43,7 +43,7 @@ streamDeck.actions.registerAction(new ReviewTabAction());
 streamDeck.actions.registerAction(new ToggleTerminalAction());
 streamDeck.actions.registerAction(new OpenReviewAction());
 streamDeck.actions.registerAction(new SettingsAction());
-streamDeck.actions.registerAction(new PlanAction());
+streamDeck.actions.registerAction(new PlanModeAction());
 streamDeck.actions.registerAction(new SkillsAction());
 streamDeck.actions.registerAction(new ScheduledAction());
 streamDeck.actions.registerAction(new GoBackAction());

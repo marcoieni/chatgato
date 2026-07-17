@@ -40,6 +40,8 @@ export type FastModeSettings = {
   enabled?: boolean;
 };
 
+export type PlanModeSettings = Record<string, never>;
+
 export type ReasoningSettings = {
   maxStepsPerGesture?: number;
 };
@@ -94,6 +96,14 @@ export type RolloutRecord = {
     phase?: string;
     input?: string;
     arguments?: string;
+    collaboration_mode?: {
+      mode?: unknown;
+    };
+    thread_settings?: {
+      collaboration_mode?: {
+        mode?: unknown;
+      };
+    };
     rate_limits?: RawRateLimits | null;
     [key: string]: unknown;
   };

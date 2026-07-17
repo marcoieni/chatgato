@@ -219,6 +219,40 @@ describe("CodexStore", () => {
     await expect(store.fastModeEnabled()).resolves.toBe(false);
   });
 
+  it("reads plan mode from the latest visible task's rollout", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-plan-mode-"));
+    temporaryDirectories.push(home);
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      archived: 1,
+      id: "archived-plan",
+      recencyAtMs: 3_000,
+      rolloutPath: join(home, "archived.jsonl"),
+    });
+    insertThread(db, {
+      id: "current-task",
+      recencyAtMs: 2_000,
+      rolloutPath: join(home, "current.jsonl"),
+    });
+    insertThread(db, {
+      id: "older-task",
+      recencyAtMs: 1_000,
+      rolloutPath: join(home, "older.jsonl"),
+    });
+    db.close();
+
+    const readRolloutTail = vi.fn(async (path: string): Promise<RolloutRecord[]> =>
+      path.endsWith("current.jsonl")
+        ? [{ type: "turn_context", payload: { collaboration_mode: { mode: "plan" } } }]
+        : [],
+    );
+    const store = new CodexStore(home, readRolloutTail);
+
+    await expect(store.planModeEnabled()).resolves.toBe(true);
+    expect(readRolloutTail).toHaveBeenCalledOnce();
+    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "current.jsonl"));
+  });
+
   it("hydrates only the thread selected for a slot", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
     temporaryDirectories.push(home);

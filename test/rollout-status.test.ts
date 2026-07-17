@@ -2,10 +2,39 @@ import { describe, expect, it } from "vitest";
 import {
   inferRolloutStatus,
   parseRolloutLines,
+  planModeFromRollout,
   STALE_WORKING_TIMEOUT_MS,
 } from "../src/lib/rollout-status.js";
 
 describe("Codex rollout status", () => {
+  it("tracks the latest persisted collaboration mode", () => {
+    expect(
+      planModeFromRollout([
+        { type: "turn_context", payload: { collaboration_mode: { mode: "default" } } },
+        {
+          type: "event_msg",
+          payload: {
+            type: "thread_settings_applied",
+            thread_settings: { collaboration_mode: { mode: "plan" } },
+          },
+        },
+      ]),
+    ).toBe(true);
+
+    expect(
+      planModeFromRollout([
+        { type: "turn_context", payload: { collaboration_mode: { mode: "plan" } } },
+        {
+          type: "event_msg",
+          payload: {
+            type: "thread_settings_applied",
+            thread_settings: { collaboration_mode: { mode: "default" } },
+          },
+        },
+      ]),
+    ).toBe(false);
+  });
+
   it("tracks a working turn", () => {
     expect(
       inferRolloutStatus([
