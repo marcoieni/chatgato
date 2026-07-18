@@ -391,7 +391,7 @@
       "UUID": "com.marco.chatgato.usage"
     }
   ],
-  "Author": "Marco",
+  "Author": "Marco Ieni",
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
@@ -415,6 +415,8 @@
   "Software": {
     "MinimumVersion": "7.1"
   },
+  "SupportURL": "https://github.com/marcoieni/chatgato/issues",
+  "URL": "https://github.com/marcoieni/chatgato",
   "UUID": "com.marco.chatgato",
   "Version": "0.1.0.0"
 }
