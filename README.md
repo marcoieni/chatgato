@@ -24,6 +24,16 @@ No API key required.
   - **Review**
 - Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
 
+## 15-key layout example
+
+<p align="center">
+  <img src="assets/15keys.png" alt="Example 15-key layout"">
+</p>
+
+For each Agent Status key, choose a different slot from 1–20.
+Optionally set an absolute workspace path to filter the keys to one project.
+
+
 ## Requirements
 
 - Stream Deck 7.1 or newer
@@ -83,15 +93,6 @@ To create a distributable plugin:
 ```bash
 npm run pack
 ```
-
-## 15-key layout example
-
-<p align="center">
-  <img src="assets/logo.png" alt="Example 15-key layout"">
-</p>
-
-For each Agent Status key, choose a different slot from 1–20.
-Optionally set an absolute workspace path to filter the keys to one project.
 
 ## How live status works
 
