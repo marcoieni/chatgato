@@ -30,6 +30,9 @@ No API key required.
 - macOS 13+ or Windows 10+
 - A Stream Deck device; Stream Deck+ is optional for dial control
 - The Fast and Plan keyboard shortcuts configured in ChatGPT as described below
+- On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
+  actions such as Submit and Fork.
+
 
 ### Required Fast and Plan shortcut setup
 
@@ -57,7 +60,7 @@ npm run link
 
 After linking, drag actions from that category onto keys or a Stream Deck+ dial.
 
-On macOS, keyboard-driven actions such as Submit and Fork may prompt for Accessibility permission.
+## Troubleshooting
 
 ### Finding the plugin logs
 
