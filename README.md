@@ -33,7 +33,6 @@ No API key required.
 For each Agent Status key, choose a different slot from 1–20.
 Optionally set an absolute workspace path to filter the keys to one project.
 
-
 ## Requirements
 
 - Stream Deck 7.1 or newer
@@ -42,7 +41,6 @@ Optionally set an absolute workspace path to filter the keys to one project.
 - The Fast and Plan keyboard shortcuts configured in ChatGPT as described below
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
-
 
 ### Required Fast and Plan shortcut setup
 
