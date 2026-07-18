@@ -31,6 +31,20 @@ describe("Codex control scripts", () => {
     expect(powerShell).toContain("terminal = '^`'");
   });
 
+  it("sends the configured Fast and Plan shortcuts on macOS", () => {
+    expect(appleScript).toMatch(
+      /payload is "toggleFastMode" then\s+keystroke "f" using \{command down, option down, shift down\}/u,
+    );
+    expect(appleScript).toMatch(
+      /payload is "togglePlanMode" then\s+keystroke "p" using \{command down, option down, shift down\}/u,
+    );
+  });
+
+  it("sends the configured Fast and Plan shortcuts on Windows", () => {
+    expect(powerShell).toContain('toggleFastMode = "^%+f"');
+    expect(powerShell).toContain('togglePlanMode = "^%+p"');
+  });
+
   it("selects an exact reasoning option through the supported slash picker on macOS", () => {
     expect(appleScript).toMatch(/controlMode is "reasoning"/u);
     expect(appleScript).toContain('keystroke "/reasoning"');

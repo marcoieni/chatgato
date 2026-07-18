@@ -3,11 +3,11 @@ import type { FastModeSettings } from "../src/types.js";
 
 const mocks = vi.hoisted(() => ({
   fastModeEnabled: vi.fn<() => Promise<boolean>>(),
-  runSlash: vi.fn<(command: string) => Promise<void>>(),
+  executeCommand: vi.fn<(command: string) => Promise<void>>(),
 }));
 
 vi.mock("../src/lib/codex-controller.js", () => ({
-  runSlash: mocks.runSlash,
+  executeCommand: mocks.executeCommand,
 }));
 
 vi.mock("../src/lib/codex-store.js", () => ({
@@ -38,11 +38,11 @@ describe("FastModeAction", () => {
     vi.useRealTimers();
     mocks.fastModeEnabled.mockReset();
     mocks.fastModeEnabled.mockResolvedValue(false);
-    mocks.runSlash.mockReset();
-    mocks.runSlash.mockResolvedValue();
+    mocks.executeCommand.mockReset();
+    mocks.executeCommand.mockResolvedValue();
   });
 
-  it("runs /fast and changes from the off color to the on color", async () => {
+  it("routes through the Fast keyboard shortcut and confirms the on state", async () => {
     mocks.fastModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
     const harness = actionHarness();
     const fastMode = new FastModeAction();
@@ -52,7 +52,7 @@ describe("FastModeAction", () => {
       payload: { settings: {} },
     } as never);
 
-    expect(mocks.runSlash).toHaveBeenCalledWith("/fast");
+    expect(mocks.executeCommand).toHaveBeenCalledWith("toggleFast");
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     expect(harness.action.setImage).toHaveBeenLastCalledWith(
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
@@ -83,7 +83,7 @@ describe("FastModeAction", () => {
   });
 
   it("keeps the previous state and alerts when Codex cannot toggle", async () => {
-    mocks.runSlash.mockRejectedValueOnce(new Error("Codex unavailable"));
+    mocks.executeCommand.mockRejectedValueOnce(new Error("Codex unavailable"));
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
@@ -94,6 +94,23 @@ describe("FastModeAction", () => {
 
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     expect(harness.settings()).toEqual({});
+    expect(harness.action.showAlert).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the off state and alerts when persisted state does not change", async () => {
+    vi.useFakeTimers();
+    mocks.fastModeEnabled.mockResolvedValue(false);
+    const harness = actionHarness();
+    const fastMode = new FastModeAction();
+
+    const toggled = fastMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+    await vi.advanceTimersByTimeAsync(2_100);
+    await toggled;
+
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nOFF");
     expect(harness.action.showAlert).toHaveBeenCalledOnce();
   });
 

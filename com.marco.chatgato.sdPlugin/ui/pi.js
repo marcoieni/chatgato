@@ -80,10 +80,7 @@
         renderDedicatedCommand("Settings", "Open Codex settings.");
         break;
       case "com.marco.chatgato.plan":
-        renderDedicatedCommand(
-          "Plan",
-          "Toggle plan mode for the current task.",
-        );
+        renderModeShortcut("Plan", "Toggle plan mode", "P", "#9e5bff");
         break;
       case "com.marco.chatgato.skills":
         renderDedicatedCommand("Skills", "Open Codex Skills.");
@@ -128,7 +125,7 @@
         renderTapToTalk();
         break;
       case "com.marco.chatgato.fast-mode":
-        renderFastMode();
+        renderModeShortcut("Fast Mode", "Toggle Fast mode", "F", "#00ff4c");
         break;
       case "com.marco.chatgato.decrease-reasoning":
         renderDedicatedCommand(
@@ -300,11 +297,11 @@
       "The key turns yellow and changes to TAP TO STOP while active. On macOS, Stream Deck may need Accessibility permission.";
   }
 
-  function renderFastMode() {
-    subtitle.textContent = "Toggle Codex fast mode";
-    form.innerHTML = "<p>Press the key to switch fast mode on or off.</p>";
-    note.innerHTML = `<strong>Key colors</strong><div class="legend">
-      <span><i style="background:#303840"></i>Off</span><span><i style="background:#00ff4c"></i>On</span>
+  function renderModeShortcut(label, commandName, letter, onColor) {
+    subtitle.textContent = `Toggle Codex ${label.toLowerCase()}`;
+    form.innerHTML = `<p><strong>Required setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “${commandName}”, and assign <code>⌘⌥⇧${letter}</code> on macOS or <code>Ctrl+Alt+Shift+${letter}</code> on Windows.</p>`;
+    note.innerHTML = `<strong>This action will not work until the shortcut is configured exactly.</strong> A warning usually means the binding is missing or conflicts with another shortcut.<div class="legend">
+      <span><i style="background:#303840"></i>Off</span><span><i style="background:${onColor}"></i>On</span>
     </div>`;
   }
 

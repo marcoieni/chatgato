@@ -45,6 +45,10 @@ on run argv
 				key code 50 using {control down}
 			else if payload is "review" then
 				keystroke "g" using {control down, shift down}
+			else if payload is "toggleFastMode" then
+				keystroke "f" using {command down, option down, shift down}
+			else if payload is "togglePlanMode" then
+				keystroke "p" using {command down, option down, shift down}
 			else if payload is "navigateBack" then
 				key code 33 using {command down}
 			else if payload is "navigateForward" then

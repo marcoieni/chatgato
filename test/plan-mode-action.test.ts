@@ -50,7 +50,7 @@ describe("PlanModeAction", () => {
     mocks.planModeEnabled.mockResolvedValue(false);
   });
 
-  it("runs /plan and changes from the off visual to the on visual after confirmation", async () => {
+  it("routes through the Plan keyboard shortcut and confirms the on state", async () => {
     mocks.planModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
     const harness = actionHarness();
     const planMode = new PlanModeAction();
@@ -101,6 +101,23 @@ describe("PlanModeAction", () => {
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
       "#303840",
     );
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
+    expect(harness.action.showAlert).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the off state and alerts when persisted state does not change", async () => {
+    vi.useFakeTimers();
+    mocks.planModeEnabled.mockResolvedValue(false);
+    const harness = actionHarness();
+    const planMode = new PlanModeAction();
+
+    const toggled = planMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+    await vi.advanceTimersByTimeAsync(2_100);
+    await toggled;
+
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
     expect(harness.action.showAlert).toHaveBeenCalledOnce();
   });

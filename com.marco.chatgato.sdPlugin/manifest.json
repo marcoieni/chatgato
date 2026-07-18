@@ -77,7 +77,7 @@
           "FontSize": 12
         }
       ],
-      "Tooltip": "Toggle Codex fast mode with a gray off state and green on state.",
+      "Tooltip": "Toggle Codex fast mode. Requires the exact ChatGPT keyboard shortcut shown in the property inspector.",
       "UUID": "com.marco.chatgato.fast-mode"
     },
     {
@@ -173,7 +173,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Toggle Codex plan mode with a gray off state and purple on state.",
+      "Tooltip": "Toggle Codex plan mode. Requires the exact ChatGPT keyboard shortcut shown in the property inspector.",
       "UUID": "com.marco.chatgato.plan"
     },
     {
