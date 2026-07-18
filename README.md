@@ -7,9 +7,6 @@
 A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).
 No API key required.
 
-> [!NOTE]
-> This app was partially vibe-coded: the maintainer didn't read all its code.
-
 ## Features
 
 - Keep track of your agents: Up to 20 **Agent Status** keys show the task's project, status (working, done, require approval, etc). On press, they open the task.
@@ -55,16 +52,12 @@ ChatGPT exposes app-scoped Fast and Plan commands, but does not assign the bindi
 
 ```bash
 npm install
-npm run typecheck
-npm test
-npm run build
-npm run validate
 npm run link
 ```
 
 After linking, drag actions from that category onto keys or a Stream Deck+ dial.
 
-On macOS, keyboard-driven actions such as Submit, Fork, Review Tab, Toggle Terminal, Review, Allow, Decline, Push to Talk, Tap to Talk, and the reasoning controls may prompt for Accessibility permission. Agent Status and deep-link actions do not require Accessibility permission.
+On macOS, keyboard-driven actions such as Submit and Fork may prompt for Accessibility permission.
 
 If a key shows a warning triangle, check
 `com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log`. Automation failures include
@@ -121,3 +114,6 @@ The name **ChatGato** combines both:
 
 - the words for “cat” in French (`chat`), and Spanish (`gato`).
 - the words ChatGPT and Elgato, the makers of the Stream Deck.
+
+> [!NOTE]
+> This app was partially vibe-coded: the maintainer didn't read all its code.
