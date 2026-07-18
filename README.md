@@ -1,7 +1,7 @@
 # ChatGato
 
 <p align="center">
-  <img src="logo.png" alt="ChatGato logo" width="240">
+  <img src="assets/logo.png" alt="ChatGato logo" width="240">
 </p>
 
 A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).
@@ -81,15 +81,14 @@ To create a distributable plugin:
 npm run pack
 ```
 
-## Suggested 15-key layout
+## 15-key layout example
 
-| Row | Keys                                                        |
-| --- | ----------------------------------------------------------- |
-| 1   | Agent 1 · Agent 2 · Agent 3 · Agent 4 · Agent 5             |
-| 2   | Agent 6 · Allow · Decline · Push to talk · New task         |
-| 3   | Prompt · Fast mode · Usage Limits · Think More · Think Less |
+<p align="center">
+  <img src="assets/logo.png" alt="Example 15-key layout"">
+</p>
 
-For each Agent Status key, choose a different slot from 1–20. Optionally set an absolute workspace path to filter the keys to one project.
+For each Agent Status key, choose a different slot from 1–20.
+Optionally set an absolute workspace path to filter the keys to one project.
 
 ## How live status works
 
