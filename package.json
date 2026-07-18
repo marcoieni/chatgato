@@ -17,7 +17,7 @@
     "test": "vitest run",
     "validate": "streamdeck validate com.marco.chatgato.sdPlugin",
     "pack": "npm run build && streamdeck pack com.marco.chatgato.sdPlugin --output dist --force",
-    "restart": "streamdeck restart com.marco.chatgato",
+    "restart": "pkill -x 'Stream Deck' 2>/dev/null || true; while pgrep -x 'Stream Deck' >/dev/null; do sleep 0.1; done; streamdeck restart com.marco.chatgato",
     "link": "npm run build && streamdeck link com.marco.chatgato.sdPlugin && npm run restart"
   },
   "dependencies": {
