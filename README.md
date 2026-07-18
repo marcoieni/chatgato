@@ -24,7 +24,7 @@ No API key required.
   - **Review**
 - Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
 
-## 15-key layout example
+## Layout example
 
 <p align="center">
   <img src="assets/15keys.png" alt="Example 15-key layout"">
