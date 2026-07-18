@@ -9,7 +9,7 @@ No API key required.
 
 ## Features
 
-- Keep track of your agents: Up to 20 **Agent Status** keys show the task's project, status (working, done, require approval, etc). On press, they open the task.
+- Keep track of up to 20 **Agent Status** keys, showing the task's project, status (working, done, require approval, etc). On press, they open the task.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.
 - **Prompt** starts a task with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
