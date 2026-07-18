@@ -16,16 +16,27 @@ describe("Codex controller", () => {
     expect(COMMANDS.openReview).toEqual({ kind: "slash", value: "/review" });
   });
 
+  it("routes Fast and Plan through app-scoped keyboard shortcuts", () => {
+    expect(COMMANDS.toggleFast).toEqual({
+      kind: "shortcut",
+      value: "toggleFastMode",
+    });
+    expect(COMMANDS.togglePlan).toEqual({
+      kind: "shortcut",
+      value: "togglePlanMode",
+    });
+  });
+
   it("normalizes supported slash commands", () => {
-    expect(normalizeSlashCommand("  /fast  ")).toBe("/fast");
+    expect(normalizeSlashCommand("  /review  ")).toBe("/review");
     expect(normalizeSlashCommand("/fork")).toBe("/fork");
   });
 
   it("rejects slash-command arguments and injected input", () => {
-    expect(() => normalizeSlashCommand("/fast on")).toThrow(
+    expect(() => normalizeSlashCommand("/review now")).toThrow(
       "Invalid Codex slash command",
     );
-    expect(() => normalizeSlashCommand("/fast\n/plan")).toThrow(
+    expect(() => normalizeSlashCommand("/fork\n/review")).toThrow(
       "Invalid Codex slash command",
     );
   });

@@ -19,8 +19,8 @@ A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a sta
 | Prompt launcher         | **Prompt** starts a task with any custom prompt; include `$skill-name` in the prompt to invoke a skill explicitly.                                                                   |
 | Accept / reject         | Dedicated **Allow** and **Decline** actions expose Codex's context-sensitive shortcuts.                                                                                              |
 | Dictation controls      | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow.                                     |
-| Fast mode               | A dedicated **Fast Mode** key toggles `/fast`, showing gray while off and green while on.                                                                                            |
-| Plan mode               | A dedicated **Plan** key toggles `/plan`, showing gray while off and purple while on.                                                                                                |
+| Fast mode               | A dedicated **Fast Mode** key uses ChatGPT's native Fast-mode shortcut, showing gray while off and green while on.                                                                   |
+| Plan mode               | A dedicated **Plan** key uses ChatGPT's native Plan-mode shortcut, showing gray while off and purple while on.                                                                       |
 | New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls.                                                          |
 | Reasoning controls      | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction.                      |
 | Dedicated core actions  | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
@@ -33,10 +33,28 @@ The ChatGPT desktop app exposes Codex deep links and keyboard shortcuts, but not
 - macOS 13+ or Windows 10+
 - The ChatGPT desktop app with Codex enabled
 - A Stream Deck device; Stream Deck+ is optional for dial control
+- The Fast and Plan keyboard shortcuts configured in ChatGPT as described below
 
 The plugin uses Stream Deck's bundled Node.js 24 runtime. No API key or network service is required.
 ChatGato reads local Codex state and uses operating-system automation to control the ChatGPT desktop
 app.
+
+### Required Fast and Plan shortcut setup
+
+ChatGPT exposes app-scoped Fast and Plan commands, but does not assign the bindings ChatGato uses. Configure them once:
+
+1. Open ChatGPT desktop.
+2. Open **Settings → Keyboard Shortcuts**.
+3. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
+4. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
+5. Use the exact platform-specific bindings below.
+
+| Platform | Fast                   | Plan                   |
+| -------- | ---------------------- | ---------------------- |
+| macOS    | Command+Option+Shift+F | Command+Option+Shift+P |
+| Windows  | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
+
+**The ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** A warning or alert usually means the binding is missing or conflicts with another shortcut.
 
 ## Build and install for development
 
