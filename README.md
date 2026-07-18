@@ -1,43 +1,46 @@
 # ChatGato
 
 <p align="center">
-  <img src="logo.png" alt="ChatGato logo" width="240">
+  <img src="assets/logo.png" alt="ChatGato logo" width="240">
 </p>
 
-A Stream Deck plugin for OpenAI Codex in the ChatGPT desktop app. It turns a standard Stream Deck into a tactile Codex control surface and adds native dial behavior on Stream Deck+.
-
-> [!NOTE]
-> This app was vibe-coded: the maintainer didn't read all its code.
+A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).
+No API key required.
 
 ## Features
 
-| Capability              | Stream Deck implementation                                                                                                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 20 live Agent Keys      | 20 configurable **Agent Status** actions read local Codex task state, show the task's project, and open it on press.                                                                 |
-| Live RGB status         | Key backgrounds show working `#304FFE`, completed/unread `#00FF4C`, approval `#FF6D00`, needs response `#9E5BFF`, error `#FF0033`, and idle white.                                   |
-| Usage limits            | **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.                                                           |
-| Prompt launcher         | **Prompt** starts a task with any custom prompt; include `$skill-name` in the prompt to invoke a skill explicitly.                                                                   |
-| Accept / reject         | Dedicated **Allow** and **Decline** actions expose Codex's context-sensitive shortcuts.                                                                                              |
-| Dictation controls      | Hold the dedicated **Push to Talk** key, or press **Tap to Talk** once to start dictation and again to stop. Active microphone keys turn yellow.                                     |
-| Fast mode               | A dedicated **Fast Mode** key uses ChatGPT's native Fast-mode shortcut, showing gray while off and green while on.                                                                   |
-| Plan mode               | A dedicated **Plan** key uses ChatGPT's native Plan-mode shortcut, showing gray while off and purple while on.                                                                       |
-| New task and navigation | Dedicated New Task, Go Back, Go Forward, and Toggle Sidebar actions complement task search and previous/next task controls.                                                          |
-| Reasoning controls      | Separate **Increase Reasoning** and **Decrease Reasoning** keys adjust effort one level at a time; a Stream Deck+ dial raises or lowers it in either direction.                      |
-| Dedicated core actions  | Separate Submit, Fork, Review Tab, Toggle Terminal, Review, Settings, Plan, Skills, Scheduled, Go Back, Go Forward, and Toggle Sidebar actions are ready to drag directly onto keys. |
+- Keep track of up to 20 **Agent Status** keys, showing the task's project, status (working, done, require approval, etc). On press, they open the task.
+- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.
+- **Prompt** starts a task with any custom prompt
+- Buttons to run shortcuts in Codex, such as:
+  - **Allow** / **Decline**
+  - **Push to Talk** / **Tap to Talk**
+  - **Fast Mode** (shows if active)
+  - **Plan Mode** (shows if active)
+  - **Increase reasoning** / **Decrease reasoning**
+  - **New Task**
+  - **Submit**
+  - **Fork**
+  - **Review**
+- Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
 
-The ChatGPT desktop app exposes Codex deep links and keyboard shortcuts, but not a public external command API. ChatGato combines those entry points with operating-system automation for actions that require keyboard control.
+## Layout example
+
+<p align="center">
+  <img src="assets/15keys.png" alt="Example 15-key layout"">
+</p>
+
+For each Agent Status key, choose a different slot from 1–20.
+Optionally set an absolute workspace path to filter the keys to one project.
 
 ## Requirements
 
 - Stream Deck 7.1 or newer
 - macOS 13+ or Windows 10+
-- The ChatGPT desktop app with Codex enabled
 - A Stream Deck device; Stream Deck+ is optional for dial control
 - The Fast and Plan keyboard shortcuts configured in ChatGPT as described below
-
-The plugin uses Stream Deck's bundled Node.js 24 runtime. No API key or network service is required.
-ChatGato reads local Codex state and uses operating-system automation to control the ChatGPT desktop
-app.
+- On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
+  actions such as Submit and Fork.
 
 ### Required Fast and Plan shortcut setup
 
@@ -60,36 +63,34 @@ ChatGPT exposes app-scoped Fast and Plan commands, but does not assign the bindi
 
 ```bash
 npm install
-npm run typecheck
-npm test
-npm run build
-npm run validate
 npm run link
 ```
 
 After linking, drag actions from that category onto keys or a Stream Deck+ dial.
 
-On macOS, keyboard-driven actions such as Submit, Fork, Review Tab, Toggle Terminal, Review, Allow, Decline, Push to Talk, Tap to Talk, and the reasoning controls may prompt for Accessibility permission. Agent Status and deep-link actions do not require Accessibility permission.
+## Troubleshooting
 
-If a key shows a warning triangle, check
-`com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log`. Automation failures include
-the selected action and the operating-system error.
+### Finding the plugin logs
+
+If a key shows a warning triangle, start with `com.marco.chatgato.0.log`. Stream Deck
+stores it inside the installed plugin directory at:
+
+| Platform | Log file                                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| macOS    | `~/Library/Application Support/com.elgato.StreamDeck/Plugins/com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log` |
+| Windows  | `%APPDATA%\Elgato\StreamDeck\Plugins\com.marco.chatgato.sdPlugin\logs\com.marco.chatgato.0.log`                         |
+
+After running `npm run link` for development, the installed plugin is linked to this
+checkout, so the same file is also available at
+`com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log` relative to the repository
+root. The `.0.log` file is the current log; higher-numbered files are older rotated
+logs. Automation failures include the selected action and the operating-system error.
 
 To create a distributable plugin:
 
 ```bash
 npm run pack
 ```
-
-## Suggested 15-key layout
-
-| Row | Keys                                                        |
-| --- | ----------------------------------------------------------- |
-| 1   | Agent 1 · Agent 2 · Agent 3 · Agent 4 · Agent 5             |
-| 2   | Agent 6 · Allow · Decline · Push to talk · New task         |
-| 3   | Prompt · Fast mode · Usage Limits · Think More · Think Less |
-
-For each Agent Status key, choose a different slot from 1–20. Optionally set an absolute workspace path to filter the keys to one project.
 
 ## How live status works
 
@@ -112,13 +113,8 @@ The Usage Limits key reads the latest rate-limit snapshot that Codex writes to l
 
 ## Notes and limitations
 
-- ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
-- Auto-submit is off by default. With it off, deep-linked prompts are placed in the composer for review, matching Codex's documented behavior.
 - Agent status is inferred from internal local Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
 - Usage limits are also read locally from Codex rollout events; no account credentials or usage data are transmitted by the plugin.
-- The plugin controls Codex in the current ChatGPT window. If another ChatGPT window is active, keyboard operations act on whichever window becomes primary.
-
-References: [Codex desktop commands and deep links](https://developers.openai.com/codex/app/commands) and the [Stream Deck SDK](https://docs.elgato.com/streamdeck/sdk/).
 
 ## Why this name?
 
@@ -126,3 +122,8 @@ The name **ChatGato** combines both:
 
 - the words for “cat” in French (`chat`), and Spanish (`gato`).
 - the words ChatGPT and Elgato, the makers of the Stream Deck.
+
+## Disclaimer
+
+- This app was partially vibe-coded: the maintainer didn't read all its code.
+- ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
