@@ -59,9 +59,21 @@ After linking, drag actions from that category onto keys or a Stream Deck+ dial.
 
 On macOS, keyboard-driven actions such as Submit and Fork may prompt for Accessibility permission.
 
-If a key shows a warning triangle, check
-`com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log`. Automation failures include
-the selected action and the operating-system error.
+### Finding the plugin logs
+
+If a key shows a warning triangle, start with `com.marco.chatgato.0.log`. Stream Deck
+stores it inside the installed plugin directory at:
+
+| Platform | Log file                                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| macOS    | `~/Library/Application Support/com.elgato.StreamDeck/Plugins/com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log` |
+| Windows  | `%APPDATA%\Elgato\StreamDeck\Plugins\com.marco.chatgato.sdPlugin\logs\com.marco.chatgato.0.log`                         |
+
+After running `npm run link` for development, the installed plugin is linked to this
+checkout, so the same file is also available at
+`com.marco.chatgato.sdPlugin/logs/com.marco.chatgato.0.log` relative to the repository
+root. The `.0.log` file is the current log; higher-numbered files are older rotated
+logs. Automation failures include the selected action and the operating-system error.
 
 To create a distributable plugin:
 
