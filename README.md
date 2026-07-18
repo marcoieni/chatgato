@@ -111,13 +111,8 @@ The Usage Limits key reads the latest rate-limit snapshot that Codex writes to l
 
 ## Notes and limitations
 
-- ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
-- Auto-submit is off by default. With it off, deep-linked prompts are placed in the composer for review, matching Codex's documented behavior.
 - Agent status is inferred from internal local Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
 - Usage limits are also read locally from Codex rollout events; no account credentials or usage data are transmitted by the plugin.
-- The plugin controls Codex in the current ChatGPT window. If another ChatGPT window is active, keyboard operations act on whichever window becomes primary.
-
-References: [Codex desktop commands and deep links](https://developers.openai.com/codex/app/commands) and the [Stream Deck SDK](https://docs.elgato.com/streamdeck/sdk/).
 
 ## Why this name?
 
@@ -126,5 +121,7 @@ The name **ChatGato** combines both:
 - the words for “cat” in French (`chat`), and Spanish (`gato`).
 - the words ChatGPT and Elgato, the makers of the Stream Deck.
 
-> [!NOTE]
-> This app was partially vibe-coded: the maintainer didn't read all its code.
+## Disclaimer
+
+* This app was partially vibe-coded: the maintainer didn't read all its code.
+* ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
