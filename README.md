@@ -12,20 +12,20 @@ No API key required.
 
 ## Features
 
-* Keep track of your agents: Up to 20 **Agent Status** keys show the task's project, status (working, done, require approval, etc). On press, they open the task.
-* **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.
-* **Prompt** starts a task with any custom prompt
-* Buttons to run shortcuts in Codex, such as:
-  * **Allow** / **Decline**
-  * **Push to Talk** / **Tap to Talk**
-  * **Fast Mode** (shows if active)
-  * **Plan Mode** (shows if active)
-  * **Increase reasoning** / **Decrease reasoning**
-  * **New Task**
-  * **Submit**
-  * **Fork**
-  * **Review**
-* Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
+- Keep track of your agents: Up to 20 **Agent Status** keys show the task's project, status (working, done, require approval, etc). On press, they open the task.
+- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.
+- **Prompt** starts a task with any custom prompt
+- Buttons to run shortcuts in Codex, such as:
+  - **Allow** / **Decline**
+  - **Push to Talk** / **Tap to Talk**
+  - **Fast Mode** (shows if active)
+  - **Plan Mode** (shows if active)
+  - **Increase reasoning** / **Decrease reasoning**
+  - **New Task**
+  - **Submit**
+  - **Fork**
+  - **Review**
+- Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
 
 ## Requirements
 
