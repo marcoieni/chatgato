@@ -13,5 +13,5 @@ Try to do one pull request per change.
 
 ## References
 
-* [Codex desktop commands and deep links](https://developers.openai.com/codex/app/commands)
-* [Stream Deck SDK](https://docs.elgato.com/streamdeck/sdk/).
+- [Codex desktop commands and deep links](https://developers.openai.com/codex/app/commands)
+- [Stream Deck SDK](https://docs.elgato.com/streamdeck/sdk/).
