@@ -52,11 +52,26 @@ describe("Stream Deck manifest", () => {
 
       const svg = readFileSync(iconUrl, "utf8");
       const colors = svg.match(/#[0-9a-f]{3,8}/gi) ?? [];
-      expect(svg).toContain('width="20" height="20" viewBox="0 0 20 20"');
-      expect(svg).toContain("#FFFFFF");
-      expect(new Set(colors.map((color) => color.toUpperCase()))).toEqual(
-        new Set(["#FFFFFF"]),
+      const rootTag = svg.match(/<svg\b[^>]*>/)?.[0] ?? "";
+      const attribute = (name: string) =>
+        rootTag.match(new RegExp(`\\b${name}=(['"])(.*?)\\1`))?.[2];
+      const normalizedColors = colors.map((color) =>
+        color.length === 4
+          ? `#${[...color.slice(1)]
+              .map((component) => component.repeat(2))
+              .join("")}`.toUpperCase()
+          : color.toUpperCase(),
       );
+
+      expect(attribute("width")).toBe("20");
+      expect(attribute("height")).toBe("20");
+      expect(attribute("viewBox")?.trim().split(/\s+/)).toEqual([
+        "0",
+        "0",
+        "20",
+        "20",
+      ]);
+      expect(new Set(normalizedColors)).toEqual(new Set(["#FFFFFF"]));
       expect(svg).not.toMatch(
         /<rect[^>]+(?:width="20"[^>]+height="20"|height="20"[^>]+width="20")/,
       );
