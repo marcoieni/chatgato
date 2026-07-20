@@ -96,6 +96,32 @@ describe("Codex rollout status", () => {
     ).toBe("working");
   });
 
+  it("recognizes a pending apply_patch call as an approval wait", () => {
+    const callId = "call-needs-write-approval";
+    const approvalCall = {
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        call_id: callId,
+        status: "completed",
+        input: String.raw`const patch = "*** Begin Patch\n*** Add File: /Users/marco/hello.txt\n+hello\n*** End Patch";
+const result = await tools.apply_patch(patch);`,
+      },
+    };
+
+    expect(inferRolloutStatus([approvalCall])).toBe("awaiting-approval");
+    expect(
+      inferRolloutStatus([
+        approvalCall,
+        {
+          type: "response_item",
+          payload: { type: "custom_tool_call_output", call_id: callId },
+        },
+      ]),
+    ).toBe("working");
+  });
+
   it("does not mistake approval-related command text for an approval request", () => {
     expect(
       inferRolloutStatus([
