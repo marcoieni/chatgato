@@ -8,6 +8,7 @@ const manifest = JSON.parse(
   ),
 ) as {
   Actions: Array<{
+    Controllers: string[];
     Icon: string;
     Name: string;
     States: Array<{ Image: string }>;
@@ -98,6 +99,44 @@ describe("Stream Deck manifest", () => {
       expect(svg).toContain(
         '<rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>',
       );
+    }
+  });
+
+  it("centers every keypad glyph in the title-safe accent panel", () => {
+    const stateImages = new Set(
+      manifest.Actions.filter((action) => action.Controllers.includes("Keypad"))
+        .map((action) => action.States[0]?.Image)
+        .filter((image): image is string => image !== undefined),
+    );
+
+    for (const image of stateImages) {
+      const imageUrl = new URL(
+        `../com.marco.chatgato.sdPlugin/${image}.svg`,
+        import.meta.url,
+      );
+      const svg = readFileSync(imageUrl, "utf8");
+
+      if (!svg.includes('<rect x="28" y="14" width="88" height="80"')) {
+        continue;
+      }
+
+      const centeredGroup = svg.match(
+        /<g data-source-center="([\d.-]+) ([\d.-]+)" data-glyph-center="([\d.-]+) ([\d.-]+)" transform="translate\(([\d.-]+) ([\d.-]+)\)">/,
+      );
+      expect(
+        centeredGroup,
+        `${image} is missing its centered glyph group`,
+      ).not.toBeNull();
+
+      const [, sourceX, sourceY, targetX, targetY, offsetX, offsetY] =
+        centeredGroup!;
+      expect(Number(sourceX) + Number(offsetX), `${image} x center`).toBe(
+        Number(targetX),
+      );
+      expect(Number(sourceY) + Number(offsetY), `${image} y center`).toBe(
+        Number(targetY),
+      );
+      expect([Number(targetX), Number(targetY)]).toEqual([72, 54]);
     }
   });
 });

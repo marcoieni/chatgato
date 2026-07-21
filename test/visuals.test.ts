@@ -13,6 +13,7 @@ import {
   planModeSvg,
   pushToTalkImage,
   pushToTalkSvg,
+  reasoningSvg,
   usageSvg,
 } from "../src/lib/visuals.js";
 import type { CodexThread, CodexUsageSnapshot } from "../src/types.js";
@@ -40,10 +41,10 @@ describe("Stream Deck visuals", () => {
       '<rect x="28" y="14" width="88" height="80" rx="22" fill="#00FF4C"/>',
     );
     expect(agentSvg(4, "working")).toContain(
-      '<text x="72" y="72" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="800" font-size="54" text-anchor="middle">4</text>',
+      '<text x="72" y="54" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="800" font-size="54" text-anchor="middle" dominant-baseline="central">4</text>',
     );
     expect(agentSvg(14, "unread")).toContain(
-      '<text x="72" y="72" fill="#071018" font-family="Arial,sans-serif" font-weight="800" font-size="46" text-anchor="middle">14</text>',
+      '<text x="72" y="54" fill="#071018" font-family="Arial,sans-serif" font-weight="800" font-size="46" text-anchor="middle" dominant-baseline="central">14</text>',
     );
     expect(agentSvg(4, "working")).not.toContain("<path");
     expect(agentSvg(4, "working")).not.toContain("<circle");
@@ -58,6 +59,33 @@ describe("Stream Deck visuals", () => {
     expect(
       Buffer.from(fastModeImage(true).split(",")[1]!, "base64").toString(),
     ).toBe(fastModeSvg(true));
+  });
+
+  it("keeps every dynamic keypad glyph centered in the accent panel", () => {
+    const images = [
+      agentSvg(4, "working"),
+      fastModeSvg(false),
+      fastModeSvg(true),
+      planModeSvg(false),
+      planModeSvg(true),
+      pushToTalkSvg(false),
+      pushToTalkSvg(true),
+      reasoningSvg("decrease"),
+      reasoningSvg("increase"),
+    ];
+
+    for (const svg of images) {
+      const centeredGroup = svg.match(
+        /<g data-source-center="([\d.-]+) ([\d.-]+)" data-glyph-center="([\d.-]+) ([\d.-]+)" transform="translate\(([\d.-]+) ([\d.-]+)\)">/,
+      );
+      expect(centeredGroup).not.toBeNull();
+
+      const [, sourceX, sourceY, targetX, targetY, offsetX, offsetY] =
+        centeredGroup!;
+      expect(Number(sourceX) + Number(offsetX)).toBe(Number(targetX));
+      expect(Number(sourceY) + Number(offsetY)).toBe(Number(targetY));
+      expect([Number(targetX), Number(targetY)]).toEqual([72, 54]);
+    }
   });
 
   it("renders distinct off and on colors for the plan-mode key", () => {

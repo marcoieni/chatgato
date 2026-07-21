@@ -2,6 +2,8 @@
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>
-  <rect x="40" y="28" width="64" height="56" rx="9" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+  <g data-source-center="72 56" data-glyph-center="72 54" transform="translate(0 -2)">
+    <rect x="40" y="28" width="64" height="56" rx="9" fill="none" stroke="#FFFFFF" stroke-width="6"/>
   <path d="m51 46 11 11-11 11m22 0h19" fill="none" stroke="#00FF4C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

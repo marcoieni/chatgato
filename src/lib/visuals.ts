@@ -39,6 +39,7 @@ export const PUSH_TO_TALK_COLORS = {
 } as const;
 
 const KEY_BACKGROUND = "#071018";
+const KEY_GLYPH_CENTER = [72, 54] as const;
 
 function keyShell(): string {
   return `<rect width="144" height="144" rx="24" fill="${KEY_BACKGROUND}"/>
@@ -47,6 +48,17 @@ function keyShell(): string {
 
 function accentPanel(color: string): string {
   return `<rect x="28" y="14" width="88" height="80" rx="22" fill="${color}"/>`;
+}
+
+function centeredGlyph(
+  glyph: string,
+  sourceCenter: readonly [number, number] = KEY_GLYPH_CENTER,
+): string {
+  const [sourceX, sourceY] = sourceCenter;
+  const [targetX, targetY] = KEY_GLYPH_CENTER;
+  return `<g data-source-center="${sourceX} ${sourceY}" data-glyph-center="${targetX} ${targetY}" transform="translate(${targetX - sourceX} ${targetY - sourceY})">
+      ${glyph}
+    </g>`;
 }
 
 export function effectiveStatus(
@@ -73,7 +85,7 @@ export function agentSvg(slot: number, status: AgentStatus): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
     ${accentPanel(color)}
-    <text x="72" y="72" fill="${foreground}" font-family="Arial,sans-serif" font-weight="800" font-size="${fontSize}" text-anchor="middle">${slot}</text>
+    ${centeredGlyph(`<text x="72" y="54" fill="${foreground}" font-family="Arial,sans-serif" font-weight="800" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central">${slot}</text>`)}
   </svg>`;
 }
 
@@ -107,8 +119,11 @@ export function reasoningSvg(
     <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs>
     ${keyShell()}
     ${accentPanel("url(#g)")}
-    <path d="M49 66c-8-5-5-17 4-18 2-11 18-13 24-4 11-3 20 9 14 18 9 5 5 19-6 19H58c-10 0-16-9-9-15z" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="5"/>
-    <path d="${arrow}" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    ${centeredGlyph(
+      `<path d="M49 66c-8-5-5-17 4-18 2-11 18-13 24-4 11-3 20 9 14 18 9 5 5 19-6 19H58c-10 0-16-9-9-15z" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="5"/>
+      <path d="${arrow}" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`,
+      direction === "increase" ? [70.25, 59.75] : [70.25, 58.75],
+    )}
   </svg>`;
 }
 
@@ -118,7 +133,10 @@ export function fastModeSvg(enabled: boolean): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
     ${accentPanel(color)}
-    <path d="M78 23 48 62h21l-4 29 31-45H76z" fill="${foreground}"/>
+    ${centeredGlyph(
+      `<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="${foreground}"/>`,
+      [72, 57],
+    )}
   </svg>`;
 }
 
@@ -131,7 +149,10 @@ export function planModeSvg(enabled: boolean): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
     ${accentPanel(color)}
-    <path d="M46 40l6 6 10-12M46 65l6 6 10-12M72 40h25M72 65h25" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    ${centeredGlyph(
+      '<path d="M46 40l6 6 10-12M46 65l6 6 10-12M72 40h25M72 65h25" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>',
+      [71.5, 52.5],
+    )}
   </svg>`;
 }
 
@@ -145,8 +166,11 @@ export function pushToTalkSvg(active: boolean): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
     ${accentPanel(color)}
-    <rect x="59" y="25" width="26" height="39" rx="13" fill="none" stroke="${foreground}" stroke-width="7"/>
-    <path d="M48 58v4c0 13 11 23 24 23s24-10 24-23v-4M72 85v8M60 93h24" fill="none" stroke="${foreground}" stroke-width="7" stroke-linecap="round"/>
+    ${centeredGlyph(
+      `<rect x="59" y="25" width="26" height="39" rx="13" fill="none" stroke="${foreground}" stroke-width="7"/>
+      <path d="M48 58v4c0 13 11 23 24 23s24-10 24-23v-4M72 85v8M60 93h24" fill="none" stroke="${foreground}" stroke-width="7" stroke-linecap="round"/>`,
+      [72, 59],
+    )}
   </svg>`;
 }
 
