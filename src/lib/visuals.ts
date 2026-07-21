@@ -97,10 +97,6 @@ export function agentImage(slot: number, status: AgentStatus): string {
   return svgDataUri(agentSvg(slot, status));
 }
 
-export function emptyAgentSvg(slot: number): string {
-  return agentSvg(slot, "off");
-}
-
 export function keyTitle(thread: CodexThread, status: AgentStatus): string {
   const project = basename(thread.cwd) || "Codex";
   const compactProject =
