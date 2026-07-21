@@ -2,8 +2,10 @@
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#304FFE"/>
-  <rect x="42" y="30" width="60" height="52" rx="8" fill="none" stroke="#FFFFFF" stroke-width="7"/>
+  <g data-source-center="72 53.5" data-glyph-center="72 54" transform="translate(0 0.5)">
+    <rect x="42" y="30" width="60" height="52" rx="8" fill="none" stroke="#FFFFFF" stroke-width="7"/>
   <path d="M43 47h58M57 25v12M87 25v12" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
   <circle cx="86" cy="69" r="15" fill="#FF6D00"/>
   <path d="M86 60v10l7 5" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

@@ -2,5 +2,7 @@
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>
-  <path d="M78 23 48 62h21l-4 29 31-45H76z" fill="#FFFFFF"/>
+  <g data-source-center="72 57" data-glyph-center="72 54" transform="translate(0 -3)">
+    <path d="M78 23 48 62h21l-4 29 31-45H76z" fill="#FFFFFF"/>
+  </g>
 </svg>

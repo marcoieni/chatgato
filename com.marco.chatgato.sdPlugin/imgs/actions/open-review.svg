@@ -2,7 +2,9 @@
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#FF6D00"/>
-  <path d="M47 33h40M47 46h27" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+  <g data-source-center="68.75 61.25" data-glyph-center="72 54" transform="translate(3.25 -7.25)">
+    <path d="M47 33h40M47 46h27" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
   <circle cx="66" cy="65" r="14" fill="none" stroke="#FFFFFF" stroke-width="7"/>
   <path d="m77 76 13 13" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  </g>
 </svg>
