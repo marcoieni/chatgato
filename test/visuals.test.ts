@@ -41,11 +41,12 @@ describe("Stream Deck visuals", () => {
       '<rect x="28" y="14" width="88" height="80" rx="22" fill="#00FF4C"/>',
     );
     expect(agentSvg(4, "working")).toContain(
-      '<text x="72" y="54" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="800" font-size="54" text-anchor="middle" dominant-baseline="central">4</text>',
+      '<text x="72" y="72" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="800" font-size="54" text-anchor="middle">4</text>',
     );
     expect(agentSvg(14, "unread")).toContain(
-      '<text x="72" y="54" fill="#071018" font-family="Arial,sans-serif" font-weight="800" font-size="46" text-anchor="middle" dominant-baseline="central">14</text>',
+      '<text x="72" y="72" fill="#071018" font-family="Arial,sans-serif" font-weight="800" font-size="46" text-anchor="middle">14</text>',
     );
+    expect(agentSvg(4, "working")).not.toContain("dominant-baseline");
     expect(agentSvg(4, "working")).not.toContain("<path");
     expect(agentSvg(4, "working")).not.toContain("<circle");
   });
