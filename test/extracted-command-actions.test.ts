@@ -13,8 +13,8 @@ describe("dedicated command actions", () => {
     ["Plan", "com.marco.chatgato.plan"],
     ["Skills", "com.marco.chatgato.skills"],
     ["Scheduled", "com.marco.chatgato.scheduled"],
-    ["Go Back", "com.marco.chatgato.go-back"],
-    ["Go Forward", "com.marco.chatgato.go-forward"],
+    ["Back", "com.marco.chatgato.go-back"],
+    ["Forward", "com.marco.chatgato.go-forward"],
     ["Toggle Sidebar", "com.marco.chatgato.toggle-sidebar"],
   ])("exposes %s as a dedicated Stream Deck action", (name, uuid) => {
     expect(manifest.Actions).toContainEqual(

@@ -34,6 +34,22 @@
     },
     {
       "Controllers": ["Keypad"],
+      "Icon": "imgs/action-list/go-back",
+      "Name": "Back",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/go-back",
+          "Title": "BACK",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Tooltip": "Go back in Codex navigation history.",
+      "UUID": "com.marco.chatgato.go-back"
+    },
+    {
+      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/decline",
       "Name": "Decline",
       "PropertyInspectorPath": "ui/pi.html",
@@ -98,29 +114,13 @@
     },
     {
       "Controllers": ["Keypad"],
-      "Icon": "imgs/action-list/go-back",
-      "Name": "Go Back",
-      "PropertyInspectorPath": "ui/pi.html",
-      "States": [
-        {
-          "Image": "imgs/actions/go-back",
-          "Title": "GO\nBACK",
-          "TitleAlignment": "bottom",
-          "FontSize": 11
-        }
-      ],
-      "Tooltip": "Go back in Codex navigation history.",
-      "UUID": "com.marco.chatgato.go-back"
-    },
-    {
-      "Controllers": ["Keypad"],
       "Icon": "imgs/action-list/go-forward",
-      "Name": "Go Forward",
+      "Name": "Forward",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
           "Image": "imgs/actions/go-forward",
-          "Title": "GO\nFORWARD",
+          "Title": "FORWARD",
           "TitleAlignment": "bottom",
           "FontSize": 10
         }
