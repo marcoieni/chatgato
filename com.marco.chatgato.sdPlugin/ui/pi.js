@@ -89,14 +89,11 @@
         renderDedicatedCommand("Scheduled", "Open scheduled automations.");
         break;
       case "com.marco.chatgato.go-back":
-        renderDedicatedCommand(
-          "Go Back",
-          "Go back in Codex navigation history.",
-        );
+        renderDedicatedCommand("Back", "Go back in Codex navigation history.");
         break;
       case "com.marco.chatgato.go-forward":
         renderDedicatedCommand(
-          "Go Forward",
+          "Forward",
           "Go forward in Codex navigation history.",
         );
         break;
