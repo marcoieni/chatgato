@@ -4,7 +4,7 @@ import type { AgentStatus, CodexThread, CodexUsageSnapshot } from "../types.js";
 
 // Status colors used by ChatGato actions.
 export const STATUS_COLORS: Record<AgentStatus, string> = {
-  off: "#000000",
+  off: "#303840",
   working: "#304FFE",
   unread: "#00FF4C",
   idle: "#FFFFFF",
@@ -34,9 +34,20 @@ export const PLAN_MODE_COLORS = {
 } as const;
 
 export const PUSH_TO_TALK_COLORS = {
-  idle: "#071018",
+  idle: "#303840",
   active: "#FFD600",
 } as const;
+
+const KEY_BACKGROUND = "#071018";
+
+function keyShell(): string {
+  return `<rect width="144" height="144" rx="24" fill="${KEY_BACKGROUND}"/>
+    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>`;
+}
+
+function accentPanel(color: string): string {
+  return `<rect x="28" y="14" width="88" height="80" rx="22" fill="${color}"/>`;
+}
 
 export function effectiveStatus(
   thread: CodexThread,
@@ -59,12 +70,12 @@ export function agentSvg(slot: number, status: AgentStatus): string {
     status === "idle" || status === "unread" || status === "awaiting-approval";
   const foreground = darkText ? "#071018" : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
-    <rect width="144" height="144" rx="24" fill="${color}"/>
-    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="${foreground}" stroke-opacity=".18" stroke-width="2"/>
-    <path d="M46 53h52v38H46z" fill="none" stroke="${foreground}" stroke-width="7" stroke-linejoin="round"/>
-    <path d="M58 68l9 8-9 8M76 84h12" fill="none" stroke="${foreground}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="118" cy="26" r="10" fill="${foreground}" opacity=".9"/>
-    <text x="118" y="31" fill="${color}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="14" text-anchor="middle">${slot}</text>
+    ${keyShell()}
+    ${accentPanel(color)}
+    <rect x="46" y="31" width="52" height="38" rx="6" fill="none" stroke="${foreground}" stroke-width="7"/>
+    <path d="M58 45l9 8-9 8M76 61h11" fill="none" stroke="${foreground}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="101" cy="29" r="11" fill="${foreground}"/>
+    <text x="101" y="33" fill="${color}" font-family="Arial,sans-serif" font-weight="800" font-size="12" text-anchor="middle">${slot}</text>
   </svg>`;
 }
 
@@ -92,13 +103,14 @@ export function reasoningSvg(
 ): string {
   const arrow =
     direction === "increase"
-      ? "M66 93V65H53l19-20 19 20H78v28z"
-      : "M66 51v28H53l19 20 19-20H78V51z";
+      ? "M72 78V40M59 53l13-13 13 13"
+      : "M72 38v38M59 63l13 13 13-13";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs>
-    <rect width="144" height="144" rx="24" fill="#071018"/>
-    <path d="M45 72c-12-8-8-28 7-30 3-15 26-18 34-5 15-5 29 10 23 24 15 8 10 31-7 33-5 15-28 16-35 3-17 5-31-10-22-25z" fill="url(#g)"/>
-    <path d="${arrow}" fill="#fff"/>
+    ${keyShell()}
+    ${accentPanel("url(#g)")}
+    <path d="M49 66c-8-5-5-17 4-18 2-11 18-13 24-4 11-3 20 9 14 18 9 5 5 19-6 19H58c-10 0-16-9-9-15z" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="5"/>
+    <path d="${arrow}" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -106,9 +118,9 @@ export function fastModeSvg(enabled: boolean): string {
   const color = enabled ? FAST_MODE_COLORS.on : FAST_MODE_COLORS.off;
   const foreground = enabled ? "#071018" : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
-    <rect width="144" height="144" rx="24" fill="${color}"/>
-    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="${foreground}" stroke-opacity=".18" stroke-width="2"/>
-    <path d="M78 20 42 78h25l-7 46 42-65H76z" fill="${foreground}"/>
+    ${keyShell()}
+    ${accentPanel(color)}
+    <path d="M78 23 48 62h21l-4 29 31-45H76z" fill="${foreground}"/>
   </svg>`;
 }
 
@@ -119,10 +131,9 @@ export function fastModeImage(enabled: boolean): string {
 export function planModeSvg(enabled: boolean): string {
   const color = enabled ? PLAN_MODE_COLORS.on : PLAN_MODE_COLORS.off;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
-    <rect width="144" height="144" rx="24" fill="${color}"/>
-    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".18" stroke-width="2"/>
-    <rect x="30" y="22" width="84" height="100" rx="16" fill="none" stroke="#FFFFFF" stroke-width="7"/>
-    <path d="M45 53l7 7 12-14M45 84l7 7 12-14M76 54h23M76 85h23" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    ${keyShell()}
+    ${accentPanel(color)}
+    <path d="M46 40l6 6 10-12M46 65l6 6 10-12M72 40h25M72 65h25" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -134,10 +145,10 @@ export function pushToTalkSvg(active: boolean): string {
   const color = active ? PUSH_TO_TALK_COLORS.active : PUSH_TO_TALK_COLORS.idle;
   const foreground = active ? "#071018" : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
-    <rect width="144" height="144" rx="24" fill="${color}"/>
-    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="${foreground}" stroke-opacity=".18" stroke-width="2"/>
-    <rect x="51" y="18" width="42" height="68" rx="21" fill="none" stroke="${foreground}" stroke-width="9"/>
-    <path d="M34 66v5c0 21 17 38 38 38s38-17 38-38v-5M72 109v17M53 126h38" fill="none" stroke="${foreground}" stroke-width="9" stroke-linecap="round"/>
+    ${keyShell()}
+    ${accentPanel(color)}
+    <rect x="59" y="25" width="26" height="39" rx="13" fill="none" stroke="${foreground}" stroke-width="7"/>
+    <path d="M48 58v4c0 13 11 23 24 23s24-10 24-23v-4M72 85v8M60 93h24" fill="none" stroke="${foreground}" stroke-width="7" stroke-linecap="round"/>
   </svg>`;
 }
 
@@ -155,8 +166,7 @@ export function usageSvg(
   usage: CodexUsageSnapshot | null,
   failed = false,
 ): string {
-  const shell = `<rect width="144" height="144" rx="24" fill="#071018"/>
-    <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>`;
+  const shell = keyShell();
   if (failed) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
       ${shell}

@@ -27,7 +27,7 @@ No API key required.
 ## Layout example
 
 <p align="center">
-  <img src="assets/15keys.png" alt="Example 15-key layout"">
+  <img src="assets/15keys.png" alt="Example 15-key layout">
 </p>
 
 For each Agent Status key, choose a different slot from 1–20.

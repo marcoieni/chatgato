@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "esbuild src/plugin.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=com.marco.chatgato.sdPlugin/bin/plugin.js --sourcemap",
+    "icons": "node scripts/generate-icons.mjs",
     "watch": "npm run build -- --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

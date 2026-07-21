@@ -35,7 +35,7 @@ describe("Stream Deck manifest", () => {
     );
   });
 
-  it("uses dedicated monochrome action-list icons without changing key artwork", () => {
+  it("uses dedicated monochrome action-list icons", () => {
     for (const action of manifest.Actions) {
       expect(action.Icon).toMatch(/^imgs\/action-list\/[a-z-]+$/);
       expect(action.States[0]?.Image).toMatch(/^imgs\/actions\/[a-z-]+$/);
@@ -74,6 +74,29 @@ describe("Stream Deck manifest", () => {
       expect(new Set(normalizedColors)).toEqual(new Set(["#FFFFFF"]));
       expect(svg).not.toMatch(
         /<rect[^>]+(?:width="20"[^>]+height="20"|height="20"[^>]+width="20")/,
+      );
+    }
+  });
+
+  it("uses the shared title-safe shell for key artwork", () => {
+    const stateImages = new Set(
+      manifest.Actions.map((action) => action.States[0]?.Image).filter(
+        (image): image is string => image !== undefined,
+      ),
+    );
+
+    for (const image of stateImages) {
+      const imageUrl = new URL(
+        `../com.marco.chatgato.sdPlugin/${image}.svg`,
+        import.meta.url,
+      );
+      const svg = readFileSync(imageUrl, "utf8");
+
+      expect(svg).toContain(
+        '<rect width="144" height="144" rx="24" fill="#071018"/>',
+      );
+      expect(svg).toContain(
+        '<rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>',
       );
     }
   });
