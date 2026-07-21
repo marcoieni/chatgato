@@ -146,5 +146,7 @@ describe("Stream Deck visuals", () => {
     expect(svg).toContain(">82%</text>");
     expect(svg).toContain(">1W</text>");
     expect(svg).toContain(">39%</text>");
+    expect(svg).toContain('font-size="20">5H</text>');
+    expect(svg).toContain('font-size="32" text-anchor="end">82%</text>');
   });
 });
