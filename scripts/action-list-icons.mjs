@@ -22,11 +22,7 @@ export const actionListIcons = {
   ),
   "go-back": list(line(`<path d="m8 4-6 6 6 6m-5.5-6H18"/>`, 2)),
   "go-forward": list(line(`<path d="m12 4 6 6-6 6m5.5-6H2"/>`, 2)),
-  "new-task": list(
-    line(
-      `<rect x="2.5" y="2.5" width="15" height="15" rx="2.5"/><path d="M10 6v8m-4-4h8"/>`,
-    ),
-  ),
+  "new-task": list(line(`<path d="M10 3v14M3 10h14"/>`, 2)),
   "open-review": list(
     line(
       `<path d="M4 2.5h10v4m-10-1h6"/><circle cx="10" cy="11.5" r="4"/><path d="m13 14.5 3.5 3.5"/>`,

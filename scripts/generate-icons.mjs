@@ -76,8 +76,7 @@ const actionIcons = {
   ),
   "new-task": keySvg(
     colors.blue,
-    `<rect x="47" y="26" width="50" height="60" rx="9" fill="none" stroke="${colors.white}" stroke-width="7"/>
-  <path d="M72 41v30M57 56h30" fill="none" stroke="${colors.white}" stroke-width="8" stroke-linecap="round"/>`,
+    `<path d="M72 33v44M50 55h44" fill="none" stroke="${colors.white}" stroke-width="9" stroke-linecap="round"/>`,
   ),
   "open-review": keySvg(
     colors.orange,
