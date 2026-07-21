@@ -29,7 +29,7 @@ describe("Stream Deck visuals", () => {
     );
   });
 
-  it("renders status color in the shared accent panel", () => {
+  it("renders the task number over the status color without a terminal icon", () => {
     expect(agentSvg(4, "working")).toContain(
       '<rect width="144" height="144" rx="24" fill="#071018"/>',
     );
@@ -39,7 +39,14 @@ describe("Stream Deck visuals", () => {
     expect(agentSvg(4, "unread")).toContain(
       '<rect x="28" y="14" width="88" height="80" rx="22" fill="#00FF4C"/>',
     );
-    expect(agentSvg(4, "working")).toContain(">4</text>");
+    expect(agentSvg(4, "working")).toContain(
+      '<text x="72" y="72" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="800" font-size="54" text-anchor="middle">4</text>',
+    );
+    expect(agentSvg(14, "unread")).toContain(
+      '<text x="72" y="72" fill="#071018" font-family="Arial,sans-serif" font-weight="800" font-size="46" text-anchor="middle">14</text>',
+    );
+    expect(agentSvg(4, "working")).not.toContain("<path");
+    expect(agentSvg(4, "working")).not.toContain("<circle");
   });
 
   it("renders distinct off and on colors for the fast-mode key", () => {

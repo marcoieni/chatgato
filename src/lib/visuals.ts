@@ -69,13 +69,11 @@ export function agentSvg(slot: number, status: AgentStatus): string {
   const darkText =
     status === "idle" || status === "unread" || status === "awaiting-approval";
   const foreground = darkText ? "#071018" : "#FFFFFF";
+  const fontSize = slot >= 10 ? 46 : 54;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
     ${accentPanel(color)}
-    <rect x="46" y="31" width="52" height="38" rx="6" fill="none" stroke="${foreground}" stroke-width="7"/>
-    <path d="M58 45l9 8-9 8M76 61h11" fill="none" stroke="${foreground}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="101" cy="29" r="11" fill="${foreground}"/>
-    <text x="101" y="33" fill="${color}" font-family="Arial,sans-serif" font-weight="800" font-size="12" text-anchor="middle">${slot}</text>
+    <text x="72" y="72" fill="${foreground}" font-family="Arial,sans-serif" font-weight="800" font-size="${fontSize}" text-anchor="middle">${slot}</text>
   </svg>`;
 }
 
