@@ -184,13 +184,12 @@ const actionIcons = {
     { glyphCenter: [72, 56] },
   ),
   usage: rawKeySvg(`${shell}
-  <text x="72" y="31" fill="${colors.white}" font-family="Arial,sans-serif" font-size="12" font-weight="800" letter-spacing="1.5" text-anchor="middle">LEFT</text>
-  <text x="20" y="57" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="13" font-weight="800">5H</text>
-  <text x="124" y="57" fill="${colors.green}" font-family="Arial,sans-serif" font-size="20" font-weight="800" text-anchor="end">75%</text>
-  <rect x="20" y="65" width="104" height="7" rx="3.5" fill="${colors.slate}"/><rect x="20" y="65" width="78" height="7" rx="3.5" fill="${colors.green}"/>
-  <text x="20" y="99" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="13" font-weight="800">1W</text>
-  <text x="124" y="99" fill="${colors.blue}" font-family="Arial,sans-serif" font-size="20" font-weight="800" text-anchor="end">50%</text>
-  <rect x="20" y="107" width="104" height="7" rx="3.5" fill="${colors.slate}"/><rect x="20" y="107" width="52" height="7" rx="3.5" fill="${colors.blue}"/>`),
+  <text x="18" y="48" fill="${colors.white}" font-family="Arial,sans-serif" font-size="20" font-weight="800">5H</text>
+  <text x="126" y="48" fill="${colors.green}" font-family="Arial,sans-serif" font-size="32" font-weight="800" text-anchor="end">75%</text>
+  <rect x="18" y="57" width="108" height="9" rx="4.5" fill="${colors.slate}"/><rect x="18" y="57" width="81" height="9" rx="4.5" fill="${colors.green}"/>
+  <text x="18" y="102" fill="${colors.white}" font-family="Arial,sans-serif" font-size="20" font-weight="800">1W</text>
+  <text x="126" y="102" fill="${colors.blue}" font-family="Arial,sans-serif" font-size="32" font-weight="800" text-anchor="end">50%</text>
+  <rect x="18" y="111" width="108" height="9" rx="4.5" fill="${colors.slate}"/><rect x="18" y="111" width="54" height="9" rx="4.5" fill="${colors.blue}"/>`),
 };
 
 const reasoningBackground = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">

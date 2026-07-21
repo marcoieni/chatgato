@@ -188,8 +188,8 @@ export function usageSvg(
   if (failed) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
       ${shell}
-      <text x="72" y="62" fill="#FF0033" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="18" text-anchor="middle">USAGE</text>
-      <text x="72" y="86" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="700" font-size="15" text-anchor="middle">OFFLINE</text>
+      <text x="72" y="57" fill="#FF0033" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="20" text-anchor="middle">USAGE</text>
+      <text x="72" y="88" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="24" text-anchor="middle">OFFLINE</text>
     </svg>`;
   }
 
@@ -199,15 +199,15 @@ export function usageSvg(
   if (usage?.credits?.unlimited && windows.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
       ${shell}
-      <text x="72" y="51" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="700" font-size="14" text-anchor="middle">USAGE</text>
-      <text x="72" y="82" fill="#00FF4C" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="19" text-anchor="middle">UNLIMITED</text>
+      <text x="72" y="57" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="20" text-anchor="middle">USAGE</text>
+      <text x="72" y="88" fill="#00FF4C" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="24" text-anchor="middle">NO LIMIT</text>
     </svg>`;
   }
   if (windows.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
       ${shell}
-      <text x="72" y="61" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="18" text-anchor="middle">USAGE</text>
-      <text x="72" y="84" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="700" font-size="14" text-anchor="middle">NO DATA</text>
+      <text x="72" y="57" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="20" text-anchor="middle">USAGE</text>
+      <text x="72" y="88" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="24" text-anchor="middle">NO DATA</text>
     </svg>`;
   }
 
@@ -216,18 +216,17 @@ export function usageSvg(
     .map((window, index) => {
       const remaining = remainingPercent(window);
       const color = usageColor(remaining);
-      const y = windows.length === 1 ? 66 : 50 + index * 45;
-      const width = Math.round((104 * remaining) / 100);
-      return `<text x="20" y="${y}" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="14">${usageWindowLabel(window.windowMinutes)}</text>
-      <text x="124" y="${y}" fill="${color}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="21" text-anchor="end">${remaining}%</text>
-      <rect x="20" y="${y + 8}" width="104" height="7" rx="3.5" fill="#303840"/>
-      <rect x="20" y="${y + 8}" width="${width}" height="7" rx="3.5" fill="${color}"/>`;
+      const y = windows.length === 1 ? 72 : 48 + index * 54;
+      const width = Math.round((108 * remaining) / 100);
+      return `<text x="18" y="${y}" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="20">${usageWindowLabel(window.windowMinutes)}</text>
+      <text x="126" y="${y}" fill="${color}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="32" text-anchor="end">${remaining}%</text>
+      <rect x="18" y="${y + 9}" width="108" height="9" rx="4.5" fill="#303840"/>
+      <rect x="18" y="${y + 9}" width="${width}" height="9" rx="4.5" fill="${color}"/>`;
     })
     .join("\n");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${shell}
-    <text x="72" y="24" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="800" font-size="12" letter-spacing="1.5" text-anchor="middle">LEFT</text>
     ${rows}
   </svg>`;
 }
