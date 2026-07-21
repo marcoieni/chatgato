@@ -112,10 +112,10 @@ describe("Reasoning actions", () => {
       increase.setImage.mock.calls[0]![0],
     );
     expect(decrease.setImage).toHaveBeenCalledWith(
-      expect.stringContaining('fill="#fff"'),
+      expect.stringContaining('stroke="#FFFFFF"'),
     );
     expect(increase.setImage).toHaveBeenCalledWith(
-      expect.stringContaining('fill="#fff"'),
+      expect.stringContaining('stroke="#FFFFFF"'),
     );
   });
 

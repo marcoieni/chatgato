@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs><rect width="144" height="144" rx="24" fill="#071018"/><path d="M43 70c-11-8-7-28 8-30 4-14 27-16 34-3 16-3 28 12 20 26 14 9 8 30-8 31-7 14-29 13-34 0-17 4-29-10-20-24z" fill="url(#g)"/><path d="M66 51v28H53l19 20 19-20H78V51z" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <defs><linearGradient id="reasoning-gradient" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs><rect width="144" height="144" rx="24" fill="#071018"/>
+  <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
+  <rect x="28" y="14" width="88" height="80" rx="22" fill="url(#reasoning-gradient)"/>
+  <path d="M49 66c-8-5-5-17 4-18 2-11 18-13 24-4 11-3 20 9 14 18 9 5 5 19-6 19H58c-10 0-16-9-9-15z" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="5"/>
+  <path d="M72 38v38m-13-13 13 13 13-13" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

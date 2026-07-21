@@ -29,12 +29,15 @@ describe("Stream Deck visuals", () => {
     );
   });
 
-  it("renders the status color as the full icon background", () => {
+  it("renders status color in the shared accent panel", () => {
     expect(agentSvg(4, "working")).toContain(
-      '<rect width="144" height="144" rx="24" fill="#304FFE"/>',
+      '<rect width="144" height="144" rx="24" fill="#071018"/>',
+    );
+    expect(agentSvg(4, "working")).toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#304FFE"/>',
     );
     expect(agentSvg(4, "unread")).toContain(
-      '<rect width="144" height="144" rx="24" fill="#00FF4C"/>',
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#00FF4C"/>',
     );
     expect(agentSvg(4, "working")).toContain(">4</text>");
   });
@@ -61,8 +64,8 @@ describe("Stream Deck visuals", () => {
   });
 
   it("renders a yellow microphone key while push-to-talk is active", () => {
-    expect(PUSH_TO_TALK_COLORS).toEqual({ idle: "#071018", active: "#FFD600" });
-    expect(pushToTalkSvg(false)).toContain('fill="#071018"');
+    expect(PUSH_TO_TALK_COLORS).toEqual({ idle: "#303840", active: "#FFD600" });
+    expect(pushToTalkSvg(false)).toContain('fill="#303840"');
     expect(pushToTalkSvg(true)).toContain('fill="#FFD600"');
     expect(pushToTalkSvg(true)).toContain('stroke="#071018"');
     expect(pushToTalkSvg(false)).not.toBe(pushToTalkSvg(true));
