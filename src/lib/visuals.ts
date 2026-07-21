@@ -85,7 +85,7 @@ export function agentSvg(slot: number, status: AgentStatus): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
     ${accentPanel(color)}
-    ${centeredGlyph(`<text x="72" y="54" fill="${foreground}" font-family="Arial,sans-serif" font-weight="800" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central">${slot}</text>`)}
+    ${centeredGlyph(`<text x="72" y="72" fill="${foreground}" font-family="Arial,sans-serif" font-weight="800" font-size="${fontSize}" text-anchor="middle">${slot}</text>`)}
   </svg>`;
 }
 
