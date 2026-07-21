@@ -75,6 +75,8 @@ export type RawRateLimitWindow = {
 };
 
 export type RawRateLimits = {
+  limit_id?: unknown;
+  limit_name?: unknown;
   primary?: RawRateLimitWindow | null;
   secondary?: RawRateLimitWindow | null;
   plan_type?: unknown;

@@ -27,6 +27,12 @@ function parseWindow(
   };
 }
 
+function isCanonicalCodexLimit(limitId: unknown): boolean {
+  return (
+    typeof limitId !== "string" || limitId.trim() === "" || limitId === "codex"
+  );
+}
+
 export function usageFromRollout(
   records: readonly RolloutRecord[],
 ): CodexUsageSnapshot | null {
@@ -34,7 +40,12 @@ export function usageFromRollout(
 
   for (const record of records) {
     const limits = record.payload?.rate_limits;
-    if (!limits) continue;
+    // Codex can emit separate model-specific meters (for example,
+    // `codex_bengalfox`) into the same rollout. The account menu displays the
+    // canonical `codex` meter, so do not let a newer specialized meter replace
+    // the value shown by the Stream Deck key. Older rollouts did not include a
+    // limit ID, and those records remain valid.
+    if (!limits || !isCanonicalCodexLimit(limits.limit_id)) continue;
 
     const primary = parseWindow(limits.primary);
     const secondary = parseWindow(limits.secondary);
