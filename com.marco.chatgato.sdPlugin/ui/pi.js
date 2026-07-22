@@ -297,7 +297,7 @@
   function renderModeShortcut(label, commandName, letter, onColor) {
     subtitle.textContent = `Toggle Codex ${label.toLowerCase()}`;
     form.innerHTML = `<p><strong>Required setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “${commandName}”, and assign <code>⌘⌥⇧${letter}</code> on macOS or <code>Ctrl+Alt+Shift+${letter}</code> on Windows.</p>`;
-    note.innerHTML = `<strong>This action will not work until the shortcut is configured exactly.</strong> A warning usually means the binding is missing or conflicts with another shortcut.<div class="legend">
+    note.innerHTML = `<strong>This action will not work until the shortcut is configured exactly.</strong> A warning means ChatGato could not send the shortcut to ChatGPT.<div class="legend">
       <span><i style="background:#303840"></i>Off</span><span><i style="background:${onColor}"></i>On</span>
     </div>`;
   }
