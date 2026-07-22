@@ -2,8 +2,7 @@
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#9E5BFF"/>
-  <g data-source-center="72 57.5" data-glyph-center="72 54" transform="translate(0 -3.5)">
-    <path d="M50 36v9c0 8 4 12 11 16l11 6m22-31v9c0 8-4 12-11 16l-11 6v14" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="50" cy="31" r="7" fill="#FFFFFF"/><circle cx="94" cy="31" r="7" fill="#FFFFFF"/><circle cx="72" cy="84" r="7" fill="#FFFFFF"/>
+  <g data-source-center="63 54" data-glyph-center="72 54" transform="translate(9 0)">
+    <path d="M41 54h20l24-24M69 30h16v16M69 62l16 16M69 78h16V62" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
