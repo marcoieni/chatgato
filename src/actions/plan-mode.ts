@@ -7,7 +7,6 @@ import {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import streamDeck from "@elgato/streamdeck";
-import { setTimeout as delay } from "node:timers/promises";
 import { executeCommand } from "../lib/codex-controller.js";
 import { ActionPoller } from "../lib/action-poller.js";
 import { CodexStore } from "../lib/codex-store.js";
@@ -16,8 +15,6 @@ import type { PlanModeSettings } from "../types.js";
 
 const logger = streamDeck.logger.createScope("Plan Mode");
 const POLL_INTERVAL_MS = 1_000;
-const CONFIRM_TIMEOUT_MS = 2_000;
-const CONFIRM_INTERVAL_MS = 100;
 
 type VisibleAction = WillAppearEvent<PlanModeSettings>["action"];
 
@@ -26,6 +23,7 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
   private toggling = false;
+  private optimisticEnabled: boolean | null = null;
 
   override async onWillAppear(
     ev: WillAppearEvent<PlanModeSettings>,
@@ -48,15 +46,16 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
     this.toggling = true;
 
     try {
-      const previous = await this.store.planModeEnabled();
+      const previous =
+        this.optimisticEnabled ?? (await this.store.planModeEnabled());
       const expected = !previous;
       await executeCommand("togglePlan");
-      const enabled = await this.waitForState(expected);
-      await this.render(ev.action, enabled);
-      if (enabled !== expected) {
-        throw new Error("Codex did not change its persisted plan-mode state");
-      }
-      logger.info(`${enabled ? "Enabled" : "Disabled"} plan mode`);
+      // Codex applies this setting in memory for the next turn, but may not
+      // append it to the rollout until that turn starts. Keep the key in sync
+      // with the command we just sent while the persisted state catches up.
+      this.optimisticEnabled = expected;
+      await this.render(ev.action, expected);
+      logger.info(`${expected ? "Enabled" : "Disabled"} plan mode`);
     } catch (error) {
       logger.error("Failed to toggle plan mode", error);
       await this.refresh(ev.action).catch(() => undefined);
@@ -78,17 +77,17 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
   }
 
   private async refresh(actionInstance: VisibleAction): Promise<void> {
-    await this.render(actionInstance, await this.store.planModeEnabled());
-  }
-
-  private async waitForState(expected: boolean): Promise<boolean> {
-    const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
-    let enabled = await this.store.planModeEnabled();
-    while (enabled !== expected && Date.now() < deadline) {
-      await delay(CONFIRM_INTERVAL_MS);
-      enabled = await this.store.planModeEnabled();
+    const persistedEnabled = await this.store.planModeEnabled();
+    if (
+      this.optimisticEnabled !== null &&
+      persistedEnabled === this.optimisticEnabled
+    ) {
+      this.optimisticEnabled = null;
     }
-    return enabled;
+    await this.render(
+      actionInstance,
+      this.optimisticEnabled ?? persistedEnabled,
+    );
   }
 
   private async render(

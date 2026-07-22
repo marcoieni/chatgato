@@ -50,8 +50,8 @@ describe("PlanModeAction", () => {
     mocks.planModeEnabled.mockResolvedValue(false);
   });
 
-  it("routes through the Plan keyboard shortcut and confirms the on state", async () => {
-    mocks.planModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
+  it("routes through the Plan keyboard shortcut and shows the on state", async () => {
+    mocks.planModeEnabled.mockResolvedValue(false);
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
@@ -69,11 +69,15 @@ describe("PlanModeAction", () => {
     expect(harness.action.showAlert).not.toHaveBeenCalled();
   });
 
-  it("changes back to the off visual on the next press", async () => {
-    mocks.planModeEnabled.mockResolvedValueOnce(true).mockResolvedValue(false);
+  it("changes back to the off visual on the next press while persistence is stale", async () => {
+    mocks.planModeEnabled.mockResolvedValue(false);
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
+    await planMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
     await planMode.onKeyDown({
       action: harness.action,
       payload: { settings: {} },
@@ -105,21 +109,58 @@ describe("PlanModeAction", () => {
     expect(harness.action.showAlert).toHaveBeenCalledOnce();
   });
 
-  it("keeps the off state and alerts when persisted state does not change", async () => {
+  it("keeps the optimistic state without alerting while persistence catches up", async () => {
     vi.useFakeTimers();
     mocks.planModeEnabled.mockResolvedValue(false);
     const harness = actionHarness();
     const planMode = new PlanModeAction();
 
-    const toggled = planMode.onKeyDown({
+    await planMode.onWillAppear({
       action: harness.action,
       payload: { settings: {} },
     } as never);
-    await vi.advanceTimersByTimeAsync(2_100);
-    await toggled;
+    await planMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+    await vi.advanceTimersByTimeAsync(2_000);
 
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
+    expect(harness.action.showAlert).not.toHaveBeenCalled();
+
+    planMode.onWillDisappear({ action: harness.action } as never);
+  });
+
+  it("returns to persisted polling after Codex catches up", async () => {
+    vi.useFakeTimers();
+    mocks.planModeEnabled
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const harness = actionHarness();
+    const planMode = new PlanModeAction();
+
+    await planMode.onWillAppear({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+    await planMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
+
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
-    expect(harness.action.showAlert).toHaveBeenCalledOnce();
+
+    planMode.onWillDisappear({ action: harness.action } as never);
   });
 
   it("polls Codex for app-side changes and stops when the key disappears", async () => {

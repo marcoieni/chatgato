@@ -57,7 +57,7 @@ ChatGPT exposes app-scoped Fast and Plan commands, but does not assign the bindi
 | macOS    | Command+Option+Shift+F | Command+Option+Shift+P |
 | Windows  | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
 
-**The ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** A warning or alert usually means the binding is missing or conflicts with another shortcut.
+**The ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** A warning or alert means ChatGato could not send the shortcut to ChatGPT.
 
 ## Build and install for development
 
