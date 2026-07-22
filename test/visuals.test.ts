@@ -52,9 +52,9 @@ describe("Stream Deck visuals", () => {
   });
 
   it("renders distinct off and on colors for the fast-mode key", () => {
-    expect(FAST_MODE_COLORS).toEqual({ off: "#303840", on: "#00FF4C" });
+    expect(FAST_MODE_COLORS).toEqual({ off: "#303840", on: "#FFD600" });
     expect(fastModeSvg(false)).toContain('fill="#303840"');
-    expect(fastModeSvg(true)).toContain('fill="#00FF4C"');
+    expect(fastModeSvg(true)).toContain('fill="#FFD600"');
     expect(fastModeSvg(false)).not.toBe(fastModeSvg(true));
     expect(fastModeImage(true)).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(
