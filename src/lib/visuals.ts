@@ -25,7 +25,7 @@ export const STATUS_LABELS: Record<AgentStatus, string> = {
 
 export const FAST_MODE_COLORS = {
   off: "#303840",
-  on: "#00FF4C",
+  on: "#FFD600",
 } as const;
 
 export const PLAN_MODE_COLORS = {

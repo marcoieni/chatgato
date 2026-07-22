@@ -59,7 +59,7 @@ describe("FastModeAction", () => {
     );
     const onImage = harness.action.setImage.mock.calls.at(-1)![0];
     expect(Buffer.from(onImage.split(",")[1]!, "base64").toString()).toContain(
-      "#00FF4C",
+      "#FFD600",
     );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
   });
