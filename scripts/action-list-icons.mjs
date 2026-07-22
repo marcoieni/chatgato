@@ -15,11 +15,7 @@ export const actionListIcons = {
   approve: list(line(`<path d="m3 10 4 4L17 4"/>`, 2.25)),
   decline: list(line(`<path d="m4 4 12 12M16 4 4 16"/>`, 2.25)),
   fast: list(line(`<path d="m11 1.75-6 9h4l-1 7.5 7-10h-4.25z"/>`)),
-  fork: list(
-    line(
-      `<path d="M5 5v2.25c0 1 .55 1.85 1.4 2.3l3.6 1.95m5-6.5v2.25c0 1-.55 1.85-1.4 2.3L10 11.5V15"/><circle cx="5" cy="3.25" r="1.75"/><circle cx="15" cy="3.25" r="1.75"/><circle cx="10" cy="16.75" r="1.75"/>`,
-    ),
-  ),
+  fork: list(line(`<path d="M4.5 10h5l6-6m-4 0h4v4m-4 4 4 4m-4 0h4v-4"/>`)),
   "go-back": list(line(`<path d="m8 4-6 6 6 6m-5.5-6H18"/>`, 2)),
   "go-forward": list(line(`<path d="m12 4 6 6-6 6m5.5-6H2"/>`, 2)),
   "new-task": list(line(`<path d="M10 3v14M3 10h14"/>`, 2)),

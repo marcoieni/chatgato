@@ -80,9 +80,8 @@ const actionIcons = {
   ),
   fork: keySvg(
     colors.purple,
-    `<path d="M50 36v9c0 8 4 12 11 16l11 6m22-31v9c0 8-4 12-11 16l-11 6v14" fill="none" stroke="${colors.white}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="50" cy="31" r="7" fill="${colors.white}"/><circle cx="94" cy="31" r="7" fill="${colors.white}"/><circle cx="72" cy="84" r="7" fill="${colors.white}"/>`,
-    { glyphCenter: [72, 57.5] },
+    `<path d="M41 54h20l24-24M69 30h16v16M69 62l16 16M69 78h16V62" fill="none" stroke="${colors.white}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`,
+    { glyphCenter: [63, 54] },
   ),
   "go-back": keySvg(
     colors.blue,
