@@ -14,6 +14,22 @@ on run argv
 	tell application "ChatGPT" to activate
 	delay 0.18
 
+	repeat with attempt from 1 to 3
+		try
+			my sendControl(controlMode, payload)
+			return
+		on error errorMessage number errorNumber
+			if errorNumber is not -600 then error errorMessage number errorNumber
+			if attempt is 3 then error errorMessage number errorNumber
+			-- ChatGPT can still be finishing activation when System Events sends
+			-- the first keystroke. Reactivate it and retry this transient failure.
+			tell application "ChatGPT" to activate
+			delay 0.35
+		end try
+	end repeat
+end run
+
+on sendControl(controlMode, payload)
 	tell application "System Events"
 		if controlMode is "slash" then
 			keystroke payload
@@ -62,4 +78,4 @@ on run argv
 			error "Unknown Codex control mode: " & controlMode
 		end if
 	end tell
-end run
+end sendControl

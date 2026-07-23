@@ -40,6 +40,17 @@ describe("Codex control scripts", () => {
     );
   });
 
+  it("retries transient macOS activation failures", () => {
+    expect(appleScript).toMatch(/repeat with attempt from 1 to 3/u);
+    expect(appleScript).toContain("my sendControl(controlMode, payload)");
+    expect(appleScript).toMatch(
+      /if errorNumber is not -600 then error errorMessage number errorNumber/u,
+    );
+    expect(appleScript).toMatch(
+      /if attempt is 3 then error errorMessage number errorNumber/u,
+    );
+  });
+
   it("sends the configured Fast and Plan shortcuts on Windows", () => {
     expect(powerShell).toContain('toggleFastMode = "^%+f"');
     expect(powerShell).toContain('togglePlanMode = "^%+p"');
