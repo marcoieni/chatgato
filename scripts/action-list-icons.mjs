@@ -89,7 +89,7 @@ export const actionListIcons = {
   ),
   "toggle-sidebar": list(
     line(
-      `<rect x="1.75" y="2.5" width="16.5" height="15" rx="2"/><path d="M7 3v14M4 8l-2 2 2 2m-2-2h3m8-3h2m-2 3h2m-2 3h2"/>`,
+      `<rect x="1.75" y="2.5" width="16.5" height="15" rx="3"/><path d="M6.5 3v14"/>`,
       1.5,
     ),
   ),
