@@ -64,13 +64,13 @@ const actionIcons = {
     { glyphCenter: [77.25, 45.25] },
   ),
   approve: keySvg(
-    colors.green,
-    `<path d="M48 56l15 15 33-36" fill="none" stroke="${colors.ink}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>`,
+    colors.slate,
+    `<path d="M48 56l15 15 33-36" fill="none" stroke="${colors.green}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>`,
     { glyphCenter: [72, 53] },
   ),
   decline: keySvg(
-    colors.red,
-    `<path d="M51 37l42 42M93 37 51 79" fill="none" stroke="${colors.white}" stroke-width="10" stroke-linecap="round"/>`,
+    colors.slate,
+    `<path d="M51 37l42 42M93 37 51 79" fill="none" stroke="${colors.red}" stroke-width="10" stroke-linecap="round"/>`,
     { glyphCenter: [72, 58] },
   ),
   fast: keySvg(
@@ -178,8 +178,8 @@ const actionIcons = {
   ),
   "toggle-sidebar": keySvg(
     colors.blue,
-    `<rect x="42" y="27" width="60" height="58" rx="8" fill="none" stroke="${colors.white}" stroke-width="7"/>
-  <path d="M63 29v54M52 48l-7 8 7 8m-7-8h12M76 43h15M76 56h15M76 69h10" fill="none" stroke="${colors.white}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<rect x="42" y="27" width="60" height="58" rx="10" fill="none" stroke="${colors.white}" stroke-width="7"/>
+  <path d="M60 29v54" fill="none" stroke="${colors.white}" stroke-width="6" stroke-linecap="round"/>`,
     { glyphCenter: [72, 56] },
   ),
   usage: rawKeySvg(`${shell}
