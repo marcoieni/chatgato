@@ -1,3 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-  <g fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h10v4m-10-1h6"/><circle cx="10" cy="11.5" r="4"/><path d="m13 14.5 3.5 3.5"/></g>
+  <!-- Icons: Lucide v1.26.0, ISC license. See LICENSES/Lucide.txt. -->
+  <g data-lucide-icon="scan-search">
+      <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 7V5a2 2 0 0 1 2-2h2" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 3h2a2 2 0 0 1 2 2v2" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 17v2a2 2 0 0 1-2 2h-2" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 21H5a2 2 0 0 1-2-2v-2" />
+  <circle transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" cx="12" cy="12" r="3" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m16 16-1.9-1.9" />
+    </g>
 </svg>

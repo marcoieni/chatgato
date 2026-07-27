@@ -1,8 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <!-- Icons: Lucide v1.26.0, ISC license. See LICENSES/Lucide.txt. -->
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>
-  <g data-source-center="72 54.5" data-glyph-center="72 54" transform="translate(0 -0.5)">
-    <path d="M72 30v4M51 53h-4M97 53h-4M57 38l-3-3M87 38l3-3M72 40C64.8 40 59 45.8 59 53c0 4.4 2.2 8.2 5.5 10.7C66.1 64.9 67 66.8 67 69h10c0-2.2.9-4.1 2.5-5.3C82.8 61.2 85 57.4 85 53c0-7.2-5.8-13-13-13ZM67 74h10M69 79h6" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g data-source-center="72 54" data-glyph-center="72 54" transform="translate(0 0)">
+    <g data-lucide-icon="lightbulb">
+      <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18h6" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10 22h4" />
+    </g>
   </g>
 </svg>

@@ -1,3 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-  <g fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M10 14V6M7 9l3-3 3 3"/></g>
+  <!-- Icons: Lucide v1.26.0, ISC license. See LICENSES/Lucide.txt. -->
+  <g data-lucide-icon="circle-arrow-up">
+      <circle transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" cx="12" cy="12" r="10" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m16 12-4-4-4 4" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 16V8" />
+    </g>
 </svg>

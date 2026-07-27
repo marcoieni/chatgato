@@ -1,3 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-  <g fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 12 12M16 4 4 16"/></g>
+  <!-- Icons: Lucide v1.26.0, ISC license. See LICENSES/Lucide.txt. -->
+  <g data-lucide-icon="x">
+      <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m6 6 12 12" />
+    </g>
 </svg>

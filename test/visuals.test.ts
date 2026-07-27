@@ -59,12 +59,9 @@ describe("Stream Deck visuals", () => {
     expect(fastModeSvg(true)).toContain(
       '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
     );
-    expect(fastModeSvg(false)).toContain(
-      '<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="#FFFFFF"/>',
-    );
-    expect(fastModeSvg(true)).toContain(
-      '<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="#FFD600"/>',
-    );
+    expect(fastModeSvg(false)).toContain('data-lucide-icon="zap"');
+    expect(fastModeSvg(false)).toContain('stroke="#FFFFFF"');
+    expect(fastModeSvg(true)).toContain('stroke="#FFD600"');
     expect(fastModeSvg(false)).not.toBe(fastModeSvg(true));
     expect(fastModeImage(true)).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(
@@ -108,7 +105,7 @@ describe("Stream Deck visuals", () => {
     expect(planModeSvg(true)).toContain(
       '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
     );
-    expect(planModeSvg(false)).toContain("M72 40C64.8 40 59 45.8 59 53");
+    expect(planModeSvg(false)).toContain('data-lucide-icon="lightbulb"');
     expect(planModeSvg(false)).toContain('stroke="#FFFFFF"');
     expect(planModeSvg(true)).toContain('stroke="#FFD600"');
     expect(planModeSvg(false)).not.toBe(planModeSvg(true));
@@ -121,6 +118,7 @@ describe("Stream Deck visuals", () => {
     expect(PUSH_TO_TALK_COLORS).toEqual({ idle: "#303840", active: "#FFD600" });
     expect(pushToTalkSvg(false)).toContain('fill="#303840"');
     expect(pushToTalkSvg(true)).toContain('fill="#FFD600"');
+    expect(pushToTalkSvg(false)).toContain('data-lucide-icon="mic"');
     expect(pushToTalkSvg(true)).toContain('stroke="#071018"');
     expect(pushToTalkSvg(false)).not.toBe(pushToTalkSvg(true));
     expect(
@@ -134,6 +132,21 @@ describe("Stream Deck visuals", () => {
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toBe(
       agentSvg(2, "unread"),
     );
+  });
+
+  it("uses Lucide glyphs for dynamic control icons", () => {
+    expect(reasoningSvg("decrease")).toContain('data-lucide-icon="brain"');
+    expect(reasoningSvg("decrease")).toContain('data-lucide-icon="arrow-down"');
+    expect(reasoningSvg("increase")).toContain('data-lucide-icon="arrow-up"');
+
+    for (const svg of [
+      fastModeSvg(false),
+      planModeSvg(false),
+      pushToTalkSvg(false),
+      reasoningSvg("increase"),
+    ]) {
+      expect(svg).toContain("Icons: Lucide v1.26.0, ISC license.");
+    }
   });
 
   it("clears unread after the matching task is acknowledged", () => {

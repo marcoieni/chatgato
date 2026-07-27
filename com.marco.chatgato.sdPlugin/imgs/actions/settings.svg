@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <!-- Icons: Lucide v1.26.0, ISC license. See LICENSES/Lucide.txt. -->
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>
-  <g data-source-center="72 56" data-glyph-center="72 54" transform="translate(0 -2)">
-    <path d="M46 37h52M46 56h52M46 75h52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="62" cy="37" r="7" fill="#303840" stroke="#FFFFFF" stroke-width="6"/>
-  <circle cx="84" cy="56" r="7" fill="#303840" stroke="#FFFFFF" stroke-width="6"/>
-  <circle cx="66" cy="75" r="7" fill="#303840" stroke="#FFFFFF" stroke-width="6"/>
+  <g data-source-center="72 54" data-glyph-center="72 54" transform="translate(0 0)">
+    <g data-lucide-icon="sliders-horizontal">
+      <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10 5H3" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 19H3" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M14 3v4" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 17v4" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 12h-9" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 19h-5" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 5h-7" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 10v4" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 12H3" />
+    </g>
   </g>
 </svg>
