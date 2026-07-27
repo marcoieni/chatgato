@@ -102,6 +102,21 @@ describe("Stream Deck manifest", () => {
     }
   });
 
+  it("uses a neutral panel and blue glyph for the New Task command", () => {
+    const svg = readFileSync(
+      new URL(
+        "../com.marco.chatgato.sdPlugin/imgs/actions/new-task.svg",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(svg).toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
+    );
+    expect(svg).toContain('fill="none" stroke="#304FFE" stroke-width="9"');
+  });
+
   it("centers every keypad glyph in the title-safe accent panel", () => {
     const stateImages = new Set(
       manifest.Actions.filter((action) => action.Controllers.includes("Keypad"))

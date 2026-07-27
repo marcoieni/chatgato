@@ -30,7 +30,7 @@ export const FAST_MODE_COLORS = {
 
 export const PLAN_MODE_COLORS = {
   off: "#303840",
-  on: "#9E5BFF",
+  on: FAST_MODE_COLORS.on,
 } as const;
 
 export const PUSH_TO_TALK_COLORS = {
@@ -124,11 +124,10 @@ export function reasoningSvg(
 }
 
 export function fastModeSvg(enabled: boolean): string {
-  const color = enabled ? FAST_MODE_COLORS.on : FAST_MODE_COLORS.off;
-  const foreground = enabled ? "#071018" : "#FFFFFF";
+  const foreground = enabled ? FAST_MODE_COLORS.on : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
-    ${accentPanel(color)}
+    ${accentPanel(FAST_MODE_COLORS.off)}
     ${centeredGlyph(
       `<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="${foreground}"/>`,
       [72, 57],
@@ -141,13 +140,13 @@ export function fastModeImage(enabled: boolean): string {
 }
 
 export function planModeSvg(enabled: boolean): string {
-  const color = enabled ? PLAN_MODE_COLORS.on : PLAN_MODE_COLORS.off;
+  const foreground = enabled ? PLAN_MODE_COLORS.on : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${keyShell()}
-    ${accentPanel(color)}
+    ${accentPanel(PLAN_MODE_COLORS.off)}
     ${centeredGlyph(
-      '<path d="M46 40l6 6 10-12M46 65l6 6 10-12M72 40h25M72 65h25" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>',
-      [71.5, 52.5],
+      `<path d="M72 30v4M51 53h-4M97 53h-4M57 38l-3-3M87 38l3-3M72 40C64.8 40 59 45.8 59 53c0 4.4 2.2 8.2 5.5 10.7C66.1 64.9 67 66.8 67 69h10c0-2.2.9-4.1 2.5-5.3C82.8 61.2 85 57.4 85 53c0-7.2-5.8-13-13-13ZM67 74h10M69 79h6" fill="none" stroke="${foreground}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`,
+      [72, 54.5],
     )}
   </svg>`;
 }

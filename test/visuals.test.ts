@@ -51,10 +51,20 @@ describe("Stream Deck visuals", () => {
     expect(agentSvg(4, "working")).not.toContain("<circle");
   });
 
-  it("renders distinct off and on colors for the fast-mode key", () => {
+  it("highlights the fast-mode shape without changing its background", () => {
     expect(FAST_MODE_COLORS).toEqual({ off: "#303840", on: "#FFD600" });
-    expect(fastModeSvg(false)).toContain('fill="#303840"');
-    expect(fastModeSvg(true)).toContain('fill="#FFD600"');
+    expect(fastModeSvg(false)).toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
+    );
+    expect(fastModeSvg(true)).toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
+    );
+    expect(fastModeSvg(false)).toContain(
+      '<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="#FFFFFF"/>',
+    );
+    expect(fastModeSvg(true)).toContain(
+      '<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="#FFD600"/>',
+    );
     expect(fastModeSvg(false)).not.toBe(fastModeSvg(true));
     expect(fastModeImage(true)).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(
@@ -89,10 +99,18 @@ describe("Stream Deck visuals", () => {
     }
   });
 
-  it("renders distinct off and on colors for the plan-mode key", () => {
-    expect(PLAN_MODE_COLORS).toEqual({ off: "#303840", on: "#9E5BFF" });
-    expect(planModeSvg(false)).toContain('fill="#303840"');
-    expect(planModeSvg(true)).toContain('fill="#9E5BFF"');
+  it("highlights the plan-mode shape without changing its background", () => {
+    expect(PLAN_MODE_COLORS).toEqual({ off: "#303840", on: "#FFD600" });
+    expect(PLAN_MODE_COLORS.on).toBe(FAST_MODE_COLORS.on);
+    expect(planModeSvg(false)).toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
+    );
+    expect(planModeSvg(true)).toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>',
+    );
+    expect(planModeSvg(false)).toContain("M72 40C64.8 40 59 45.8 59 53");
+    expect(planModeSvg(false)).toContain('stroke="#FFFFFF"');
+    expect(planModeSvg(true)).toContain('stroke="#FFD600"');
     expect(planModeSvg(false)).not.toBe(planModeSvg(true));
     expect(
       Buffer.from(planModeImage(true).split(",")[1]!, "base64").toString(),

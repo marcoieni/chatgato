@@ -80,7 +80,7 @@
         renderDedicatedCommand("Settings", "Open Codex settings.");
         break;
       case "com.marco.chatgato.plan":
-        renderModeShortcut("Plan", "Toggle plan mode", "P", "#9e5bff");
+        renderModeShortcut("Plan", "Toggle plan mode", "P", "#ffd600");
         break;
       case "com.marco.chatgato.skills":
         renderDedicatedCommand("Skills", "Open Codex Skills.");
@@ -122,7 +122,7 @@
         renderTapToTalk();
         break;
       case "com.marco.chatgato.fast-mode":
-        renderModeShortcut("Fast Mode", "Toggle Fast mode", "F", "#00ff4c");
+        renderModeShortcut("Fast Mode", "Toggle Fast mode", "F", "#ffd600");
         break;
       case "com.marco.chatgato.decrease-reasoning":
         renderDedicatedCommand(

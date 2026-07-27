@@ -63,7 +63,7 @@ describe("PlanModeAction", () => {
     expect(mocks.executeCommand).toHaveBeenCalledWith("togglePlan");
     const image = harness.action.setImage.mock.calls.at(-1)![0];
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toContain(
-      "#9E5BFF",
+      "#FFD600",
     );
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
     expect(harness.action.showAlert).not.toHaveBeenCalled();
