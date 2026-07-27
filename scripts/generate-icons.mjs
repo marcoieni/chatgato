@@ -79,7 +79,7 @@ const actionIcons = {
     { glyphCenter: [72, 57] },
   ),
   fork: keySvg(
-    colors.purple,
+    colors.slate,
     `<path d="M41 54h20l24-24M69 30h16v16M69 62l16 16M69 78h16V62" fill="none" stroke="${colors.white}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`,
     { glyphCenter: [63, 54] },
   ),
@@ -94,8 +94,8 @@ const actionIcons = {
     { glyphCenter: [70.5, 57] },
   ),
   "new-task": keySvg(
-    colors.blue,
-    `<path d="M72 33v44M50 55h44" fill="none" stroke="${colors.white}" stroke-width="9" stroke-linecap="round"/>`,
+    colors.slate,
+    `<path d="M72 33v44M50 55h44" fill="none" stroke="${colors.blue}" stroke-width="9" stroke-linecap="round"/>`,
     { glyphCenter: [72, 55] },
   ),
   "open-review": keySvg(
@@ -107,8 +107,8 @@ const actionIcons = {
   ),
   plan: keySvg(
     colors.slate,
-    `<path d="m46 40 6 6 10-12m-16 31 6 6 10-12M72 40h25M72 65h25" fill="none" stroke="${colors.white}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`,
-    { glyphCenter: [71.5, 52.5] },
+    `<path d="M72 30v4M51 53h-4M97 53h-4M57 38l-3-3M87 38l3-3M72 40C64.8 40 59 45.8 59 53c0 4.4 2.2 8.2 5.5 10.7C66.1 64.9 67 66.8 67 69h10c0-2.2.9-4.1 2.5-5.3C82.8 61.2 85 57.4 85 53c0-7.2-5.8-13-13-13ZM67 74h10M69 79h6" fill="none" stroke="${colors.white}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`,
+    { glyphCenter: [72, 54.5] },
   ),
   prompt: keySvg(
     colors.purple,
@@ -166,8 +166,8 @@ const actionIcons = {
     { glyphCenter: [72, 54.25] },
   ),
   submit: keySvg(
-    colors.green,
-    `<path d="M72 80V37M52 57l20-20 20 20" fill="none" stroke="${colors.ink}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`,
+    colors.slate,
+    `<path d="M72 80V37M52 57l20-20 20 20" fill="none" stroke="${colors.white}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`,
     { glyphCenter: [72, 58.5] },
   ),
   terminal: keySvg(

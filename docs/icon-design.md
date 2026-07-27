@@ -13,8 +13,9 @@ legible on hardware and coherent as the action set grows.
 - Primary glyphs use rounded caps and joins at 7–10 px. Fine detail, gradients
   outside the reasoning family, and text inside ordinary key art are avoided.
 - Accent colors have stable meaning: blue for navigation and creation, purple for
-  reasoning and AI, green for positive actions, red for destructive or failed
-  actions, orange for attention, and slate for neutral or disabled states.
+  reasoning and AI, yellow for enabled controls, green for positive actions, red
+  for destructive or failed actions, orange for attention, and slate for neutral
+  or disabled states.
 - Action-list icons are 20 × 20 SVGs with a transparent background and only white
   (`#FFFFFF`) strokes. Their shapes mirror the corresponding key glyphs.
 - Dynamic states update the accent panel while keeping the shell and title zone
