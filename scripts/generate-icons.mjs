@@ -75,7 +75,7 @@ const actionStyles = {
   settings: { accent: colors.slate },
   skills: { accent: colors.purple },
   submit: { accent: colors.slate },
-  terminal: { accent: colors.slate, color: colors.green },
+  terminal: { accent: colors.slate, color: colors.white },
   "toggle-sidebar": { accent: colors.blue },
 };
 
