@@ -145,7 +145,7 @@ describe("Stream Deck visuals", () => {
       pushToTalkSvg(false),
       reasoningSvg("increase"),
     ]) {
-      expect(svg).toContain("Icons: Lucide v1.26.0, ISC license.");
+      expect(svg).toContain("Icons: Lucide v1.27.0, ISC license.");
     }
   });
 
