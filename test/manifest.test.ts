@@ -73,6 +73,13 @@ describe("Stream Deck manifest", () => {
         "20",
       ]);
       expect(new Set(normalizedColors)).toEqual(new Set(["#FFFFFF"]));
+      if (action.Name === "Fork") {
+        expect(svg).not.toContain("Icons: Lucide");
+        expect(svg).not.toContain("data-lucide-icon");
+      } else {
+        expect(svg).toContain("Icons: Lucide v1.27.0, ISC license.");
+        expect(svg).toMatch(/data-lucide-icon="[a-z0-9-]+"/);
+      }
       expect(svg).not.toMatch(
         /<rect[^>]+(?:width="20"[^>]+height="20"|height="20"[^>]+width="20")/,
       );
@@ -120,6 +127,13 @@ describe("Stream Deck manifest", () => {
         continue;
       }
 
+      if (image === "imgs/actions/fork") {
+        expect(svg).not.toContain("data-lucide-icon");
+      } else {
+        expect(svg, `${image} is not sourced from Lucide`).toMatch(
+          /data-lucide-icon="[a-z0-9-]+"/,
+        );
+      }
       const centeredGroup = svg.match(
         /<g data-source-center="([\d.-]+) ([\d.-]+)" data-glyph-center="([\d.-]+) ([\d.-]+)" transform="translate\(([\d.-]+) ([\d.-]+)\)">/,
       );

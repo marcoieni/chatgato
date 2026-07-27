@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import { remainingPercent, usageWindowLabel } from "./codex-usage.js";
+import { DYNAMIC_ICON_SOURCES, LUCIDE_LICENSE, lucideGlyph } from "./lucide.js";
 import type { AgentStatus, CodexThread, CodexUsageSnapshot } from "../types.js";
 
 // Status colors used by ChatGato actions.
@@ -107,18 +108,20 @@ export function keyTitle(thread: CodexThread, status: AgentStatus): string {
 export function reasoningSvg(
   direction: "increase" | "decrease" = "increase",
 ): string {
-  const arrow =
-    direction === "increase"
-      ? "M72 78V40M59 53l13-13 13 13"
-      : "M72 38v38M59 63l13 13 13-13";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    ${LUCIDE_LICENSE}
     <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs>
     ${keyShell()}
     ${accentPanel("url(#g)")}
     ${centeredGlyph(
-      `<path d="M49 66c-8-5-5-17 4-18 2-11 18-13 24-4 11-3 20 9 14 18 9 5 5 19-6 19H58c-10 0-16-9-9-15z" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="5"/>
-      <path d="${arrow}" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`,
-      direction === "increase" ? [70.25, 59.75] : [70.25, 58.75],
+      `${lucideGlyph(DYNAMIC_ICON_SOURCES.brain, {
+        center: [62, 54],
+        size: 48,
+      })}
+      ${lucideGlyph(DYNAMIC_ICON_SOURCES[direction], {
+        center: [99, 54],
+        size: 24,
+      })}`,
     )}
   </svg>`;
 }
@@ -126,11 +129,13 @@ export function reasoningSvg(
 export function fastModeSvg(enabled: boolean): string {
   const foreground = enabled ? FAST_MODE_COLORS.on : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    ${LUCIDE_LICENSE}
     ${keyShell()}
     ${accentPanel(FAST_MODE_COLORS.off)}
     ${centeredGlyph(
-      `<path d="M78 23 48 62h21l-4 29 31-45H76z" fill="${foreground}"/>`,
-      [72, 57],
+      lucideGlyph(DYNAMIC_ICON_SOURCES.fast, {
+        color: foreground,
+      }),
     )}
   </svg>`;
 }
@@ -142,11 +147,13 @@ export function fastModeImage(enabled: boolean): string {
 export function planModeSvg(enabled: boolean): string {
   const foreground = enabled ? PLAN_MODE_COLORS.on : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    ${LUCIDE_LICENSE}
     ${keyShell()}
     ${accentPanel(PLAN_MODE_COLORS.off)}
     ${centeredGlyph(
-      `<path d="M72 30v4M51 53h-4M97 53h-4M57 38l-3-3M87 38l3-3M72 40C64.8 40 59 45.8 59 53c0 4.4 2.2 8.2 5.5 10.7C66.1 64.9 67 66.8 67 69h10c0-2.2.9-4.1 2.5-5.3C82.8 61.2 85 57.4 85 53c0-7.2-5.8-13-13-13ZM67 74h10M69 79h6" fill="none" stroke="${foreground}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`,
-      [72, 54.5],
+      lucideGlyph(DYNAMIC_ICON_SOURCES.plan, {
+        color: foreground,
+      }),
     )}
   </svg>`;
 }
@@ -159,12 +166,13 @@ export function pushToTalkSvg(active: boolean): string {
   const color = active ? PUSH_TO_TALK_COLORS.active : PUSH_TO_TALK_COLORS.idle;
   const foreground = active ? "#071018" : "#FFFFFF";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    ${LUCIDE_LICENSE}
     ${keyShell()}
     ${accentPanel(color)}
     ${centeredGlyph(
-      `<rect x="59" y="25" width="26" height="39" rx="13" fill="none" stroke="${foreground}" stroke-width="7"/>
-      <path d="M48 58v4c0 13 11 23 24 23s24-10 24-23v-4M72 85v8M60 93h24" fill="none" stroke="${foreground}" stroke-width="7" stroke-linecap="round"/>`,
-      [72, 59],
+      lucideGlyph(DYNAMIC_ICON_SOURCES.pushToTalk, {
+        color: foreground,
+      }),
     )}
   </svg>`;
 }

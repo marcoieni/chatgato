@@ -1,6 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <!-- Icons: Lucide v1.27.0, ISC license. See LICENSES/Lucide.txt. -->
   <defs><linearGradient id="reasoning-gradient" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#304FFE"/><stop offset="1" stop-color="#9E5BFF"/></linearGradient></defs><rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="25" y="22" width="94" height="100" rx="25" fill="url(#reasoning-gradient)"/>
-  <path d="M54 88V54M43 65l11-11 11 11m25-9v34M79 79l11 11 11-11" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <g data-lucide-icon="brain-cog">
+      <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m10.852 14.772-.383.923" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m10.852 9.228-.383-.923" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m13.148 14.772.382.924" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m13.531 8.305-.383.923" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m14.772 10.852.923-.383" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m14.772 13.148.923.383" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 0 0-5.63-1.446 3 3 0 0 0-.368 1.571 4 4 0 0 0-2.525 5.771" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17.998 5.125a4 4 0 0 1 2.525 5.771" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19.505 10.294a4 4 0 0 1-1.5 7.706" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4.032 17.483A4 4 0 0 0 11.464 20c.18-.311.892-.311 1.072 0a4 4 0 0 0 7.432-2.516" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.291A4 4 0 0 0 6 18" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6.002 5.125a3 3 0 0 0 .4 1.375" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m9.228 10.852-.923-.383" />
+  <path transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m9.228 13.148-.923.383" />
+  <circle transform="matrix(2.6666666666666665 0 0 2.6666666666666665 40 40)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" cx="12" cy="12" r="3" />
+    </g>
 </svg>

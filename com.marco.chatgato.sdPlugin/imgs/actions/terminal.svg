@@ -1,9 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <!-- Icons: Lucide v1.27.0, ISC license. See LICENSES/Lucide.txt. -->
   <rect width="144" height="144" rx="24" fill="#071018"/>
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
   <rect x="28" y="14" width="88" height="80" rx="22" fill="#303840"/>
-  <g data-source-center="72 56" data-glyph-center="72 54" transform="translate(0 -2)">
-    <rect x="40" y="28" width="64" height="56" rx="9" fill="none" stroke="#FFFFFF" stroke-width="6"/>
-  <path d="m51 46 11 11-11 11m22 0h19" fill="none" stroke="#00FF4C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <g data-source-center="72 54" data-glyph-center="72 54" transform="translate(0 0)">
+    <g data-lucide-icon="square-terminal">
+      <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m7 11 2-2-2-2" />
+  <path transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M11 13h4" />
+  <rect transform="matrix(2.5 0 0 2.5 42 24)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" x="3" y="3" rx="2" ry="2" />
+    </g>
   </g>
 </svg>
