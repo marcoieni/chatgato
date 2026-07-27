@@ -9,7 +9,6 @@ import CalendarClock from "lucide-static/dist/esm/icons/calendar-clock.mjs";
 import ChartBar from "lucide-static/dist/esm/icons/chart-bar.mjs";
 import Check from "lucide-static/dist/esm/icons/check.mjs";
 import CircleArrowUp from "lucide-static/dist/esm/icons/circle-arrow-up.mjs";
-import GitFork from "lucide-static/dist/esm/icons/git-fork.mjs";
 import Lightbulb from "lucide-static/dist/esm/icons/lightbulb.mjs";
 import ListChecks from "lucide-static/dist/esm/icons/list-checks.mjs";
 import MessageSquarePlus from "lucide-static/dist/esm/icons/message-square-plus.mjs";
@@ -31,7 +30,6 @@ export const actionIconSources = {
   approve: Check,
   decline: X,
   fast: Zap,
-  fork: GitFork,
   "go-back": ArrowLeft,
   "go-forward": ArrowRight,
   "new-task": SquarePlus,

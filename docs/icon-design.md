@@ -12,15 +12,16 @@ coherent as the action set grows. Lucide is distributed under the ISC license.
 - The accent panel occupies `x=28–116`, `y=14–94`. The bottom 50 px remain quiet
   for Stream Deck's one- or two-line title overlay.
 - Primary glyphs come from `lucide-static` and retain Lucide's rounded caps,
-  joins, and 24 × 24 source geometry. `scripts/lucide-icons.mjs` is the shared
-  mapping from ChatGato actions to Lucide icon names.
+  joins, and 24 × 24 source geometry. The fork action retains its custom
+  branching-arrow glyph. `scripts/lucide-icons.mjs` is the shared mapping from
+  ChatGato actions to Lucide icon names.
 - Accent colors have stable meaning: blue for navigation and creation, purple for
   reasoning and AI, yellow for enabled controls, green for positive actions, red
   for destructive or failed actions, orange for attention, and slate for neutral
   or disabled states.
 - Action-list icons are 20 × 20 SVGs with a transparent background and only
-  white (`#FFFFFF`) strokes. They use the same Lucide source as the
-  corresponding key glyphs.
+  white (`#FFFFFF`) strokes. They use the same source as the corresponding key
+  glyphs.
 - Dynamic states update the accent panel while keeping the shell and title zone
   stable. Their glyphs are also rendered from `lucide-static`, so state changes
   do not switch icon families.

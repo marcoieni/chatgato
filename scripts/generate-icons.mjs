@@ -34,12 +34,19 @@ const shell = `<rect width="144" height="144" rx="24" fill="${colors.background}
   <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="${colors.white}" stroke-opacity=".12" stroke-width="2"/>`;
 const gradient = `<defs><linearGradient id="reasoning-gradient" x1="0" y1="1" x2="1" y2="0"><stop stop-color="${colors.blue}"/><stop offset="1" stop-color="${colors.purple}"/></linearGradient></defs>`;
 
-function keySvg(accent, glyph, { defs = "" } = {}) {
+function keySvg(
+  accent,
+  glyph,
+  { defs = "", glyphCenter = [72, 54], usesLucide = true } = {},
+) {
+  const [sourceX, sourceY] = glyphCenter;
+  const translateX = 72 - sourceX;
+  const translateY = 54 - sourceY;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
-  ${LUCIDE_LICENSE}
-  ${defs}${shell}
+  ${usesLucide ? `${LUCIDE_LICENSE}\n  ` : ""}${defs}${shell}
   <rect x="28" y="14" width="88" height="80" rx="22" fill="${accent}"/>
-  <g data-source-center="72 54" data-glyph-center="72 54" transform="translate(0 0)">
+  <g data-source-center="${sourceX} ${sourceY}" data-glyph-center="72 54" transform="translate(${translateX} ${translateY})">
     ${glyph}
   </g>
 </svg>\n`;
@@ -56,7 +63,6 @@ const actionStyles = {
   approve: { accent: colors.slate, color: colors.green, size: 64 },
   decline: { accent: colors.slate, color: colors.red, size: 64 },
   fast: { accent: colors.slate },
-  fork: { accent: colors.slate },
   "go-back": { accent: colors.blue },
   "go-forward": { accent: colors.blue },
   "new-task": { accent: colors.slate },
@@ -91,6 +97,11 @@ actionIcons.agent = keySvg(
   `${keyGlyph(actionIconSources.agent, { size: 58 })}
   <circle cx="101" cy="29" r="11" fill="${colors.white}"/>
   <text x="101" y="33" fill="${colors.blue}" font-family="Arial,sans-serif" font-size="12" font-weight="800" text-anchor="middle">1</text>`,
+);
+actionIcons.fork = keySvg(
+  colors.slate,
+  `<path d="M41 54h20l24-24M69 30h16v16M69 62l16 16M69 78h16V62" fill="none" stroke="${colors.white}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`,
+  { glyphCenter: [63, 54], usesLucide: false },
 );
 
 const reasoningKeyIcon = (direction) =>
