@@ -95,7 +95,7 @@ const actionIcons = {
   ),
   "new-task": keySvg(
     colors.slate,
-    `<path d="M72 33v44M50 55h44" fill="none" stroke="${colors.blue}" stroke-width="9" stroke-linecap="round"/>`,
+    `<path d="M72 33v44M50 55h44" fill="none" stroke="${colors.white}" stroke-width="9" stroke-linecap="round"/>`,
     { glyphCenter: [72, 55] },
   ),
   "open-review": keySvg(
