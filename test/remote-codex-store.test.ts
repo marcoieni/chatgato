@@ -6,15 +6,26 @@ import {
   readRemoteThreadRows,
   readThreadsFromHost,
   remoteAgentStatus,
+  remoteHostFailures,
 } from "../src/lib/remote-codex-store.js";
 
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(
     temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })),
   );
 });
+
+async function fakeSshScript(source: string): Promise<string> {
+  const directory = await mkdtemp(join(tmpdir(), "chatgato-fake-ssh-"));
+  temporaryDirectories.push(directory);
+  const path = join(directory, "fake-ssh.mjs");
+  await writeFile(path, `#!/usr/bin/env node\n${source}`);
+  await chmod(path, 0o755);
+  return path;
+}
 
 describe("remote Codex task discovery", () => {
   it("reads each configured SSH project's tasks", async () => {
@@ -42,6 +53,7 @@ describe("remote Codex task discovery", () => {
             projectKind: "remote",
             hostId: "remote-ssh-discovered:devbox",
             path: "/srv/work",
+            cwd: "/srv/work/nested",
           },
         },
       }),
@@ -71,7 +83,7 @@ describe("remote Codex task discovery", () => {
         destination: "devbox",
         hostId: "remote-ssh-discovered:devbox",
       }),
-      ["/srv/work"],
+      ["/srv/work", "/srv/work/nested"],
     );
   });
 
@@ -106,19 +118,126 @@ describe("remote Codex task discovery", () => {
         },
       ];
     });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
       expect.objectContaining({ id: "thread-b" }),
     ]);
+    expect(remoteHostFailures()).toContainEqual(
+      expect.objectContaining({
+        hostId: "host-a",
+        kind: "transport",
+        message: "offline",
+      }),
+    );
   });
 
-  it("speaks the app-server protocol over SSH and reads latest turn status", async () => {
+  it("returns a healthy host without waiting for an unresponsive host", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
+    temporaryDirectories.push(home);
+    await writeFile(
+      join(home, ".codex-global-state.json"),
+      JSON.stringify({
+        "codex-managed-remote-connections": [
+          { hostId: "stalled-host", alias: "stalled-host" },
+          { hostId: "healthy-host", alias: "healthy-host" },
+        ],
+        "remote-projects": [
+          { hostId: "stalled-host", remotePath: "/work/stalled" },
+          { hostId: "healthy-host", remotePath: "/work/healthy" },
+        ],
+      }),
+    );
+    const never = new Promise<never>(() => undefined);
+    const readHost = vi.fn(async (connection) => {
+      if (connection.hostId === "stalled-host") return never;
+      return [
+        {
+          cwd: "/work/healthy/nested",
+          id: "healthy-thread",
+          recencyAtMs: 1,
+          remoteHostId: connection.hostId,
+          rolloutPath: "/healthy.jsonl",
+          status: "working" as const,
+          title: "Healthy",
+          updatedAtMs: 1,
+        },
+      ];
+    });
+
+    const startedAt = performance.now();
+    await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+      expect.objectContaining({ id: "healthy-thread" }),
+    ]);
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+  });
+
+  it("serves cached rows while refreshing a host independently", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
+    temporaryDirectories.push(home);
+    await writeFile(
+      join(home, ".codex-global-state.json"),
+      JSON.stringify({
+        "codex-managed-remote-connections": [
+          { hostId: "cached-host", alias: "cached-host" },
+        ],
+        "remote-projects": [
+          { hostId: "cached-host", remotePath: "/work/cached" },
+        ],
+      }),
+    );
+    const never = new Promise<never>(() => undefined);
+    let reads = 0;
+    const readHost = vi.fn(async (connection) => {
+      reads += 1;
+      if (reads > 1) return never;
+      return [
+        {
+          cwd: "/work/cached",
+          id: "cached-thread",
+          recencyAtMs: 1,
+          remoteHostId: connection.hostId,
+          rolloutPath: "/cached.jsonl",
+          status: "idle" as const,
+          title: "Cached",
+          updatedAtMs: 1,
+        },
+      ];
+    });
+
+    vi.useFakeTimers();
+    try {
+      await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+        expect.objectContaining({ id: "cached-thread" }),
+      ]);
+      await vi.advanceTimersByTimeAsync(1_001);
+      await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+        expect.objectContaining({ id: "cached-thread" }),
+      ]);
+      expect(readHost).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("paginates all threads and derives status from the persisted rollout", async () => {
     const directory = await mkdtemp(join(tmpdir(), "chatgato-fake-ssh-"));
     temporaryDirectories.push(directory);
     const fakeSsh = join(directory, "fake-ssh.mjs");
     await writeFile(
       fakeSsh,
       `#!/usr/bin/env node
+if (!process.argv.includes("app-server")) {
+  process.stdout.write(
+    String.fromCharCode(30) + "0\\n" +
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      type: "event_msg",
+      payload: { type: "exec_approval_request" }
+    }) + "\\n"
+  );
+  process.exit(0);
+}
 import { createInterface } from "node:readline";
 const lines = createInterface({ input: process.stdin });
 const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
@@ -127,6 +246,25 @@ lines.on("line", (line) => {
   if (message.id === 0) {
     send({ id: 0, result: { userAgent: "fake" } });
   } else if (message.method === "thread/list") {
+    if ("cwd" in message.params) {
+      send({ id: message.id, error: { code: -32602, message: "cwd must be omitted" } });
+      return;
+    }
+    if (!message.params.cursor) {
+      send({ id: message.id, result: {
+        data: [{
+          id: "outside-thread",
+          name: "Outside",
+          cwd: "/srv/elsewhere",
+          path: "/outside.jsonl",
+          updatedAt: 13,
+          recencyAt: 13,
+          status: { type: "notLoaded" }
+        }],
+        nextCursor: "second-page"
+      } });
+      return;
+    }
     send({ id: message.id, result: { data: [
       {
         id: "remote-thread",
@@ -137,20 +275,11 @@ lines.on("line", (line) => {
         updatedAt: 12,
         recencyAt: 11,
         status: { type: "notLoaded" }
-      },
-      {
-        id: "outside-thread",
-        name: "Outside",
-        cwd: "/srv/elsewhere",
-        path: "/outside.jsonl",
-        updatedAt: 13,
-        recencyAt: 13,
-        status: { type: "notLoaded" }
       }
-    ] } });
+    ], nextCursor: null } });
   } else if (message.method === "thread/turns/list") {
     send({ id: message.id, result: { data: [
-      { status: "completed", items: [] }
+      { status: "interrupted", items: [] }
     ] } });
   }
 });
@@ -174,11 +303,80 @@ lines.on("line", (line) => {
         recencyAtMs: 11_000,
         remoteHostId: "remote-ssh-discovered:devbox",
         rolloutPath: "/home/user/.codex/rollout.jsonl",
-        status: "unread",
+        status: "awaiting-approval",
         title: "Remote task",
         updatedAtMs: 12_000,
       },
     ]);
+  });
+
+  it("rejects a closed SSH stdin without an unhandled EPIPE", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { closeSync } from "node:fs";
+closeSync(0);
+setTimeout(() => undefined, 1_000);
+`);
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "devbox", hostId: "closed-stdin" },
+        ["/srv/work"],
+        fakeSsh,
+      ),
+    ).rejects.toThrow(/stdin|write|exited/u);
+  });
+
+  it("surfaces JSON-RPC errors from the app server", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "thread/list") {
+    send({
+      id: message.id,
+      error: { code: -32001, message: "Server overloaded; retry later." }
+    });
+  }
+});
+`);
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "devbox", hostId: "protocol-error" },
+        ["/srv/work"],
+        fakeSsh,
+      ),
+    ).rejects.toThrow(
+      /request 1 failed.*\(-32001\).*Server overloaded; retry later/u,
+    );
+  });
+
+  it("rejects malformed app-server result payloads", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "thread/list") {
+    send({ id: message.id, result: { data: "not-an-array" } });
+  }
+});
+`);
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "devbox", hostId: "invalid-result" },
+        ["/srv/work"],
+        fakeSsh,
+      ),
+    ).rejects.toThrow(/Invalid thread\/list data/u);
   });
 
   it("maps active remote states to Stream Deck attention states", () => {
