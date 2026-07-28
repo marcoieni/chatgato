@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import { remainingPercent, usageWindowLabel } from "./codex-usage.js";
 import { DYNAMIC_ICON_SOURCES, LUCIDE_LICENSE, lucideGlyph } from "./lucide.js";
 import type { AgentStatus, CodexThread, CodexUsageSnapshot } from "../types.js";
@@ -99,7 +98,7 @@ export function agentImage(slot: number, status: AgentStatus): string {
 }
 
 export function keyTitle(thread: CodexThread, status: AgentStatus): string {
-  const project = basename(thread.cwd) || "Codex";
+  const project = thread.cwd.split(/[\\/]/u).filter(Boolean).at(-1) || "Codex";
   const compactProject =
     project.length > 10 ? `${project.slice(0, 9)}…` : project;
   return `${STATUS_LABELS[status]}\n${compactProject}`;

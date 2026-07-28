@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
 import { open, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { join, posix, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { usageFromRollout } from "./codex-usage.js";
+import {
+  readRemoteThreadRows,
+  type RemoteThreadRow,
+} from "./remote-codex-store.js";
 import {
   inferRolloutStatus,
   parseRolloutLines,
@@ -23,6 +27,9 @@ type ThreadRow = {
   updated_at_ms: number;
   reasoning_effort: string | null;
   spawn_status: string | null;
+  recency_at_ms: number;
+  remote_host_id?: string;
+  status?: CodexThread["status"];
 };
 
 type RolloutPathRow = {
@@ -60,6 +67,9 @@ export type ReasoningSnapshot = {
 const TAIL_BYTES = 512 * 1024;
 
 type RolloutTailReader = (path: string) => Promise<RolloutRecord[]>;
+type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
+
+const THREAD_ROWS_CACHE_MS = 1_000;
 
 export class CodexStore {
   readonly codexHome: string;
@@ -68,14 +78,18 @@ export class CodexStore {
   constructor(
     codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
     private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
+    private readonly readRemoteThreads: RemoteThreadReader = readRemoteThreadRows,
   ) {
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
   }
 
+  private threadRowsCache:
+    { expiresAtMs: number; rows: Promise<ThreadRow[]> } | undefined;
+
   async recentThreads(limit = 12, cwdFilter?: string): Promise<CodexThread[]> {
     return Promise.all(
-      this.recentThreadRows(limit, cwdFilter).map((row) =>
+      (await this.recentThreadRows(limit, cwdFilter)).map((row) =>
         this.hydrateThread(row),
       ),
     );
@@ -85,20 +99,59 @@ export class CodexStore {
     slot: number,
     cwdFilter?: string,
   ): Promise<CodexThread | null> {
-    const row = this.recentThreadRows(slot, cwdFilter)[slot - 1];
+    const row = (await this.recentThreadRows(slot, cwdFilter))[slot - 1];
     return row ? this.hydrateThread(row) : null;
   }
 
-  private recentThreadRows(limit: number, cwdFilter?: string): ThreadRow[] {
+  private async recentThreadRows(
+    limit: number,
+    cwdFilter?: string,
+  ): Promise<ThreadRow[]> {
     const rowLimit = Number.isFinite(limit)
       ? Math.max(0, Math.trunc(limit))
       : 0;
     if (rowLimit === 0) return [];
-    const filter = cwdFilter?.trim() ? resolve(cwdFilter.trim()) : null;
-    return this.withDatabase((db) => {
+    const filter = cwdFilter?.trim() || null;
+    const selected: ThreadRow[] = [];
+
+    for (const row of await this.allThreadRows()) {
+      if (filter && !matchesWorkspaceFilter(row, filter)) continue;
+      selected.push(row);
+      if (selected.length === rowLimit) break;
+    }
+    return selected;
+  }
+
+  private allThreadRows(): Promise<ThreadRow[]> {
+    const now = Date.now();
+    if (this.threadRowsCache && this.threadRowsCache.expiresAtMs > now) {
+      return this.threadRowsCache.rows;
+    }
+
+    const rows = this.loadThreadRows();
+    const cache = { expiresAtMs: Number.POSITIVE_INFINITY, rows };
+    this.threadRowsCache = cache;
+    void rows.then(
+      () => {
+        if (this.threadRowsCache === cache) {
+          cache.expiresAtMs = Date.now() + THREAD_ROWS_CACHE_MS;
+        }
+      },
+      () => {
+        if (this.threadRowsCache === cache) {
+          this.threadRowsCache = undefined;
+        }
+      },
+    );
+    return rows;
+  }
+
+  private async loadThreadRows(): Promise<ThreadRow[]> {
+    const localRows = this.withDatabase((db) => {
       const statement = db.prepare(
         `SELECT t.id, t.title, t.cwd, t.rollout_path,
                 COALESCE(t.updated_at_ms, t.updated_at * 1000) AS updated_at_ms,
+                t.recency_at_ms,
                 t.reasoning_effort,
                 e.status AS spawn_status
            FROM threads t
@@ -106,19 +159,32 @@ export class CodexStore {
           WHERE t.archived = 0 AND t.preview <> ''
        ORDER BY t.recency_at_ms DESC, t.id DESC`,
       );
-      const selected: ThreadRow[] = [];
-
-      for (const row of statement.iterate() as unknown as Iterable<ThreadRow>) {
-        if (filter) {
-          const cwd = resolve(row.cwd);
-          if (cwd !== filter && !cwd.startsWith(`${filter}${sep}`)) continue;
-        }
-        selected.push(row);
-        if (selected.length === rowLimit) break;
-      }
-
-      return selected;
+      return [...(statement.iterate() as unknown as Iterable<ThreadRow>)];
     });
+
+    const remoteRows = await this.readRemoteThreads(this.codexHome).catch(
+      () => [],
+    );
+    const rowsById = new Map(localRows.map((row) => [row.id, row]));
+    for (const row of remoteRows) {
+      rowsById.set(row.id, {
+        cwd: row.cwd,
+        id: row.id,
+        reasoning_effort: null,
+        recency_at_ms: row.recencyAtMs,
+        remote_host_id: row.remoteHostId,
+        rollout_path: row.rolloutPath,
+        spawn_status: null,
+        status: row.status,
+        title: row.title,
+        updated_at_ms: row.updatedAtMs,
+      });
+    }
+    return [...rowsById.values()].sort(
+      (left, right) =>
+        right.recency_at_ms - left.recency_at_ms ||
+        right.id.localeCompare(left.id),
+    );
   }
 
   private async hydrateThread(row: ThreadRow): Promise<CodexThread> {
@@ -130,10 +196,12 @@ export class CodexStore {
       updatedAtMs: Number(row.updated_at_ms) || 0,
       reasoningEffort: row.reasoning_effort,
       spawnStatus: row.spawn_status,
-      status: inferRolloutStatus(
-        await this.readRolloutTail(row.rollout_path),
-        row.spawn_status,
-      ),
+      status:
+        row.status ??
+        inferRolloutStatus(
+          await this.readRolloutTail(row.rollout_path),
+          row.spawn_status,
+        ),
     };
   }
 
@@ -427,4 +495,21 @@ export function reasoningTargetIndex(
   const distance = Math.max(1, Math.trunc(Math.abs(steps)) || 1);
   const delta = direction === "increase" ? distance : -distance;
   return Math.min(efforts.length - 1, Math.max(0, currentIndex + delta));
+}
+
+function matchesWorkspaceFilter(row: ThreadRow, filter: string): boolean {
+  if (row.remote_host_id) {
+    const normalizedFilter = posix.normalize(filter);
+    const cwd = posix.normalize(row.cwd);
+    return (
+      cwd === normalizedFilter ||
+      cwd.startsWith(normalizedFilter === "/" ? "/" : `${normalizedFilter}/`)
+    );
+  }
+
+  const normalizedFilter = resolve(filter);
+  const cwd = resolve(row.cwd);
+  return (
+    cwd === normalizedFilter || cwd.startsWith(`${normalizedFilter}${sep}`)
+  );
 }
