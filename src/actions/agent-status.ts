@@ -10,7 +10,7 @@ import { normalizeAgentSlot } from "../lib/agent-slots.js";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { buildThreadUrl } from "../lib/deep-links.js";
-import { openUrl } from "../lib/codex-controller.js";
+import { openThreadSlot, openUrl } from "../lib/codex-controller.js";
 import { agentImage, effectiveStatus, keyTitle } from "../lib/visuals.js";
 import type { AgentSettings, CodexThread } from "../types.js";
 
@@ -40,23 +40,33 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
   }
 
   override async onKeyDown(ev: KeyDownEvent<AgentSettings>): Promise<void> {
-    const thread =
-      this.visibleThreads.get(ev.action.id) ??
-      (await this.store.threadAtSlot(
-        this.slot(ev.payload.settings),
-        ev.payload.settings.cwdFilter,
-      ));
-    if (!thread) {
-      await ev.action.showAlert();
-      return;
-    }
+    try {
+      const slot = this.slot(ev.payload.settings);
+      const thread =
+        this.visibleThreads.get(ev.action.id) ??
+        (await this.store.threadAtSlot(slot, ev.payload.settings.cwdFilter));
+      if (!thread) {
+        await ev.action.showAlert();
+        return;
+      }
 
-    await ev.action.setSettings({
-      ...ev.payload.settings,
-      acknowledgedThreadId: thread.id,
-      acknowledgedAtMs: Date.now(),
-    });
-    await openUrl(buildThreadUrl(thread.id));
+      if (thread.remoteHostId) {
+        // Codex's own numbered chat command retains the SSH host associated
+        // with the visible sidebar row. A codex://threads deep link does not:
+        // the desktop deep-link handler only looks up the id on the local host.
+        await openThreadSlot(slot);
+      } else {
+        await openUrl(buildThreadUrl(thread.id));
+      }
+
+      await ev.action.setSettings({
+        ...ev.payload.settings,
+        acknowledgedThreadId: thread.id,
+        acknowledgedAtMs: Date.now(),
+      });
+    } catch {
+      await ev.action.showAlert();
+    }
   }
 
   private async startPolling(

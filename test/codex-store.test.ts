@@ -347,6 +347,7 @@ describe("CodexStore", () => {
 
     await expect(store.threadAtSlot(1)).resolves.toMatchObject({
       id: "remote-thread",
+      remoteHostId: "remote-ssh-discovered:devbox",
       status: "unread",
       title: "Remote task",
     });

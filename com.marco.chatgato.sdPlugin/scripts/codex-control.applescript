@@ -71,6 +71,8 @@ on sendControl(controlMode, payload)
 				key code 30 using {command down}
 			else if payload is "toggleSidebar" then
 				keystroke "b" using {command down}
+			else if payload is in {"thread1", "thread2", "thread3", "thread4", "thread5", "thread6", "thread7", "thread8", "thread9"} then
+				keystroke text 7 of payload using {command down}
 			else
 				error "Unknown Codex shortcut: " & payload
 			end if

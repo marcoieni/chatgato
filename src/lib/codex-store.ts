@@ -193,6 +193,7 @@ export class CodexStore {
       title: row.title || "Untitled task",
       cwd: row.cwd,
       rolloutPath: row.rollout_path,
+      remoteHostId: row.remote_host_id,
       updatedAtMs: Number(row.updated_at_ms) || 0,
       reasoningEffort: row.reasoning_effort,
       spawnStatus: row.spawn_status,

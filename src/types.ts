@@ -12,6 +12,7 @@ export type CodexThread = {
   title: string;
   cwd: string;
   rolloutPath: string;
+  remoteHostId?: string;
   updatedAtMs: number;
   reasoningEffort: string | null;
   spawnStatus: string | null;

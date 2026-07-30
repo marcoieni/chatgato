@@ -78,6 +78,15 @@ $shortcuts = @{
   navigateBack = "^{[}"
   navigateForward = "^{]}"
   toggleSidebar = "^b"
+  thread1 = "^1"
+  thread2 = "^2"
+  thread3 = "^3"
+  thread4 = "^4"
+  thread5 = "^5"
+  thread6 = "^6"
+  thread7 = "^7"
+  thread8 = "^8"
+  thread9 = "^9"
 }
 
 if (-not $shortcuts.ContainsKey($Payload)) { throw "Unknown Codex shortcut: $Payload" }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMMANDS,
   normalizeSlashCommand,
+  openThreadSlot,
   pushToTalkPayload,
 } from "../src/lib/codex-controller.js";
 
@@ -44,5 +45,14 @@ describe("Codex controller", () => {
   it("maps push-to-talk state to distinct key-down and key-up events", () => {
     expect(pushToTalkPayload(true)).toBe("dictationDown");
     expect(pushToTalkPayload(false)).toBe("dictationUp");
+  });
+
+  it("rejects chat slots that Codex does not expose as shortcuts", async () => {
+    await expect(openThreadSlot(0)).rejects.toThrow(
+      "Codex chat shortcuts support slots 1 through 9",
+    );
+    await expect(openThreadSlot(10)).rejects.toThrow(
+      "Codex chat shortcuts support slots 1 through 9",
+    );
   });
 });

@@ -70,4 +70,20 @@ describe("Codex control scripts", () => {
     expect(powerShell).toContain('$shell.SendKeys("{HOME}")');
     expect(powerShell).toContain('$shell.SendKeys("{DOWN}")');
   });
+
+  it("opens a visible task through Codex's native chat shortcut on macOS", () => {
+    expect(appleScript).toContain(
+      'payload is in {"thread1", "thread2", "thread3", "thread4", "thread5", "thread6", "thread7", "thread8", "thread9"}',
+    );
+    expect(appleScript).toMatch(
+      /keystroke text 7 of payload using \{command down\}/u,
+    );
+    expect(appleScript).not.toContain('keystroke "Search Chats"');
+  });
+
+  it("opens a visible task through Codex's native chat shortcut on Windows", () => {
+    expect(powerShell).toContain('thread1 = "^1"');
+    expect(powerShell).toContain('thread9 = "^9"');
+    expect(powerShell).not.toContain('$shell.SendKeys("Search Chats")');
+  });
 });

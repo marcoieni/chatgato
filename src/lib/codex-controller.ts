@@ -133,6 +133,13 @@ export async function runSlash(command: string): Promise<void> {
   await runControlScript("slash", clean, "slash-command control");
 }
 
+export async function openThreadSlot(slot: number): Promise<void> {
+  if (!Number.isSafeInteger(slot) || slot < 1 || slot > 9) {
+    throw new Error("Codex chat shortcuts support slots 1 through 9");
+  }
+  await runShortcut(`thread${slot}`);
+}
+
 export async function runReasoning(
   direction: ReasoningDirection,
   steps = 1,
