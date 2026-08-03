@@ -38,53 +38,44 @@ const THREAD_SEARCH_COMMAND = "searchChats";
 // Stream Deck can deliver adjacent key/dial events before the first automation finishes.
 let reasoningQueue: Promise<unknown> = Promise.resolve();
 
-function run(executable: string, args: string[]): Promise<void> {
+type SubprocessOptions = {
+  captureStdout?: boolean;
+};
+
+function runSubprocess(
+  executable: string,
+  args: string[],
+  options: { captureStdout: true },
+): Promise<string>;
+function runSubprocess(
+  executable: string,
+  args: string[],
+  options?: { captureStdout?: false },
+): Promise<void>;
+function runSubprocess(
+  executable: string,
+  args: string[],
+  { captureStdout = false }: SubprocessOptions = {},
+): Promise<string | void> {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
-      stdio: ["ignore", "ignore", "pipe"],
-      windowsHide: true,
-    });
-    let stderr = "";
-
-    child.stderr.setEncoding("utf8");
-    child.stderr.on("data", (chunk: string) => {
-      stderr = (stderr + chunk).slice(-4000);
-    });
-    child.once("error", reject);
-    child.once("exit", (code) => {
-      if (code === 0) resolve();
-      else {
-        const detail = stderr.trim();
-        reject(
-          new Error(
-            `${executable} exited with code ${code ?? "unknown"}${detail ? `: ${detail}` : ""}`,
-          ),
-        );
-      }
-    });
-  });
-}
-
-function capture(executable: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", captureStdout ? "pipe" : "ignore", "pipe"],
       windowsHide: true,
     });
     let stdout = "";
     let stderr = "";
 
-    child.stdout.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => {
+    child.stdout?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk: string) => {
       stdout = (stdout + chunk).slice(-4000);
     });
-    child.stderr.setEncoding("utf8");
-    child.stderr.on("data", (chunk: string) => {
+    child.stderr?.setEncoding("utf8");
+    child.stderr?.on("data", (chunk: string) => {
       stderr = (stderr + chunk).slice(-4000);
     });
     child.once("error", reject);
     child.once("exit", (code) => {
-      if (code === 0) resolve(stdout.trim());
+      if (code === 0) resolve(captureStdout ? stdout.trim() : undefined);
       else {
         const detail = stderr.trim();
         reject(
@@ -104,7 +95,7 @@ async function runControlScript(
   extraArguments: string[] = [],
 ): Promise<void> {
   if (process.platform === "darwin") {
-    await run("/usr/bin/osascript", [
+    await runSubprocess("/usr/bin/osascript", [
       appleScript,
       mode,
       payload,
@@ -113,7 +104,7 @@ async function runControlScript(
     return;
   }
   if (process.platform === "win32") {
-    await run("powershell.exe", [
+    await runSubprocess("powershell.exe", [
       "-NoProfile",
       "-NonInteractive",
       "-File",
@@ -131,11 +122,11 @@ export async function openUrl(url: string): Promise<void> {
   if (!/^(codex|https):\/\//.test(url))
     throw new Error("Unsupported URL scheme");
   if (process.platform === "darwin") {
-    await run("/usr/bin/open", [url]);
+    await runSubprocess("/usr/bin/open", [url]);
     return;
   }
   if (process.platform === "win32") {
-    await run("powershell.exe", [
+    await runSubprocess("powershell.exe", [
       "-NoProfile",
       "-NonInteractive",
       "-File",
@@ -145,7 +136,7 @@ export async function openUrl(url: string): Promise<void> {
     ]);
     return;
   }
-  await run("xdg-open", [url]);
+  await runSubprocess("xdg-open", [url]);
 }
 
 export async function runShortcut(shortcut: string): Promise<void> {
@@ -285,12 +276,20 @@ async function assertThreadSearchShortcutConfigured(): Promise<void> {
 async function chatGptStartedAtMs(): Promise<number | null> {
   if (process.platform === "darwin") {
     try {
-      const pids = (await capture("/usr/bin/pgrep", ["-x", "ChatGPT"]))
+      const pids = (
+        await runSubprocess("/usr/bin/pgrep", ["-x", "ChatGPT"], {
+          captureStdout: true,
+        })
+      )
         .split(/\s+/u)
         .filter(Boolean);
       const startedAt = await Promise.all(
         pids.map(async (pid) =>
-          Date.parse(await capture("/bin/ps", ["-o", "lstart=", "-p", pid])),
+          Date.parse(
+            await runSubprocess("/bin/ps", ["-o", "lstart=", "-p", pid], {
+              captureStdout: true,
+            }),
+          ),
         ),
       );
       const valid = startedAt.filter(Number.isFinite);
@@ -303,12 +302,16 @@ async function chatGptStartedAtMs(): Promise<number | null> {
   if (process.platform === "win32") {
     try {
       const startedAt = Date.parse(
-        await capture("powershell.exe", [
-          "-NoProfile",
-          "-NonInteractive",
-          "-Command",
-          "$p = Get-Process -Name ChatGPT -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1; if ($p) { $p.StartTime.ToUniversalTime().ToString('o') }",
-        ]),
+        await runSubprocess(
+          "powershell.exe",
+          [
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "$p = Get-Process -Name ChatGPT -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1; if ($p) { $p.StartTime.ToUniversalTime().ToString('o') }",
+          ],
+          { captureStdout: true },
+        ),
       );
       return Number.isFinite(startedAt) ? startedAt : null;
     } catch {
