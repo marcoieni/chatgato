@@ -42,7 +42,9 @@ describe("Codex control scripts", () => {
 
   it("retries transient macOS activation failures", () => {
     expect(appleScript).toMatch(/repeat with attempt from 1 to 3/u);
-    expect(appleScript).toContain("my sendControl(controlMode, payload)");
+    expect(appleScript).toContain(
+      "my sendControl(controlMode, payload, resultIndex)",
+    );
     expect(appleScript).toMatch(
       /if errorNumber is not -600 then error errorMessage number errorNumber/u,
     );
@@ -54,6 +56,24 @@ describe("Codex control scripts", () => {
   it("sends the configured Fast and Plan shortcuts on Windows", () => {
     expect(powerShell).toContain('toggleFastMode = "^%+f"');
     expect(powerShell).toContain('togglePlanMode = "^%+p"');
+  });
+
+  it("opens host-aware task search results on macOS", () => {
+    expect(appleScript).toMatch(/controlMode is "thread" then/u);
+    expect(appleScript).toMatch(
+      /keystroke "s" using \{command down, option down, shift down\}[\s\S]*keystroke payload[\s\S]*repeat resultIndex times/u,
+    );
+    expect(appleScript).not.toContain('keystroke "Search Chats"');
+    expect(appleScript).not.toContain('keystroke "k" using {command down}');
+  });
+
+  it("opens host-aware task search results on Windows", () => {
+    expect(powerShell).toContain('if ($Mode -eq "thread")');
+    expect(powerShell).toContain('$shell.SendKeys("^%+s")');
+    expect(powerShell).toContain("$shell.SendKeys($escapedQuery)");
+    expect(powerShell).toMatch(/for \(\$index = 0; \$index -lt \$ResultIndex/u);
+    expect(powerShell).not.toContain('$shell.SendKeys("Search Chats")');
+    expect(powerShell).not.toContain('$shell.SendKeys("^k")');
   });
 
   it("selects an exact reasoning option through the supported slash picker on macOS", () => {
@@ -69,21 +89,5 @@ describe("Codex control scripts", () => {
     expect(powerShell).toContain('$shell.SendKeys("/reasoning")');
     expect(powerShell).toContain('$shell.SendKeys("{HOME}")');
     expect(powerShell).toContain('$shell.SendKeys("{DOWN}")');
-  });
-
-  it("opens a visible task through Codex's native chat shortcut on macOS", () => {
-    expect(appleScript).toContain(
-      'payload is in {"thread1", "thread2", "thread3", "thread4", "thread5", "thread6", "thread7", "thread8", "thread9"}',
-    );
-    expect(appleScript).toMatch(
-      /keystroke text 7 of payload using \{command down\}/u,
-    );
-    expect(appleScript).not.toContain('keystroke "Search Chats"');
-  });
-
-  it("opens a visible task through Codex's native chat shortcut on Windows", () => {
-    expect(powerShell).toContain('thread1 = "^1"');
-    expect(powerShell).toContain('thread9 = "^9"');
-    expect(powerShell).not.toContain('$shell.SendKeys("Search Chats")');
   });
 });

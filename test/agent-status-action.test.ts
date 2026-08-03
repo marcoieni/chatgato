@@ -2,13 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentSettings, CodexThread } from "../src/types.js";
 
 const mocks = vi.hoisted(() => ({
-  openThreadSlot: vi.fn<(slot: number) => Promise<void>>(),
+  logError: vi.fn(),
+  openThreadBySearch:
+    vi.fn<(title: string, resultIndex: number) => Promise<void>>(),
   openUrl: vi.fn<(url: string) => Promise<void>>(),
+  threadSearchResultIndex:
+    vi.fn<(threadId: string, title: string) => Promise<number>>(),
   threadAtSlot:
     vi.fn<(slot: number, cwdFilter?: string) => Promise<CodexThread | null>>(),
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
+  default: {
+    logger: {
+      createScope: () => ({ error: mocks.logError }),
+    },
+  },
   action:
     () =>
     <T>(target: T) =>
@@ -17,12 +26,13 @@ vi.mock("@elgato/streamdeck", () => ({
 }));
 
 vi.mock("../src/lib/codex-controller.js", () => ({
-  openThreadSlot: mocks.openThreadSlot,
+  openThreadBySearch: mocks.openThreadBySearch,
   openUrl: mocks.openUrl,
 }));
 
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
+    threadSearchResultIndex = mocks.threadSearchResultIndex;
     threadAtSlot = mocks.threadAtSlot;
   },
 }));
@@ -54,10 +64,13 @@ function actionHarness() {
 
 describe("AgentStatusAction navigation", () => {
   beforeEach(() => {
-    mocks.openThreadSlot.mockReset();
-    mocks.openThreadSlot.mockResolvedValue();
+    mocks.logError.mockReset();
     mocks.openUrl.mockReset();
     mocks.openUrl.mockResolvedValue();
+    mocks.openThreadBySearch.mockReset();
+    mocks.openThreadBySearch.mockResolvedValue();
+    mocks.threadSearchResultIndex.mockReset();
+    mocks.threadSearchResultIndex.mockResolvedValue(0);
     mocks.threadAtSlot.mockReset();
     mocks.threadAtSlot.mockResolvedValue(null);
   });
@@ -73,20 +86,20 @@ describe("AgentStatusAction navigation", () => {
     } as never);
 
     expect(mocks.openUrl).toHaveBeenCalledWith("codex://threads/thread-1");
-    expect(mocks.openThreadSlot).not.toHaveBeenCalled();
     expect(action.setSettings).toHaveBeenCalledWith(
       expect.objectContaining({ acknowledgedThreadId: "thread-1", slot: 2 }),
     );
     expect(action.showAlert).not.toHaveBeenCalled();
   });
 
-  it("uses Codex's native numbered shortcut for SSH-hosted tasks", async () => {
+  it("navigates SSH-hosted tasks through the host-aware chat search", async () => {
     const selected = thread({
       id: "remote-thread",
       remoteHostId: "remote-ssh-discovered:devbox",
       title: "Remote task",
     });
     mocks.threadAtSlot.mockResolvedValue(selected);
+    mocks.threadSearchResultIndex.mockResolvedValue(1);
     const action = actionHarness();
 
     await new AgentStatusAction().onKeyDown({
@@ -94,7 +107,11 @@ describe("AgentStatusAction navigation", () => {
       payload: { settings: { slot: 3 } },
     } as never);
 
-    expect(mocks.openThreadSlot).toHaveBeenCalledWith(3);
+    expect(mocks.threadSearchResultIndex).toHaveBeenCalledWith(
+      "remote-thread",
+      "Remote task",
+    );
+    expect(mocks.openThreadBySearch).toHaveBeenCalledWith("Remote task", 1);
     expect(mocks.openUrl).not.toHaveBeenCalled();
     expect(action.setSettings).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -116,5 +133,9 @@ describe("AgentStatusAction navigation", () => {
 
     expect(action.setSettings).not.toHaveBeenCalled();
     expect(action.showAlert).toHaveBeenCalledOnce();
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "Failed to open task in slot 1",
+      expect.objectContaining({ message: "Codex unavailable" }),
+    );
   });
 });

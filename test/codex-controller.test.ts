@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   COMMANDS,
+  hasThreadSearchShortcut,
   normalizeSlashCommand,
-  openThreadSlot,
+  normalizeThreadSearchQuery,
   pushToTalkPayload,
+  shortcutWasLoadedAtLaunch,
 } from "../src/lib/codex-controller.js";
 
 describe("Codex controller", () => {
@@ -42,17 +44,69 @@ describe("Codex controller", () => {
     );
   });
 
+  it("normalizes task titles before using the chat search", () => {
+    expect(normalizeThreadSearchQuery("  Fix   remote\nbuttons  ")).toBe(
+      "Fix remote buttons",
+    );
+    expect(() => normalizeThreadSearchQuery(" \n ")).toThrow(
+      "Thread title is required",
+    );
+  });
+
+  it("recognizes only the dedicated app-scoped chat search shortcut", () => {
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "Command+Alt+Shift+S" }],
+        "darwin",
+      ),
+    ).toBe(true);
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "CmdOrCtrl+Option+Shift+S" }],
+        "darwin",
+      ),
+    ).toBe(true);
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "Ctrl+Alt+Shift+S" }],
+        "win32",
+      ),
+    ).toBe(true);
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "Ctrl+Alt+Shift+S" }],
+        "darwin",
+      ),
+    ).toBe(false);
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "Command+Alt+Shift+S" }],
+        "win32",
+      ),
+    ).toBe(false);
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "openCommandMenu", key: "Command+Alt+Shift+S" }],
+        "darwin",
+      ),
+    ).toBe(false);
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "Command+K" }],
+        "darwin",
+      ),
+    ).toBe(false);
+  });
+
+  it("requires the shortcut file to predate the running app", () => {
+    expect(shortcutWasLoadedAtLaunch(1_000, 2_000)).toBe(true);
+    expect(shortcutWasLoadedAtLaunch(2_000, 2_000)).toBe(false);
+    expect(shortcutWasLoadedAtLaunch(3_000, 2_000)).toBe(false);
+    expect(shortcutWasLoadedAtLaunch(Number.NaN, 2_000)).toBe(false);
+  });
+
   it("maps push-to-talk state to distinct key-down and key-up events", () => {
     expect(pushToTalkPayload(true)).toBe("dictationDown");
     expect(pushToTalkPayload(false)).toBe("dictationUp");
-  });
-
-  it("rejects chat slots that Codex does not expose as shortcuts", async () => {
-    await expect(openThreadSlot(0)).rejects.toThrow(
-      "Codex chat shortcuts support slots 1 through 9",
-    );
-    await expect(openThreadSlot(10)).rejects.toThrow(
-      "Codex chat shortcuts support slots 1 through 9",
-    );
   });
 });

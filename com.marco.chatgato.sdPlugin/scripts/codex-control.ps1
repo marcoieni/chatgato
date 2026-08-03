@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory = $true)][string]$Mode,
-  [Parameter(Mandatory = $true)][string]$Payload
+  [Parameter(Mandatory = $true)][string]$Payload,
+  [int]$ResultIndex = 0
 )
 
 $shell = New-Object -ComObject WScript.Shell
@@ -65,6 +66,23 @@ if ($Mode -eq "reasoning") {
   exit 0
 }
 
+if ($Mode -eq "thread") {
+  if ($ResultIndex -lt 0 -or $ResultIndex -gt 8) {
+    throw "Invalid Codex task search index"
+  }
+  $escapedQuery = $Payload -replace '([+^%~(){}\[\]])', '{$1}'
+  $shell.SendKeys("^%+s")
+  Start-Sleep -Milliseconds 500
+
+  $shell.SendKeys($escapedQuery)
+  Start-Sleep -Milliseconds 600
+  for ($index = 0; $index -lt $ResultIndex; $index += 1) {
+    $shell.SendKeys("{DOWN}")
+  }
+  $shell.SendKeys("{ENTER}")
+  exit 0
+}
+
 if ($Mode -ne "shortcut") { throw "Unknown Codex control mode: $Mode" }
 
 $shortcuts = @{
@@ -78,15 +96,6 @@ $shortcuts = @{
   navigateBack = "^{[}"
   navigateForward = "^{]}"
   toggleSidebar = "^b"
-  thread1 = "^1"
-  thread2 = "^2"
-  thread3 = "^3"
-  thread4 = "^4"
-  thread5 = "^5"
-  thread6 = "^6"
-  thread7 = "^7"
-  thread8 = "^8"
-  thread9 = "^9"
 }
 
 if (-not $shortcuts.ContainsKey($Payload)) { throw "Unknown Codex shortcut: $Payload" }

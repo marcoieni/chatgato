@@ -38,26 +38,28 @@ Optionally set an absolute workspace path to filter the keys to one project.
 - Stream Deck 7.1 or newer
 - macOS 13+ or Windows 10+
 - A Stream Deck device; Stream Deck+ is optional for dial control
-- The Fast and Plan keyboard shortcuts configured in ChatGPT as described below
+- The Search Chats, Fast, and Plan keyboard shortcuts configured in ChatGPT as described below
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
 
-### Required Fast and Plan shortcut setup
+### Required keyboard shortcut setup
 
-ChatGPT exposes app-scoped Fast and Plan commands, but does not assign the bindings ChatGato uses. Configure them once:
+ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign the bindings ChatGato uses. Configure them once:
 
 1. Open ChatGPT desktop.
 2. Open **Settings → Keyboard Shortcuts**.
-3. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
-4. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
-5. Use the exact platform-specific bindings below.
+3. Search for **“Switch chat”** and assign the required Search Chats shortcut.
+4. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
+5. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
+6. Restart ChatGPT so the desktop app loads the bindings.
+7. Use the exact platform-specific bindings below.
 
-| Platform | Fast                   | Plan                   |
-| -------- | ---------------------- | ---------------------- |
-| macOS    | Command+Option+Shift+F | Command+Option+Shift+P |
-| Windows  | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
+| Platform | Search Chats           | Fast                   | Plan                   |
+| -------- | ---------------------- | ---------------------- | ---------------------- |
+| macOS    | Command+Option+Shift+S | Command+Option+Shift+F | Command+Option+Shift+P |
+| Windows  | Ctrl+Alt+Shift+S       | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
 
-**The ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** A warning or alert means ChatGato could not send the shortcut to ChatGPT.
+**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. Before sending a remote task title, ChatGato validates both the Search Chats binding and that ChatGPT started after the binding was saved. A missing or unloaded shortcut therefore cannot write into the terminal or composer.
 
 ## Build and install for development
 

@@ -103,6 +103,25 @@ export class CodexStore {
     return row ? this.hydrateThread(row) : null;
   }
 
+  async threadSearchResultIndex(
+    threadId: string,
+    title: string,
+  ): Promise<number> {
+    const normalizedTitle = normalizeThreadTitle(title);
+    let resultIndex = 0;
+
+    for (const row of await this.allThreadRows()) {
+      if (row.id === threadId) return resultIndex;
+      if (
+        normalizeThreadTitle(row.title || "Untitled task") === normalizedTitle
+      ) {
+        resultIndex += 1;
+      }
+    }
+
+    throw new Error(`Codex task is no longer available: ${threadId}`);
+  }
+
   private async recentThreadRows(
     limit: number,
     cwdFilter?: string,
@@ -341,6 +360,10 @@ export class CodexStore {
       db.close();
     }
   }
+}
+
+function normalizeThreadTitle(title: string): string {
+  return title.trim().replace(/\s+/gu, " ").toLocaleLowerCase();
 }
 
 export function resolveCodexSqliteHome(

@@ -83,6 +83,40 @@ afterEach(async () => {
 });
 
 describe("CodexStore", () => {
+  it("finds a duplicate title's position in Codex chat search", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-search-rank-"));
+    temporaryDirectories.push(home);
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      id: "newer-duplicate",
+      recencyAtMs: 3_000,
+      rolloutPath: join(home, "newer.jsonl"),
+      title: "Remote task",
+    });
+    insertThread(db, {
+      id: "selected-duplicate",
+      recencyAtMs: 2_000,
+      rolloutPath: join(home, "selected.jsonl"),
+      title: "Remote task",
+    });
+    insertThread(db, {
+      id: "other-task",
+      recencyAtMs: 1_000,
+      rolloutPath: join(home, "other.jsonl"),
+      title: "Other task",
+    });
+    db.close();
+
+    const store = new CodexStore(home);
+
+    await expect(
+      store.threadSearchResultIndex("selected-duplicate", "Remote task"),
+    ).resolves.toBe(1);
+    await expect(
+      store.threadSearchResultIndex("other-task", "Other task"),
+    ).resolves.toBe(0);
+  });
+
   it("reads the database from CODEX_SQLITE_HOME", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-home-"));
     const sqliteHome = await mkdtemp(join(tmpdir(), "chatgato-sqlite-"));

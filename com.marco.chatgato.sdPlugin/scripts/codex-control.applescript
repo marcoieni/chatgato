@@ -2,6 +2,11 @@ on run argv
 	if (count of argv) < 2 then error "Missing Codex control arguments"
 	set controlMode to item 1 of argv
 	set payload to item 2 of argv
+	set resultIndex to 0
+	if controlMode is "thread" then
+		if (count of argv) < 3 then error "Missing Codex task search index"
+		set resultIndex to item 3 of argv as integer
+	end if
 
 	if controlMode is "shortcut" and payload is "dictationUp" then
 		tell application "System Events"
@@ -16,7 +21,7 @@ on run argv
 
 	repeat with attempt from 1 to 3
 		try
-			my sendControl(controlMode, payload)
+			my sendControl(controlMode, payload, resultIndex)
 			return
 		on error errorMessage number errorNumber
 			if errorNumber is not -600 then error errorMessage number errorNumber
@@ -29,9 +34,19 @@ on run argv
 	end repeat
 end run
 
-on sendControl(controlMode, payload)
+on sendControl(controlMode, payload, resultIndex)
 	tell application "System Events"
-		if controlMode is "slash" then
+		if controlMode is "thread" then
+			if resultIndex < 0 or resultIndex > 8 then error "Invalid Codex task search index"
+			keystroke "s" using {command down, option down, shift down}
+			delay 0.5
+			keystroke payload
+			delay 0.6
+			repeat resultIndex times
+				key code 125
+			end repeat
+			key code 36
+		else if controlMode is "slash" then
 			keystroke payload
 			delay 0.18
 			key code 36
@@ -71,8 +86,6 @@ on sendControl(controlMode, payload)
 				key code 30 using {command down}
 			else if payload is "toggleSidebar" then
 				keystroke "b" using {command down}
-			else if payload is in {"thread1", "thread2", "thread3", "thread4", "thread5", "thread6", "thread7", "thread8", "thread9"} then
-				keystroke text 7 of payload using {command down}
 			else
 				error "Unknown Codex shortcut: " & payload
 			end if
