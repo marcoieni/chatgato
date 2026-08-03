@@ -19,7 +19,7 @@ import type {
   RolloutRecord,
 } from "../types.js";
 
-type ThreadRow = {
+type LocalThreadRow = {
   id: string;
   title: string;
   cwd: string;
@@ -28,7 +28,18 @@ type ThreadRow = {
   reasoning_effort: string | null;
   spawn_status: string | null;
   recency_at_ms: number;
-  remote_host_id?: string;
+};
+
+type ThreadDescriptor = {
+  id: string;
+  title: string;
+  cwd: string;
+  rolloutPath: string;
+  updatedAtMs: number;
+  reasoningEffort: string | null;
+  spawnStatus: string | null;
+  recencyAtMs: number;
+  remoteHostId?: string;
   status?: CodexThread["status"];
 };
 
@@ -69,7 +80,7 @@ const TAIL_BYTES = 512 * 1024;
 type RolloutTailReader = (path: string) => Promise<RolloutRecord[]>;
 type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
 
-const THREAD_ROWS_CACHE_MS = 1_000;
+const THREAD_DESCRIPTORS_CACHE_MS = 1_000;
 
 export class CodexStore {
   readonly codexHome: string;
@@ -84,13 +95,14 @@ export class CodexStore {
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
   }
 
-  private threadRowsCache:
-    { expiresAtMs: number; rows: Promise<ThreadRow[]> } | undefined;
+  private threadDescriptorsCache:
+    | { descriptors: Promise<ThreadDescriptor[]>; expiresAtMs: number }
+    | undefined;
 
   async recentThreads(limit = 12, cwdFilter?: string): Promise<CodexThread[]> {
     return Promise.all(
-      (await this.recentThreadRows(limit, cwdFilter)).map((row) =>
-        this.hydrateThread(row),
+      (await this.recentThreadDescriptors(limit, cwdFilter)).map((descriptor) =>
+        this.hydrateThread(descriptor),
       ),
     );
   }
@@ -99,8 +111,10 @@ export class CodexStore {
     slot: number,
     cwdFilter?: string,
   ): Promise<CodexThread | null> {
-    const row = (await this.recentThreadRows(slot, cwdFilter))[slot - 1];
-    return row ? this.hydrateThread(row) : null;
+    const descriptor = (await this.recentThreadDescriptors(slot, cwdFilter))[
+      slot - 1
+    ];
+    return descriptor ? this.hydrateThread(descriptor) : null;
   }
 
   async threadSearchResultIndex(
@@ -110,10 +124,11 @@ export class CodexStore {
     const normalizedTitle = normalizeThreadTitle(title);
     let resultIndex = 0;
 
-    for (const row of await this.allThreadRows()) {
-      if (row.id === threadId) return resultIndex;
+    for (const descriptor of await this.allThreadDescriptors()) {
+      if (descriptor.id === threadId) return resultIndex;
       if (
-        normalizeThreadTitle(row.title || "Untitled task") === normalizedTitle
+        normalizeThreadTitle(descriptor.title || "Untitled task") ===
+        normalizedTitle
       ) {
         resultIndex += 1;
       }
@@ -122,50 +137,56 @@ export class CodexStore {
     throw new Error(`Codex task is no longer available: ${threadId}`);
   }
 
-  private async recentThreadRows(
+  private async recentThreadDescriptors(
     limit: number,
     cwdFilter?: string,
-  ): Promise<ThreadRow[]> {
+  ): Promise<ThreadDescriptor[]> {
     const rowLimit = Number.isFinite(limit)
       ? Math.max(0, Math.trunc(limit))
       : 0;
     if (rowLimit === 0) return [];
     const filter = cwdFilter?.trim() || null;
-    const selected: ThreadRow[] = [];
+    const selected: ThreadDescriptor[] = [];
 
-    for (const row of await this.allThreadRows()) {
-      if (filter && !matchesWorkspaceFilter(row, filter)) continue;
-      selected.push(row);
+    for (const descriptor of await this.allThreadDescriptors()) {
+      if (filter && !matchesWorkspaceFilter(descriptor, filter)) continue;
+      selected.push(descriptor);
       if (selected.length === rowLimit) break;
     }
     return selected;
   }
 
-  private allThreadRows(): Promise<ThreadRow[]> {
+  private allThreadDescriptors(): Promise<ThreadDescriptor[]> {
     const now = Date.now();
-    if (this.threadRowsCache && this.threadRowsCache.expiresAtMs > now) {
-      return this.threadRowsCache.rows;
+    if (
+      this.threadDescriptorsCache &&
+      this.threadDescriptorsCache.expiresAtMs > now
+    ) {
+      return this.threadDescriptorsCache.descriptors;
     }
 
-    const rows = this.loadThreadRows();
-    const cache = { expiresAtMs: Number.POSITIVE_INFINITY, rows };
-    this.threadRowsCache = cache;
-    void rows.then(
+    const descriptors = this.loadThreadDescriptors();
+    const cache = {
+      descriptors,
+      expiresAtMs: Number.POSITIVE_INFINITY,
+    };
+    this.threadDescriptorsCache = cache;
+    void descriptors.then(
       () => {
-        if (this.threadRowsCache === cache) {
-          cache.expiresAtMs = Date.now() + THREAD_ROWS_CACHE_MS;
+        if (this.threadDescriptorsCache === cache) {
+          cache.expiresAtMs = Date.now() + THREAD_DESCRIPTORS_CACHE_MS;
         }
       },
       () => {
-        if (this.threadRowsCache === cache) {
-          this.threadRowsCache = undefined;
+        if (this.threadDescriptorsCache === cache) {
+          this.threadDescriptorsCache = undefined;
         }
       },
     );
-    return rows;
+    return descriptors;
   }
 
-  private async loadThreadRows(): Promise<ThreadRow[]> {
+  private async loadThreadDescriptors(): Promise<ThreadDescriptor[]> {
     const localRows = this.withDatabase((db) => {
       const statement = db.prepare(
         `SELECT t.id, t.title, t.cwd, t.rollout_path,
@@ -178,49 +199,43 @@ export class CodexStore {
           WHERE t.archived = 0 AND t.preview <> ''
        ORDER BY t.recency_at_ms DESC, t.id DESC`,
       );
-      return [...(statement.iterate() as unknown as Iterable<ThreadRow>)];
+      return [...(statement.iterate() as unknown as Iterable<LocalThreadRow>)];
     });
 
     const remoteRows = await this.readRemoteThreads(this.codexHome).catch(
       () => [],
     );
-    const rowsById = new Map(localRows.map((row) => [row.id, row]));
-    for (const row of remoteRows) {
-      rowsById.set(row.id, {
-        cwd: row.cwd,
-        id: row.id,
-        reasoning_effort: null,
-        recency_at_ms: row.recencyAtMs,
-        remote_host_id: row.remoteHostId,
-        rollout_path: row.rolloutPath,
-        spawn_status: null,
-        status: row.status,
-        title: row.title,
-        updated_at_ms: row.updatedAtMs,
-      });
+    const descriptorsById = new Map<string, ThreadDescriptor>();
+    for (const row of localRows) {
+      const descriptor = localThreadDescriptor(row);
+      descriptorsById.set(descriptor.id, descriptor);
     }
-    return [...rowsById.values()].sort(
+    for (const row of remoteRows) {
+      descriptorsById.set(row.id, remoteThreadDescriptor(row));
+    }
+    return [...descriptorsById.values()].sort(
       (left, right) =>
-        right.recency_at_ms - left.recency_at_ms ||
-        right.id.localeCompare(left.id),
+        right.recencyAtMs - left.recencyAtMs || right.id.localeCompare(left.id),
     );
   }
 
-  private async hydrateThread(row: ThreadRow): Promise<CodexThread> {
+  private async hydrateThread(
+    descriptor: ThreadDescriptor,
+  ): Promise<CodexThread> {
     return {
-      id: row.id,
-      title: row.title || "Untitled task",
-      cwd: row.cwd,
-      rolloutPath: row.rollout_path,
-      remoteHostId: row.remote_host_id,
-      updatedAtMs: Number(row.updated_at_ms) || 0,
-      reasoningEffort: row.reasoning_effort,
-      spawnStatus: row.spawn_status,
+      id: descriptor.id,
+      title: descriptor.title || "Untitled task",
+      cwd: descriptor.cwd,
+      rolloutPath: descriptor.rolloutPath,
+      remoteHostId: descriptor.remoteHostId,
+      updatedAtMs: Number(descriptor.updatedAtMs) || 0,
+      reasoningEffort: descriptor.reasoningEffort,
+      spawnStatus: descriptor.spawnStatus,
       status:
-        row.status ??
+        descriptor.status ??
         inferRolloutStatus(
-          await this.readRolloutTail(row.rollout_path),
-          row.spawn_status,
+          await this.readRolloutTail(descriptor.rolloutPath),
+          descriptor.spawnStatus,
         ),
     };
   }
@@ -360,6 +375,27 @@ export class CodexStore {
       db.close();
     }
   }
+}
+
+function localThreadDescriptor(row: LocalThreadRow): ThreadDescriptor {
+  return {
+    cwd: row.cwd,
+    id: row.id,
+    reasoningEffort: row.reasoning_effort,
+    recencyAtMs: row.recency_at_ms,
+    rolloutPath: row.rollout_path,
+    spawnStatus: row.spawn_status,
+    title: row.title,
+    updatedAtMs: row.updated_at_ms,
+  };
+}
+
+function remoteThreadDescriptor(row: RemoteThreadRow): ThreadDescriptor {
+  return {
+    ...row,
+    reasoningEffort: null,
+    spawnStatus: null,
+  };
 }
 
 function normalizeThreadTitle(title: string): string {
@@ -521,10 +557,13 @@ export function reasoningTargetIndex(
   return Math.min(efforts.length - 1, Math.max(0, currentIndex + delta));
 }
 
-function matchesWorkspaceFilter(row: ThreadRow, filter: string): boolean {
-  if (row.remote_host_id) {
+function matchesWorkspaceFilter(
+  descriptor: ThreadDescriptor,
+  filter: string,
+): boolean {
+  if (descriptor.remoteHostId) {
     const normalizedFilter = posix.normalize(filter);
-    const cwd = posix.normalize(row.cwd);
+    const cwd = posix.normalize(descriptor.cwd);
     return (
       cwd === normalizedFilter ||
       cwd.startsWith(normalizedFilter === "/" ? "/" : `${normalizedFilter}/`)
@@ -532,7 +571,7 @@ function matchesWorkspaceFilter(row: ThreadRow, filter: string): boolean {
   }
 
   const normalizedFilter = resolve(filter);
-  const cwd = resolve(row.cwd);
+  const cwd = resolve(descriptor.cwd);
   return (
     cwd === normalizedFilter || cwd.startsWith(`${normalizedFilter}${sep}`)
   );
