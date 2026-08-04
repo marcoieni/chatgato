@@ -60,6 +60,7 @@ describe("Codex control scripts", () => {
 
   it("opens host-aware task search results on macOS", () => {
     expect(appleScript).toMatch(/controlMode is "thread" then/u);
+    expect(appleScript).toContain("resultIndex > 19");
     expect(appleScript).toMatch(
       /keystroke "s" using \{command down, option down, shift down\}[\s\S]*keystroke payload[\s\S]*repeat resultIndex times/u,
     );
@@ -69,6 +70,7 @@ describe("Codex control scripts", () => {
 
   it("opens host-aware task search results on Windows", () => {
     expect(powerShell).toContain('if ($Mode -eq "thread")');
+    expect(powerShell).toContain("$ResultIndex -gt 19");
     expect(powerShell).toContain('$shell.SendKeys("^%+s")');
     expect(powerShell).toContain("$shell.SendKeys($escapedQuery)");
     expect(powerShell).toMatch(/for \(\$index = 0; \$index -lt \$ResultIndex/u);

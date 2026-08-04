@@ -6,6 +6,7 @@ import {
   normalizeThreadSearchQuery,
   pushToTalkPayload,
   shortcutWasLoadedAtLaunch,
+  validateThreadSearchResultIndex,
 } from "../src/lib/codex-controller.js";
 
 describe("Codex controller", () => {
@@ -50,6 +51,20 @@ describe("Codex controller", () => {
     );
     expect(() => normalizeThreadSearchQuery(" \n ")).toThrow(
       "Thread title is required",
+    );
+    expect(normalizeThreadSearchQuery(`${"x".repeat(200)}suffix`)).toHaveLength(
+      200,
+    );
+  });
+
+  it("supports every advertised task search result", () => {
+    expect(validateThreadSearchResultIndex(0)).toBe(0);
+    expect(validateThreadSearchResultIndex(19)).toBe(19);
+    expect(() => validateThreadSearchResultIndex(20)).toThrow(
+      "result indexes 0 through 19",
+    );
+    expect(() => validateThreadSearchResultIndex(-1)).toThrow(
+      "result indexes 0 through 19",
     );
   });
 

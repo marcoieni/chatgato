@@ -67,7 +67,7 @@ if ($Mode -eq "reasoning") {
 }
 
 if ($Mode -eq "thread") {
-  if ($ResultIndex -lt 0 -or $ResultIndex -gt 8) {
+  if ($ResultIndex -lt 0 -or $ResultIndex -gt 19) {
     throw "Invalid Codex task search index"
   }
   $escapedQuery = $Payload -replace '([+^%~(){}\[\]])', '{$1}'

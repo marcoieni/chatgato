@@ -4,8 +4,15 @@ import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { CodexStore, type ReasoningDirection } from "./codex-store.js";
+import { MAX_AGENT_SLOTS } from "./agent-slots.js";
+import {
+  CodexStore,
+  normalizeThreadSearchQuery,
+  type ReasoningDirection,
+} from "./codex-store.js";
 import { ReasoningTracker } from "./reasoning-tracker.js";
+
+export { normalizeThreadSearchQuery } from "./codex-store.js";
 
 export type ControllerCommand = {
   kind: "url" | "shortcut" | "slash";
@@ -166,10 +173,17 @@ export async function runSlash(command: string): Promise<void> {
   await runControlScript("slash", clean, "slash-command control");
 }
 
-export function normalizeThreadSearchQuery(title: string): string {
-  const clean = title.trim().replace(/\s+/gu, " ").slice(0, 200);
-  if (!clean) throw new Error("Thread title is required for task search");
-  return clean;
+export function validateThreadSearchResultIndex(resultIndex: number): number {
+  if (
+    !Number.isSafeInteger(resultIndex) ||
+    resultIndex < 0 ||
+    resultIndex >= MAX_AGENT_SLOTS
+  ) {
+    throw new Error(
+      `Codex task search supports result indexes 0 through ${MAX_AGENT_SLOTS - 1}`,
+    );
+  }
+  return resultIndex;
 }
 
 export async function openThreadBySearch(
@@ -177,16 +191,10 @@ export async function openThreadBySearch(
   resultIndex = 0,
 ): Promise<void> {
   const query = normalizeThreadSearchQuery(title);
-  if (
-    !Number.isSafeInteger(resultIndex) ||
-    resultIndex < 0 ||
-    resultIndex > 8
-  ) {
-    throw new Error("Codex task search supports result indexes 0 through 8");
-  }
+  const selectedResultIndex = validateThreadSearchResultIndex(resultIndex);
   await assertThreadSearchShortcutConfigured();
   await runControlScript("thread", query, "host-aware task navigation", [
-    String(resultIndex),
+    String(selectedResultIndex),
   ]);
 }
 

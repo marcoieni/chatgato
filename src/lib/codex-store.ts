@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { open, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, posix, resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { usageFromRollout } from "./codex-usage.js";
 import {
+  isWithinRemotePath,
   readRemoteThreadRows,
+  type RemotePlatform,
   type RemoteThreadRow,
 } from "./remote-codex-store.js";
 import {
@@ -40,6 +42,7 @@ type ThreadDescriptor = {
   spawnStatus: string | null;
   recencyAtMs: number;
   remoteHostId?: string;
+  remotePlatform?: RemotePlatform;
   status?: CodexThread["status"];
 };
 
@@ -121,15 +124,12 @@ export class CodexStore {
     threadId: string,
     title: string,
   ): Promise<number> {
-    const normalizedTitle = normalizeThreadTitle(title);
+    const searchKey = threadSearchKey(title);
     let resultIndex = 0;
 
     for (const descriptor of await this.allThreadDescriptors()) {
       if (descriptor.id === threadId) return resultIndex;
-      if (
-        normalizeThreadTitle(descriptor.title || "Untitled task") ===
-        normalizedTitle
-      ) {
+      if (threadSearchKey(descriptor.title || "Untitled task") === searchKey) {
         resultIndex += 1;
       }
     }
@@ -398,8 +398,14 @@ function remoteThreadDescriptor(row: RemoteThreadRow): ThreadDescriptor {
   };
 }
 
-function normalizeThreadTitle(title: string): string {
-  return title.trim().replace(/\s+/gu, " ").toLocaleLowerCase();
+export function normalizeThreadSearchQuery(title: string): string {
+  const clean = title.trim().replace(/\s+/gu, " ").slice(0, 200);
+  if (!clean) throw new Error("Thread title is required for task search");
+  return clean;
+}
+
+function threadSearchKey(title: string): string {
+  return normalizeThreadSearchQuery(title).toLocaleLowerCase();
 }
 
 export function resolveCodexSqliteHome(
@@ -562,11 +568,10 @@ function matchesWorkspaceFilter(
   filter: string,
 ): boolean {
   if (descriptor.remoteHostId) {
-    const normalizedFilter = posix.normalize(filter);
-    const cwd = posix.normalize(descriptor.cwd);
-    return (
-      cwd === normalizedFilter ||
-      cwd.startsWith(normalizedFilter === "/" ? "/" : `${normalizedFilter}/`)
+    return isWithinRemotePath(
+      descriptor.cwd,
+      filter,
+      descriptor.remotePlatform ?? "posix",
     );
   }
 

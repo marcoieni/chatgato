@@ -87,6 +87,19 @@ describe("CodexStore", () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-search-rank-"));
     temporaryDirectories.push(home);
     const db = createThreadDatabase(home);
+    const sharedPrefix = "x".repeat(200);
+    insertThread(db, {
+      id: "newer-long-title",
+      recencyAtMs: 5_000,
+      rolloutPath: join(home, "newer-long.jsonl"),
+      title: `${sharedPrefix}A`,
+    });
+    insertThread(db, {
+      id: "selected-long-title",
+      recencyAtMs: 4_000,
+      rolloutPath: join(home, "selected-long.jsonl"),
+      title: `${sharedPrefix}B`,
+    });
     insertThread(db, {
       id: "newer-duplicate",
       recencyAtMs: 3_000,
@@ -115,6 +128,9 @@ describe("CodexStore", () => {
     await expect(
       store.threadSearchResultIndex("other-task", "Other task"),
     ).resolves.toBe(0);
+    await expect(
+      store.threadSearchResultIndex("selected-long-title", `${sharedPrefix}B`),
+    ).resolves.toBe(1);
   });
 
   it("reads the database from CODEX_SQLITE_HOME", async () => {
@@ -371,6 +387,7 @@ describe("CodexStore", () => {
         id: "remote-thread",
         recencyAtMs: 3_000,
         remoteHostId: "remote-ssh-discovered:devbox",
+        remotePlatform: "posix" as const,
         rolloutPath: "/home/user/.codex/remote.jsonl",
         status: "unread" as const,
         title: "Remote task",
@@ -396,6 +413,30 @@ describe("CodexStore", () => {
     expect(readRemoteThreads).toHaveBeenCalledOnce();
     expect(readRolloutTail).toHaveBeenCalledOnce();
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "local.jsonl"));
+  });
+
+  it("matches nested Windows remote workspaces case-insensitively", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
+    temporaryDirectories.push(home);
+    createThreadDatabase(home).close();
+    const readRemoteThreads = vi.fn(async () => [
+      {
+        cwd: "c:\\WORK\\repo",
+        id: "windows-remote-thread",
+        recencyAtMs: 3_000,
+        remoteHostId: "windows-host",
+        remotePlatform: "windows" as const,
+        rolloutPath: "C:\\Users\\dev\\.codex\\remote.jsonl",
+        status: "unread" as const,
+        title: "Windows remote task",
+        updatedAtMs: 3_100,
+      },
+    ]);
+    const store = new CodexStore(home, async () => [], readRemoteThreads);
+
+    await expect(store.threadAtSlot(1, "C:\\work")).resolves.toMatchObject({
+      id: "windows-remote-thread",
+    });
   });
 
   it("shares an in-flight SSH refresh across agent slots", async () => {

@@ -50,6 +50,7 @@ export type RemoteThreadRow = {
   id: string;
   recencyAtMs: number;
   remoteHostId: string;
+  remotePlatform: RemotePlatform;
   rolloutPath: string;
   status: AgentStatus;
   title: string;
@@ -613,6 +614,7 @@ function remoteThreadRow(
     id: thread.id,
     recencyAtMs,
     remoteHostId: hostId,
+    remotePlatform: platform,
     rolloutPath: thread.path,
     status:
       rolloutRecords === undefined
@@ -1036,7 +1038,7 @@ function retainRecentProjectThreads(
   for (const [threadId, thread] of selected) threads.set(threadId, thread);
 }
 
-function isWithinRemotePath(
+export function isWithinRemotePath(
   cwd: string,
   root: string,
   platform: RemotePlatform,

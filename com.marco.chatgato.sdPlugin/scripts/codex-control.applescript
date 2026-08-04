@@ -37,7 +37,7 @@ end run
 on sendControl(controlMode, payload, resultIndex)
 	tell application "System Events"
 		if controlMode is "thread" then
-			if resultIndex < 0 or resultIndex > 8 then error "Invalid Codex task search index"
+			if resultIndex < 0 or resultIndex > 19 then error "Invalid Codex task search index"
 			keystroke "s" using {command down, option down, shift down}
 			delay 0.5
 			keystroke payload
