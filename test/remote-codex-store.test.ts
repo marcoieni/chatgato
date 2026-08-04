@@ -310,6 +310,87 @@ lines.on("line", (line) => {
     ]);
   });
 
+  it("uses Windows paths and PowerShell rollout retrieval on Windows hosts", async () => {
+    const fakeSsh = await fakeSshScript(`
+if (!process.argv.includes("app-server")) {
+  const command = process.argv.at(-1) ?? "";
+  if (!command.startsWith("powershell.exe ") || command.includes("tail -c") || command.includes("sh -c")) {
+    process.stderr.write("expected a PowerShell rollout reader");
+    process.exit(2);
+  }
+  process.stdout.write(
+    String.fromCharCode(30) + "0\\n" +
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      type: "event_msg",
+      payload: { type: "request_user_input" }
+    }) + "\\n"
+  );
+  process.exit(0);
+}
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({
+      id: 0,
+      result: {
+        userAgent: "fake",
+        platformFamily: "windows",
+        platformOs: "windows"
+      }
+    });
+  } else if (message.method === "thread/list") {
+    send({ id: message.id, result: { data: [
+      {
+        id: "windows-thread",
+        name: "Windows task",
+        cwd: "c:\\\\WORK\\\\repo",
+        path: "C:\\\\Users\\\\dev\\\\.codex\\\\rollout.jsonl",
+        updatedAt: 12,
+        recencyAt: 11,
+        status: { type: "notLoaded" }
+      },
+      {
+        id: "outside-thread",
+        name: "Outside",
+        cwd: "C:\\\\workbench",
+        path: "C:\\\\outside.jsonl",
+        updatedAt: 13,
+        recencyAt: 13,
+        status: { type: "notLoaded" }
+      }
+    ], nextCursor: null } });
+  } else if (message.method === "thread/turns/list") {
+    send({ id: message.id, result: { data: [
+      { status: "interrupted", items: [] }
+    ] } });
+  }
+});
+`);
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "winbox", hostId: "windows-host" },
+        ["C:\\work"],
+        fakeSsh,
+      ),
+    ).resolves.toEqual([
+      {
+        cwd: "c:\\WORK\\repo",
+        id: "windows-thread",
+        recencyAtMs: 11_000,
+        remoteHostId: "windows-host",
+        rolloutPath: "C:\\Users\\dev\\.codex\\rollout.jsonl",
+        status: "awaiting-response",
+        title: "Windows task",
+        updatedAtMs: 12_000,
+      },
+    ]);
+  });
+
   it("rejects a closed SSH stdin without an unhandled EPIPE", async () => {
     const fakeSsh = await fakeSshScript(`
 import { closeSync } from "node:fs";

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { join, posix } from "node:path";
+import { join, posix, win32 } from "node:path";
 import { createInterface } from "node:readline";
 import { inferRolloutStatus, parseRolloutLines } from "./rollout-status.js";
 import type { AgentStatus, RolloutRecord } from "../types.js";
@@ -14,6 +14,8 @@ const THREADS_PER_PROJECT = 20;
 const THREADS_PER_PAGE = 100;
 
 type JsonObject = Record<string, unknown>;
+
+export type RemotePlatform = "posix" | "windows";
 
 type RemoteConnection = {
   destination: string;
@@ -84,6 +86,7 @@ export type RemoteRolloutTailReader = (
   connection: RemoteConnection,
   rolloutPaths: readonly string[],
   sshCommand: string,
+  platform: RemotePlatform,
 ) => Promise<Map<string, RolloutRecord[]>>;
 
 class RemoteReadError extends Error {
@@ -204,6 +207,11 @@ export async function readThreadsFromHost(
     const turnRequestIds = new Map<number, string>();
     const threads = new Map<string, AppServerThread>();
     const turns = new Map<string, AppServerTurn>();
+    let remotePlatform = inferRemotePlatform(projectPaths);
+    let normalizedProjectPaths = normalizeRemotePaths(
+      projectPaths,
+      remotePlatform,
+    );
 
     const timeout = setTimeout(() => {
       fail(
@@ -236,7 +244,12 @@ export async function readThreadsFromHost(
       const rolloutPaths = selectedThreads.flatMap((thread) =>
         typeof thread.path === "string" ? [thread.path] : [],
       );
-      void readRolloutTails(connection, rolloutPaths, sshCommand).then(
+      void readRolloutTails(
+        connection,
+        rolloutPaths,
+        sshCommand,
+        remotePlatform,
+      ).then(
         (rollouts) => {
           resolve(
             selectedThreads
@@ -248,6 +261,7 @@ export async function readThreadsFromHost(
                   typeof thread.path === "string"
                     ? rollouts.get(thread.path)
                     : undefined,
+                  remotePlatform,
                 ),
               )
               .filter((row): row is RemoteThreadRow => row !== null),
@@ -381,12 +395,18 @@ export async function readThreadsFromHost(
       }
 
       if (message.id === 0) {
+        let result: JsonObject;
         try {
-          decodeResultObject(connection.hostId, "initialize", message);
+          result = decodeResultObject(connection.hostId, "initialize", message);
         } catch (error) {
           fail(asError(error));
           return;
         }
+        remotePlatform = detectRemotePlatform(result, projectPaths);
+        normalizedProjectPaths = normalizeRemotePaths(
+          projectPaths,
+          remotePlatform,
+        );
         send({ method: "initialized", params: {} });
         requestThreadPage();
         return;
@@ -407,7 +427,9 @@ export async function readThreadsFromHost(
           if (
             typeof thread.id === "string" &&
             typeof cwd === "string" &&
-            projectPaths.some((path) => isWithinRemotePath(cwd, path))
+            normalizedProjectPaths.some((path) =>
+              isWithinRemotePath(cwd, path, remotePlatform),
+            )
           ) {
             threads.set(thread.id, thread);
           }
@@ -426,7 +448,11 @@ export async function readThreadsFromHost(
           seenCursors.add(page.nextCursor);
           requestThreadPage(page.nextCursor);
         } else {
-          retainRecentProjectThreads(threads, projectPaths);
+          retainRecentProjectThreads(
+            threads,
+            normalizedProjectPaths,
+            remotePlatform,
+          );
           requestTurns();
         }
         return;
@@ -563,6 +589,7 @@ function remoteThreadRow(
   thread: AppServerThread,
   turn: AppServerTurn | undefined,
   rolloutRecords: readonly RolloutRecord[] | undefined,
+  platform: RemotePlatform,
 ): RemoteThreadRow | null {
   if (
     typeof thread.id !== "string" ||
@@ -583,7 +610,7 @@ function remoteThreadRow(
   const recencyAtMs = secondsToMilliseconds(thread.recencyAt) || updatedAtMs;
 
   return {
-    cwd: normalizeRemotePath(thread.cwd),
+    cwd: normalizeRemotePath(thread.cwd, platform),
     id: thread.id,
     recencyAtMs,
     remoteHostId: hostId,
@@ -620,7 +647,7 @@ function remoteProjectGroups(state: unknown): Map<string, RemoteProjectGroup> {
       group = { connection, paths: new Set() };
       groups.set(hostId, group);
     }
-    group.paths.add(normalizeRemotePath(path));
+    group.paths.add(normalizeRemotePath(path, inferRemotePlatform([path])));
   };
 
   const remoteProjects = root["remote-projects"];
@@ -716,17 +743,12 @@ async function readRolloutTailsFromHost(
   connection: RemoteConnection,
   rolloutPaths: readonly string[],
   sshCommand: string,
+  platform: RemotePlatform,
 ): Promise<Map<string, RolloutRecord[]>> {
   const paths = [...new Set(rolloutPaths)];
   if (paths.length === 0) return new Map();
 
-  const script =
-    'index=0; for path do if [ -r "$path" ]; then ' +
-    `printf '\\036%s\\n' "$index"; tail -c ${REMOTE_ROLLOUT_TAIL_BYTES} -- "$path"; printf '\\n'; ` +
-    "fi; index=$((index + 1)); done";
-  const remoteCommand = `sh -c ${shellQuote(script)} sh ${paths
-    .map(shellQuote)
-    .join(" ")}`;
+  const remoteCommand = remoteRolloutCommand(paths, platform);
   const child = spawn(sshCommand, sshArguments(connection, [remoteCommand]), {
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -824,6 +846,43 @@ function sshArguments(
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
+}
+
+function powershellQuote(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+function remoteRolloutCommand(
+  paths: readonly string[],
+  platform: RemotePlatform,
+): string {
+  if (platform === "windows") {
+    const pathArray = paths.map(powershellQuote).join(",");
+    const script =
+      `$paths=@(${pathArray});` +
+      "$stdout=[System.Console]::OpenStandardOutput();" +
+      "$utf8=[System.Text.UTF8Encoding]::new($false);" +
+      "for($index=0;$index -lt $paths.Count;$index++){" +
+      "$stream=$null;" +
+      "try{$stream=[System.IO.File]::Open($paths[$index],[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))}catch{continue};" +
+      "try{" +
+      '$marker=$utf8.GetBytes(([char]30).ToString()+$index+"`n");' +
+      "$stdout.Write($marker,0,$marker.Length);" +
+      `if($stream.Length -gt ${REMOTE_ROLLOUT_TAIL_BYTES}){[void]$stream.Seek($stream.Length-${REMOTE_ROLLOUT_TAIL_BYTES},[System.IO.SeekOrigin]::Begin)};` +
+      "$buffer=New-Object byte[] 81920;" +
+      "while(($read=$stream.Read($buffer,0,$buffer.Length)) -gt 0){$stdout.Write($buffer,0,$read)};" +
+      "$stdout.WriteByte(10)" +
+      "}finally{$stream.Dispose()}" +
+      "};$stdout.Flush()";
+    const encoded = Buffer.from(script, "utf16le").toString("base64");
+    return `powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand ${encoded}`;
+  }
+
+  const script =
+    'index=0; for path do if [ -r "$path" ]; then ' +
+    `printf '\\036%s\\n' "$index"; tail -c ${REMOTE_ROLLOUT_TAIL_BYTES} -- "$path"; printf '\\n'; ` +
+    "fi; index=$((index + 1)); done";
+  return `sh -c ${shellQuote(script)} sh ${paths.map(shellQuote).join(" ")}`;
 }
 
 function decodeThreadPage(
@@ -945,6 +1004,7 @@ function delay(milliseconds: number): Promise<void> {
 function retainRecentProjectThreads(
   threads: Map<string, AppServerThread>,
   projectPaths: readonly string[],
+  platform: RemotePlatform,
 ): void {
   const counts = projectPaths.map(() => 0);
   const selected = new Map<string, AppServerThread>();
@@ -959,7 +1019,7 @@ function retainRecentProjectThreads(
       continue;
     }
     const matchingIndexes = projectPaths.flatMap((path, index) =>
-      isWithinRemotePath(thread.cwd as string, path) ? [index] : [],
+      isWithinRemotePath(thread.cwd as string, path, platform) ? [index] : [],
     );
     if (
       !matchingIndexes.some(
@@ -981,19 +1041,65 @@ function retainRecentProjectThreads(
   for (const [threadId, thread] of selected) threads.set(threadId, thread);
 }
 
-function isWithinRemotePath(cwd: string, root: string): boolean {
-  const normalizedCwd = normalizeRemotePath(cwd);
-  const normalizedRoot = normalizeRemotePath(root);
+function isWithinRemotePath(
+  cwd: string,
+  root: string,
+  platform: RemotePlatform,
+): boolean {
+  const pathApi = platform === "windows" ? win32 : posix;
+  const relative = pathApi.relative(
+    normalizeRemotePath(root, platform),
+    normalizeRemotePath(cwd, platform),
+  );
   return (
-    normalizedCwd === normalizedRoot ||
-    normalizedCwd.startsWith(
-      normalizedRoot === "/" ? "/" : `${normalizedRoot}/`,
-    )
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${pathApi.sep}`) &&
+      !pathApi.isAbsolute(relative))
   );
 }
 
-function normalizeRemotePath(path: string): string {
-  return posix.normalize(path.trim());
+function normalizeRemotePath(path: string, platform: RemotePlatform): string {
+  return (platform === "windows" ? win32 : posix).normalize(path.trim());
+}
+
+function normalizeRemotePaths(
+  paths: readonly string[],
+  platform: RemotePlatform,
+): string[] {
+  return [...new Set(paths.map((path) => normalizeRemotePath(path, platform)))];
+}
+
+function detectRemotePlatform(
+  initializeResult: JsonObject,
+  projectPaths: readonly string[],
+): RemotePlatform {
+  const identifiers = [
+    initializeResult.platformFamily,
+    initializeResult.platformOs,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.toLowerCase());
+  if (identifiers.some((value) => value.includes("windows"))) {
+    return "windows";
+  }
+  if (
+    identifiers.some((value) =>
+      /^(?:android|darwin|freebsd|linux|macos|openbsd|unix)$/u.test(value),
+    )
+  ) {
+    return "posix";
+  }
+  return inferRemotePlatform(projectPaths);
+}
+
+function inferRemotePlatform(paths: readonly string[]): RemotePlatform {
+  return paths.some((path) => {
+    const trimmed = path.trim();
+    return win32.isAbsolute(trimmed) && !posix.isAbsolute(trimmed);
+  })
+    ? "windows"
+    : "posix";
 }
 
 function secondsToMilliseconds(value: unknown): number {
