@@ -1,7 +1,7 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join, posix, win32 } from "node:path";
-import { createInterface } from "node:readline";
+import { createInterface, type Interface } from "node:readline";
 import { inferRolloutStatus, parseRolloutLines } from "./rollout-status.js";
 import type { AgentStatus, RolloutRecord } from "../types.js";
 
@@ -100,6 +100,204 @@ class RemoteReadError extends Error {
   }
 }
 
+type PendingRequest = {
+  reject: (error: Error) => void;
+  resolve: (message: JsonObject) => void;
+};
+
+class AppServerSession {
+  private readonly child: ChildProcessWithoutNullStreams;
+  private readonly lines: Interface;
+  private readonly pendingRequests = new Map<number, PendingRequest>();
+  private readonly timeout: NodeJS.Timeout;
+  private closed = false;
+  private nextRequestId = 0;
+  private stderr = "";
+  private terminalError: Error | null = null;
+
+  constructor(
+    private readonly connection: RemoteConnection,
+    sshCommand: string,
+  ) {
+    this.child = spawn(
+      sshCommand,
+      sshArguments(connection, ["codex", "app-server"]),
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+    this.child.stderr.setEncoding("utf8");
+    this.child.stderr.on("data", (chunk: string) => {
+      if (this.stderr.length < 8_192) {
+        this.stderr += chunk.slice(0, 8_192 - this.stderr.length);
+      }
+    });
+
+    this.lines = createInterface({ input: this.child.stdout });
+    this.lines.on("line", (line) => this.handleLine(line));
+    this.child.stdin.on("error", (error) => {
+      this.fail(
+        new RemoteReadError(
+          "transport",
+          `Codex app-server stdin failed for ${connection.hostId}: ${error.message}`,
+          { cause: error },
+        ),
+      );
+    });
+    this.child.once("error", (error) => {
+      this.fail(
+        new RemoteReadError(
+          "transport",
+          `Failed to start SSH for ${connection.hostId}: ${error.message}`,
+          { cause: error },
+        ),
+      );
+    });
+    this.child.once("close", (code) => {
+      const detail = this.stderr.trim();
+      this.fail(
+        new RemoteReadError(
+          "transport",
+          `Codex app-server for ${connection.hostId} exited with code ${code}${
+            detail ? `: ${detail}` : ""
+          }`,
+        ),
+      );
+    });
+
+    this.timeout = setTimeout(() => {
+      this.fail(
+        new RemoteReadError(
+          "timeout",
+          `Timed out reading Codex tasks from ${connection.hostId}`,
+        ),
+      );
+    }, APP_SERVER_TIMEOUT_MS);
+    this.timeout.unref();
+  }
+
+  request(method: string, params: JsonObject): Promise<JsonObject> {
+    if (this.terminalError) return Promise.reject(this.terminalError);
+    if (this.closed) {
+      return Promise.reject(
+        new RemoteReadError(
+          "transport",
+          `Codex app-server session closed for ${this.connection.hostId}`,
+        ),
+      );
+    }
+
+    const id = this.nextRequestId++;
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(id, { reject, resolve });
+      this.send({ id, method, params });
+    });
+  }
+
+  notify(method: string, params: JsonObject): void {
+    this.send({ method, params });
+  }
+
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.cleanup();
+    const error = new RemoteReadError(
+      "transport",
+      `Codex app-server session closed for ${this.connection.hostId}`,
+    );
+    for (const pending of this.pendingRequests.values()) pending.reject(error);
+    this.pendingRequests.clear();
+  }
+
+  private handleLine(line: string): void {
+    if (this.closed || !line.trim()) return;
+
+    let message: JsonObject;
+    try {
+      const decoded = JSON.parse(line) as unknown;
+      const object = asObject(decoded);
+      if (!object) throw new Error("message is not an object");
+      message = object;
+    } catch (error) {
+      this.fail(
+        new RemoteReadError(
+          "protocol",
+          `Invalid JSON-RPC message from ${this.connection.hostId}`,
+          { cause: error },
+        ),
+      );
+      return;
+    }
+
+    if (message.error !== undefined) {
+      this.fail(jsonRpcResponseError(this.connection.hostId, message));
+      return;
+    }
+    if (typeof message.id !== "number") return;
+
+    const pending = this.pendingRequests.get(message.id);
+    if (!pending) return;
+    this.pendingRequests.delete(message.id);
+    pending.resolve(message);
+  }
+
+  private send(message: JsonObject): void {
+    if (
+      this.closed ||
+      this.child.stdin.destroyed ||
+      this.child.stdin.writableEnded ||
+      !this.child.stdin.writable
+    ) {
+      this.fail(
+        new RemoteReadError(
+          "transport",
+          `Codex app-server stdin closed for ${this.connection.hostId}`,
+        ),
+      );
+      return;
+    }
+
+    try {
+      this.child.stdin.write(`${JSON.stringify(message)}\n`, (error) => {
+        if (error) {
+          this.fail(
+            new RemoteReadError(
+              "transport",
+              `Failed to write to Codex app-server on ${this.connection.hostId}: ${error.message}`,
+              { cause: error },
+            ),
+          );
+        }
+      });
+    } catch (error) {
+      this.fail(
+        new RemoteReadError(
+          "transport",
+          `Failed to write to Codex app-server on ${this.connection.hostId}`,
+          { cause: error },
+        ),
+      );
+    }
+  }
+
+  private fail(error: Error): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.terminalError = error;
+    this.cleanup();
+    for (const pending of this.pendingRequests.values()) pending.reject(error);
+    this.pendingRequests.clear();
+  }
+
+  private cleanup(): void {
+    clearTimeout(this.timeout);
+    this.lines.close();
+    if (!this.child.stdin.destroyed && !this.child.stdin.writableEnded) {
+      this.child.stdin.end();
+    }
+    if (this.child.exitCode === null) this.child.kill();
+  }
+}
+
 const remoteHostCache = new Map<string, RemoteHostCacheEntry>();
 
 /**
@@ -185,341 +383,142 @@ export async function readThreadsFromHost(
 ): Promise<RemoteThreadRow[]> {
   if (projectPaths.length === 0) return [];
 
-  const child = spawn(
-    sshCommand,
-    sshArguments(connection, ["codex", "app-server"]),
-    {
-      stdio: ["pipe", "pipe", "pipe"],
-    },
-  );
-  let stderr = "";
-  child.stderr.setEncoding("utf8");
-  child.stderr.on("data", (chunk: string) => {
-    if (stderr.length < 8_192) stderr += chunk.slice(0, 8_192 - stderr.length);
-  });
-  const lines = createInterface({ input: child.stdout });
+  const session = new AppServerSession(connection, sshCommand);
+  let remotePlatform = inferRemotePlatform(projectPaths);
+  let threads: Map<string, AppServerThread>;
+  let turns: Map<string, AppServerTurn>;
+  try {
+    const initializeMessage = await session.request("initialize", {
+      capabilities: { experimentalApi: true },
+      clientInfo: {
+        name: "chatgato",
+        title: "ChatGato",
+        version: "0.1.0",
+      },
+    });
+    const initializeResult = decodeResultObject(
+      connection.hostId,
+      "initialize",
+      initializeMessage,
+    );
+    remotePlatform = detectRemotePlatform(initializeResult, projectPaths);
+    session.notify("initialized", {});
 
-  return await new Promise<RemoteThreadRow[]>((resolve, reject) => {
-    let settled = false;
-    let nextRequestId = 1;
-    let listRequestId: number | null = null;
-    const seenCursors = new Set<string>();
-    const turnRequestIds = new Map<number, string>();
-    const threads = new Map<string, AppServerThread>();
-    const turns = new Map<string, AppServerTurn>();
-    let remotePlatform = inferRemotePlatform(projectPaths);
-    let normalizedProjectPaths = normalizeRemotePaths(
+    const normalizedProjectPaths = normalizeRemotePaths(
       projectPaths,
       remotePlatform,
     );
+    threads = await readAppServerThreads(
+      session,
+      connection.hostId,
+      normalizedProjectPaths,
+      remotePlatform,
+    );
+    turns = await readAppServerTurns(session, connection.hostId, threads);
+  } finally {
+    session.close();
+  }
 
-    const timeout = setTimeout(() => {
-      fail(
-        new RemoteReadError(
-          "timeout",
-          `Timed out reading Codex tasks from ${connection.hostId}`,
-        ),
-      );
-    }, APP_SERVER_TIMEOUT_MS);
-    timeout.unref();
+  const selectedThreads = [...threads.values()];
+  if (selectedThreads.length === 0) return [];
+  const rolloutPaths = selectedThreads.flatMap((thread) =>
+    typeof thread.path === "string" ? [thread.path] : [],
+  );
+  let rollouts: Map<string, RolloutRecord[]>;
+  try {
+    rollouts = await readRolloutTails(
+      connection,
+      rolloutPaths,
+      sshCommand,
+      remotePlatform,
+    );
+  } catch (error) {
+    throw error instanceof RemoteReadError
+      ? error
+      : new RemoteReadError(
+          "rollout",
+          `Failed to read persisted Codex status from ${connection.hostId}`,
+          { cause: error },
+        );
+  }
 
-    function cleanup(): void {
-      clearTimeout(timeout);
-      lines.close();
-      if (!child.stdin.destroyed && !child.stdin.writableEnded) {
-        child.stdin.end();
-      }
-      if (child.exitCode === null) child.kill();
-    }
-
-    function succeed(): void {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      const selectedThreads = [...threads.values()];
-      if (selectedThreads.length === 0) {
-        resolve([]);
-        return;
-      }
-      const rolloutPaths = selectedThreads.flatMap((thread) =>
-        typeof thread.path === "string" ? [thread.path] : [],
-      );
-      void readRolloutTails(
-        connection,
-        rolloutPaths,
-        sshCommand,
+  return selectedThreads
+    .map((thread) =>
+      remoteThreadRow(
+        connection.hostId,
+        thread,
+        turns.get(String(thread.id)),
+        typeof thread.path === "string" ? rollouts.get(thread.path) : undefined,
         remotePlatform,
-      ).then(
-        (rollouts) => {
-          resolve(
-            selectedThreads
-              .map((thread) =>
-                remoteThreadRow(
-                  connection.hostId,
-                  thread,
-                  turns.get(String(thread.id)),
-                  typeof thread.path === "string"
-                    ? rollouts.get(thread.path)
-                    : undefined,
-                  remotePlatform,
-                ),
-              )
-              .filter((row): row is RemoteThreadRow => row !== null),
-          );
-        },
-        (error: unknown) => {
-          reject(
-            error instanceof RemoteReadError
-              ? error
-              : new RemoteReadError(
-                  "rollout",
-                  `Failed to read persisted Codex status from ${connection.hostId}`,
-                  { cause: error },
-                ),
-          );
-        },
-      );
-    }
+      ),
+    )
+    .filter((row): row is RemoteThreadRow => row !== null);
+}
 
-    function fail(error: Error): void {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(error);
-    }
+async function readAppServerThreads(
+  session: AppServerSession,
+  hostId: string,
+  projectPaths: readonly string[],
+  platform: RemotePlatform,
+): Promise<Map<string, AppServerThread>> {
+  const seenCursors = new Set<string>();
+  const threads = new Map<string, AppServerThread>();
+  let cursor: string | undefined;
 
-    function send(message: JsonObject): boolean {
+  do {
+    const message = await session.request("thread/list", {
+      archived: false,
+      ...(cursor ? { cursor } : {}),
+      limit: THREADS_PER_PAGE,
+      sortDirection: "desc",
+      sortKey: "recency_at",
+      useStateDbOnly: true,
+    });
+    const page = decodeThreadPage(hostId, message);
+    for (const thread of page.data as AppServerThread[]) {
       if (
-        settled ||
-        child.stdin.destroyed ||
-        child.stdin.writableEnded ||
-        !child.stdin.writable
+        typeof thread.id === "string" &&
+        typeof thread.cwd === "string" &&
+        projectPaths.some((path) =>
+          isWithinRemotePath(thread.cwd as string, path, platform),
+        )
       ) {
-        fail(
-          new RemoteReadError(
-            "transport",
-            `Codex app-server stdin closed for ${connection.hostId}`,
-          ),
-        );
-        return false;
-      }
-
-      try {
-        child.stdin.write(`${JSON.stringify(message)}\n`, (error) => {
-          if (error) {
-            fail(
-              new RemoteReadError(
-                "transport",
-                `Failed to write to Codex app-server on ${connection.hostId}: ${error.message}`,
-                { cause: error },
-              ),
-            );
-          }
-        });
-        return true;
-      } catch (error) {
-        fail(
-          new RemoteReadError(
-            "transport",
-            `Failed to write to Codex app-server on ${connection.hostId}`,
-            { cause: error },
-          ),
-        );
-        return false;
+        threads.set(thread.id, thread);
       }
     }
 
-    function requestThreadPage(cursor?: string): void {
-      const requestId = nextRequestId++;
-      listRequestId = requestId;
-      send({
-        id: requestId,
-        method: "thread/list",
-        params: {
-          archived: false,
-          ...(cursor ? { cursor } : {}),
-          limit: THREADS_PER_PAGE,
-          sortDirection: "desc",
-          sortKey: "recency_at",
-          useStateDbOnly: true,
-        },
+    cursor = page.nextCursor;
+    if (cursor && seenCursors.has(cursor)) {
+      throw new RemoteReadError(
+        "protocol",
+        `Codex app-server repeated a thread/list cursor on ${hostId}`,
+      );
+    }
+    if (cursor) seenCursors.add(cursor);
+  } while (cursor);
+
+  retainRecentProjectThreads(threads, projectPaths, platform);
+  return threads;
+}
+
+async function readAppServerTurns(
+  session: AppServerSession,
+  hostId: string,
+  threads: ReadonlyMap<string, AppServerThread>,
+): Promise<Map<string, AppServerTurn>> {
+  const turns = await Promise.all(
+    [...threads.keys()].map(async (threadId) => {
+      const message = await session.request("thread/turns/list", {
+        itemsView: "summary",
+        limit: 1,
+        sortDirection: "desc",
+        threadId,
       });
-    }
-
-    function requestTurns(): void {
-      if (threads.size === 0) {
-        succeed();
-        return;
-      }
-      for (const thread of threads.values()) {
-        if (typeof thread.id !== "string") continue;
-        const requestId = nextRequestId++;
-        turnRequestIds.set(requestId, thread.id);
-        send({
-          id: requestId,
-          method: "thread/turns/list",
-          params: {
-            itemsView: "summary",
-            limit: 1,
-            sortDirection: "desc",
-            threadId: thread.id,
-          },
-        });
-      }
-      if (turnRequestIds.size === 0) succeed();
-    }
-
-    lines.on("line", (line) => {
-      if (settled || !line.trim()) return;
-
-      let message: JsonObject;
-      try {
-        const decoded = JSON.parse(line) as unknown;
-        const object = asObject(decoded);
-        if (!object) throw new Error("message is not an object");
-        message = object;
-      } catch (error) {
-        fail(
-          new RemoteReadError(
-            "protocol",
-            `Invalid JSON-RPC message from ${connection.hostId}`,
-            { cause: error },
-          ),
-        );
-        return;
-      }
-
-      if (message.error !== undefined) {
-        fail(jsonRpcResponseError(connection.hostId, message));
-        return;
-      }
-
-      if (message.id === 0) {
-        let result: JsonObject;
-        try {
-          result = decodeResultObject(connection.hostId, "initialize", message);
-        } catch (error) {
-          fail(asError(error));
-          return;
-        }
-        remotePlatform = detectRemotePlatform(result, projectPaths);
-        normalizedProjectPaths = normalizeRemotePaths(
-          projectPaths,
-          remotePlatform,
-        );
-        send({ method: "initialized", params: {} });
-        requestThreadPage();
-        return;
-      }
-
-      if (typeof message.id !== "number") return;
-      if (message.id === listRequestId) {
-        let page: { data: JsonObject[]; nextCursor?: string };
-        try {
-          page = decodeThreadPage(connection.hostId, message);
-        } catch (error) {
-          fail(asError(error));
-          return;
-        }
-        listRequestId = null;
-        for (const thread of page.data as AppServerThread[]) {
-          const cwd = thread.cwd;
-          if (
-            typeof thread.id === "string" &&
-            typeof cwd === "string" &&
-            normalizedProjectPaths.some((path) =>
-              isWithinRemotePath(cwd, path, remotePlatform),
-            )
-          ) {
-            threads.set(thread.id, thread);
-          }
-        }
-
-        if (page.nextCursor) {
-          if (seenCursors.has(page.nextCursor)) {
-            fail(
-              new RemoteReadError(
-                "protocol",
-                `Codex app-server repeated a thread/list cursor on ${connection.hostId}`,
-              ),
-            );
-            return;
-          }
-          seenCursors.add(page.nextCursor);
-          requestThreadPage(page.nextCursor);
-        } else {
-          retainRecentProjectThreads(
-            threads,
-            normalizedProjectPaths,
-            remotePlatform,
-          );
-          requestTurns();
-        }
-        return;
-      }
-
-      const threadId = turnRequestIds.get(message.id);
-      if (!threadId) return;
-      turnRequestIds.delete(message.id);
-      try {
-        const data = decodeDataPage(
-          connection.hostId,
-          "thread/turns/list",
-          message,
-        );
-        if (data[0]) turns.set(threadId, data[0] as AppServerTurn);
-      } catch (error) {
-        fail(asError(error));
-        return;
-      }
-      if (turnRequestIds.size === 0) succeed();
-    });
-
-    child.stdin.on("error", (error) => {
-      fail(
-        new RemoteReadError(
-          "transport",
-          `Codex app-server stdin failed for ${connection.hostId}: ${error.message}`,
-          { cause: error },
-        ),
-      );
-    });
-    child.once("error", (error) => {
-      fail(
-        new RemoteReadError(
-          "transport",
-          `Failed to start SSH for ${connection.hostId}: ${error.message}`,
-          { cause: error },
-        ),
-      );
-    });
-    child.once("close", (code) => {
-      if (!settled) {
-        const detail = stderr.trim();
-        fail(
-          new RemoteReadError(
-            "transport",
-            `Codex app-server for ${connection.hostId} exited with code ${code}${
-              detail ? `: ${detail}` : ""
-            }`,
-          ),
-        );
-      }
-    });
-
-    send({
-      id: 0,
-      method: "initialize",
-      params: {
-        capabilities: { experimentalApi: true },
-        clientInfo: {
-          name: "chatgato",
-          title: "ChatGato",
-          version: "0.1.0",
-        },
-      },
-    });
-  });
+      const data = decodeDataPage(hostId, "thread/turns/list", message);
+      return data[0] ? ([threadId, data[0] as AppServerTurn] as const) : null;
+    }),
+  );
+  return new Map(turns.filter((turn) => turn !== null));
 }
 
 export function remoteAgentStatus(
@@ -984,10 +983,6 @@ function jsonRpcResponseError(
     "protocol",
     `Codex app-server request ${String(message.id)} failed on ${hostId}${code}: ${detail}`,
   );
-}
-
-function asError(value: unknown): Error {
-  return value instanceof Error ? value : new Error(String(value));
 }
 
 function remoteHostCacheKey(codexHome: string, hostId: string): string {

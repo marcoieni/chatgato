@@ -310,6 +310,61 @@ lines.on("line", (line) => {
     ]);
   });
 
+  it("correlates concurrent turn responses by request id", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+const turnRequests = [];
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "thread/list") {
+    send({ id: message.id, result: { data: [
+      {
+        id: "thread-a",
+        name: "A",
+        cwd: "/srv/work/a",
+        path: "/a.jsonl",
+        recencyAt: 2
+      },
+      {
+        id: "thread-b",
+        name: "B",
+        cwd: "/srv/work/b",
+        path: "/b.jsonl",
+        recencyAt: 1
+      }
+    ], nextCursor: null } });
+  } else if (message.method === "thread/turns/list") {
+    turnRequests.push(message);
+    if (turnRequests.length === 2) {
+      for (const request of turnRequests.reverse()) {
+        send({ id: request.id, result: { data: [{
+          status: request.params.threadId === "thread-a"
+            ? "completed"
+            : "interrupted"
+        }] } });
+      }
+    }
+  }
+});
+`);
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "devbox", hostId: "out-of-order" },
+        ["/srv/work"],
+        fakeSsh,
+        async () => new Map(),
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "thread-a", status: "unread" }),
+      expect.objectContaining({ id: "thread-b", status: "error" }),
+    ]);
+  });
+
   it("uses Windows paths and PowerShell rollout retrieval on Windows hosts", async () => {
     const fakeSsh = await fakeSshScript(`
 if (!process.argv.includes("app-server")) {
