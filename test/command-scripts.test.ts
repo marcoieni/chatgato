@@ -62,9 +62,9 @@ describe("Codex control scripts", () => {
     expect(appleScript).toMatch(/controlMode is "thread" then/u);
     expect(appleScript).toContain("resultIndex > maxResultIndex");
     expect(appleScript).toMatch(
-      /prepareThreadSearch\(\)[\s\S]*keystroke "s" using \{command down, option down, shift down\}[\s\S]*keystroke payload[\s\S]*repeat resultIndex times/u,
+      /keystroke "s" using \{command down, option down, shift down\}[\s\S]*keystroke payload[\s\S]*repeat resultIndex times/u,
     );
-    expect(appleScript).toContain('open location "codex://settings"');
+    expect(appleScript).not.toContain('open location "codex://settings"');
     expect(appleScript).not.toContain("resultIndex > 19");
     expect(appleScript).not.toContain('keystroke "Search Chats"');
     expect(appleScript).not.toContain('keystroke "k" using {command down}');
@@ -75,7 +75,7 @@ describe("Codex control scripts", () => {
     expect(powerShell).toContain("$ResultIndex -gt $MaxResultIndex");
     expect(powerShell).toContain('$shell.SendKeys("^%+s")');
     expect(powerShell).toContain("$shell.SendKeys($escapedQuery)");
-    expect(powerShell).toContain('Start-Process "codex://settings"');
+    expect(powerShell).not.toContain('Start-Process "codex://settings"');
     expect(powerShell).toMatch(/for \(\$index = 0; \$index -lt \$ResultIndex/u);
     expect(powerShell).not.toContain("$ResultIndex -gt 19");
     expect(powerShell).not.toContain('$shell.SendKeys("Search Chats")');

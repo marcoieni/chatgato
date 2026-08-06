@@ -71,13 +71,6 @@ if ($Mode -eq "thread") {
   if ($MaxResultIndex -lt 0 -or $ResultIndex -lt 0 -or $ResultIndex -gt $MaxResultIndex) {
     throw "Invalid Codex task search index"
   }
-  Start-Process "codex://settings"
-  Start-Sleep -Seconds 1
-  if (-not $shell.AppActivate("ChatGPT")) {
-    throw "ChatGPT is not running"
-  }
-  Start-Sleep -Milliseconds 180
-  $shell.SendKeys("{ESC}")
   $escapedQuery = $Payload -replace '([+^%~(){}\[\]])', '{$1}'
   $shell.SendKeys("^%+s")
   Start-Sleep -Milliseconds 750

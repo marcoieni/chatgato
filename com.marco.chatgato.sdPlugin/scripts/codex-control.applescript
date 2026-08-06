@@ -40,7 +40,6 @@ on sendControl(controlMode, payload, resultIndex, maxResultIndex)
 	tell application "System Events"
 		if controlMode is "thread" then
 			if maxResultIndex < 0 or resultIndex < 0 or resultIndex > maxResultIndex then error "Invalid Codex task search index"
-			my prepareThreadSearch()
 			keystroke "s" using {command down, option down, shift down}
 			delay 0.75
 			keystroke payload
@@ -98,11 +97,3 @@ on sendControl(controlMode, payload, resultIndex, maxResultIndex)
 		end if
 	end tell
 end sendControl
-
-on prepareThreadSearch()
-	open location "codex://settings"
-	delay 1
-	tell application "ChatGPT" to activate
-	delay 0.18
-	tell application "System Events" to key code 53
-end prepareThreadSearch
