@@ -14,6 +14,7 @@ import {
   pushToTalkImage,
   pushToTalkSvg,
   reasoningSvg,
+  keyTitle,
   usageSvg,
 } from "../src/lib/visuals.js";
 import type { CodexThread, CodexUsageSnapshot } from "../src/types.js";
@@ -162,6 +163,20 @@ describe("Stream Deck visuals", () => {
     };
     expect(effectiveStatus(thread, "thread-1", 1000)).toBe("idle");
     expect(effectiveStatus(thread, "another", 2000)).toBe("unread");
+  });
+
+  it("shows a Unix SSH project name on every desktop platform", () => {
+    const thread: CodexThread = {
+      id: "remote-thread",
+      title: "Remote",
+      cwd: "/home/user/work",
+      rolloutPath: "/home/user/.codex/rollout.jsonl",
+      updatedAtMs: 1000,
+      reasoningEffort: null,
+      spawnStatus: null,
+      status: "working",
+    };
+    expect(keyTitle(thread, "working")).toBe("WORKING\nwork");
   });
 
   it("renders remaining usage for both rate-limit windows", () => {

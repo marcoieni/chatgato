@@ -38,26 +38,28 @@ Optionally set an absolute workspace path to filter the keys to one project.
 - Stream Deck 7.1 or newer
 - macOS 13+ or Windows 10+
 - A Stream Deck device; Stream Deck+ is optional for dial control
-- The Fast and Plan keyboard shortcuts configured in ChatGPT as described below
+- The Search Chats, Fast, and Plan keyboard shortcuts configured in ChatGPT as described below
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
 
-### Required Fast and Plan shortcut setup
+### Required keyboard shortcut setup
 
-ChatGPT exposes app-scoped Fast and Plan commands, but does not assign the bindings ChatGato uses. Configure them once:
+ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign the bindings ChatGato uses. Configure them once:
 
 1. Open ChatGPT desktop.
 2. Open **Settings → Keyboard Shortcuts**.
-3. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
-4. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
-5. Use the exact platform-specific bindings below.
+3. Search for **“Switch chat”** and assign the required Search Chats shortcut.
+4. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
+5. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
+6. Restart ChatGPT so the desktop app loads the bindings.
+7. Use the exact platform-specific bindings below.
 
-| Platform | Fast                   | Plan                   |
-| -------- | ---------------------- | ---------------------- |
-| macOS    | Command+Option+Shift+F | Command+Option+Shift+P |
-| Windows  | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
+| Platform | Search Chats           | Fast                   | Plan                   |
+| -------- | ---------------------- | ---------------------- | ---------------------- |
+| macOS    | Command+Option+Shift+S | Command+Option+Shift+F | Command+Option+Shift+P |
+| Windows  | Ctrl+Alt+Shift+S       | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
 
-**The ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** A warning or alert means ChatGato could not send the shortcut to ChatGPT.
+**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. Before sending a remote task title, ChatGato validates the Search Chats binding and verifies that ChatGPT started after the binding was saved.
 
 ## Build and install for development
 
@@ -97,15 +99,24 @@ npm run pack
 The plugin reads Codex's `state_5.sqlite` from `sqlite_home` in
 `$CODEX_HOME/config.toml` when configured, then `CODEX_SQLITE_HOME`, and otherwise
 `CODEX_HOME` (normally `~/.codex`). Relative SQLite locations resolve from the
-plugin's current working directory. Rollout files and `models_cache.json` remain
-under `CODEX_HOME`. See the official
-[Codex environment-variable documentation](https://learn.chatgpt.com/docs/config-file/environment-variables).
+plugin's current working directory. For SSH projects saved in the ChatGPT desktop
+app, it discovers the configured host and project path from Codex's global state,
+then uses the remote host's documented `codex app-server` over the same SSH
+connection to read its recent task metadata.
 
-This is an integration with Codex's internal, version-sensitive SQLite schema,
-not a public or stable state API. Codex releases may change the database filename,
-tables, columns, or rollout event format and require a corresponding plugin update.
-The plugin does not transmit task titles, paths, prompts, or status anywhere.
-Status changes are polled every two seconds by default.
+Rollout files and `models_cache.json` remain under `CODEX_HOME`. See the official
+[Codex environment-variable documentation](https://learn.chatgpt.com/docs/config-file/environment-variables).
+Remote discovery requires the same working SSH alias and remote `codex` command
+as the desktop app's
+[SSH connection setup](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host).
+
+Local discovery integrates with Codex's internal, version-sensitive SQLite
+schema, while remote discovery combines the documented app-server API with the
+desktop app's internal saved-project state. Codex releases may change these
+formats and require a corresponding plugin update. The plugin does not send task
+titles, paths, prompts, or status to a cloud service or third party; remote task
+metadata only crosses the user-configured SSH connection. Status changes are
+polled every two seconds by default.
 
 Completion is shown as green/unread. Pressing that Agent key acknowledges the completion and opens the task, changing the key to idle white until the task updates again.
 
@@ -113,7 +124,7 @@ The Usage Limits key reads the latest account-wide Codex rate-limit snapshot tha
 
 ## Notes and limitations
 
-- Agent status is inferred from internal local Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
+- Agent status is inferred from local or SSH-hosted Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
 - Usage limits are also read locally from Codex rollout events; no account credentials or usage data are transmitted by the plugin.
 
 ## Why this name?

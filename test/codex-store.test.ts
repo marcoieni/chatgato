@@ -83,6 +83,57 @@ afterEach(async () => {
 });
 
 describe("CodexStore", () => {
+  it("finds a duplicate title's position in Codex chat search", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-search-rank-"));
+    temporaryDirectories.push(home);
+    const db = createThreadDatabase(home);
+    const sharedPrefix = "x".repeat(200);
+    insertThread(db, {
+      id: "newer-long-title",
+      recencyAtMs: 5_000,
+      rolloutPath: join(home, "newer-long.jsonl"),
+      title: `${sharedPrefix}A`,
+    });
+    insertThread(db, {
+      id: "selected-long-title",
+      recencyAtMs: 4_000,
+      rolloutPath: join(home, "selected-long.jsonl"),
+      title: `${sharedPrefix}B`,
+    });
+    insertThread(db, {
+      id: "newer-duplicate",
+      recencyAtMs: 3_000,
+      rolloutPath: join(home, "newer.jsonl"),
+      title: "Remote task",
+    });
+    insertThread(db, {
+      id: "selected-duplicate",
+      recencyAtMs: 2_000,
+      rolloutPath: join(home, "selected.jsonl"),
+      title: "Remote task",
+    });
+    insertThread(db, {
+      id: "other-task",
+      recencyAtMs: 1_000,
+      rolloutPath: join(home, "other.jsonl"),
+      title: "Other task",
+    });
+    db.close();
+
+    const store = new CodexStore(home);
+
+    await expect(
+      store.threadSearchResult("selected-duplicate"),
+    ).resolves.toEqual({ resultIndex: 1, title: "Remote task" });
+    await expect(store.threadSearchResult("other-task")).resolves.toEqual({
+      resultIndex: 0,
+      title: "Other task",
+    });
+    await expect(
+      store.threadSearchResult("selected-long-title"),
+    ).resolves.toEqual({ resultIndex: 1, title: `${sharedPrefix}B` });
+  });
+
   it("reads the database from CODEX_SQLITE_HOME", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-home-"));
     const sqliteHome = await mkdtemp(join(tmpdir(), "chatgato-sqlite-"));
@@ -313,6 +364,110 @@ describe("CodexStore", () => {
     });
     expect(readRolloutTail).toHaveBeenCalledOnce();
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "rollout-4.jsonl"));
+  });
+
+  it("merges cached SSH tasks with local tasks by recency", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
+    temporaryDirectories.push(home);
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      id: "local-thread",
+      recencyAtMs: 2_000,
+      rolloutPath: join(home, "local.jsonl"),
+      title: "Local task",
+      updatedAtMs: 2_000,
+    });
+    db.close();
+
+    const readRolloutTail = vi.fn(
+      async (_path: string): Promise<RolloutRecord[]> => [],
+    );
+    const readRemoteThreads = vi.fn(async () => [
+      {
+        cwd: "/home/user/work",
+        id: "remote-thread",
+        recencyAtMs: 3_000,
+        remoteHostId: "remote-ssh-discovered:devbox",
+        remotePlatform: "posix" as const,
+        rolloutPath: null,
+        status: "unread" as const,
+        title: "Remote task",
+        updatedAtMs: 3_100,
+      },
+    ]);
+    const store = new CodexStore(home, readRolloutTail, readRemoteThreads);
+
+    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+      id: "remote-thread",
+      remoteHostId: "remote-ssh-discovered:devbox",
+      rolloutPath: null,
+      status: "unread",
+      title: "Remote task",
+    });
+    await expect(store.threadAtSlot(2)).resolves.toMatchObject({
+      id: "local-thread",
+    });
+    await expect(
+      store.threadAtSlot(1, "/home/user/work"),
+    ).resolves.toMatchObject({
+      id: "remote-thread",
+    });
+    expect(readRemoteThreads).toHaveBeenCalledOnce();
+    expect(readRolloutTail).toHaveBeenCalledOnce();
+    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "local.jsonl"));
+  });
+
+  it("matches nested Windows remote workspaces case-insensitively", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
+    temporaryDirectories.push(home);
+    createThreadDatabase(home).close();
+    const readRemoteThreads = vi.fn(async () => [
+      {
+        cwd: "c:\\WORK\\repo",
+        id: "windows-remote-thread",
+        recencyAtMs: 3_000,
+        remoteHostId: "windows-host",
+        remotePlatform: "windows" as const,
+        rolloutPath: "C:\\Users\\dev\\.codex\\remote.jsonl",
+        status: "unread" as const,
+        title: "Windows remote task",
+        updatedAtMs: 3_100,
+      },
+    ]);
+    const store = new CodexStore(home, async () => [], readRemoteThreads);
+
+    await expect(store.threadAtSlot(1, "C:\\work")).resolves.toMatchObject({
+      id: "windows-remote-thread",
+    });
+  });
+
+  it("shares an in-flight SSH refresh across agent slots", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
+    temporaryDirectories.push(home);
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      id: "local-thread",
+      rolloutPath: join(home, "local.jsonl"),
+    });
+    db.close();
+
+    let finishRemoteRead!: () => void;
+    const remoteRead = new Promise<never[]>((resolve) => {
+      finishRemoteRead = () => resolve([]);
+    });
+    const readRemoteThreads = vi.fn(() => remoteRead);
+    const store = new CodexStore(home, async () => [], readRemoteThreads);
+
+    const firstSlot = store.threadAtSlot(1);
+    await vi.waitFor(() => expect(readRemoteThreads).toHaveBeenCalledOnce());
+    const originalNow = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(originalNow + 10_000);
+    const secondSlot = store.threadAtSlot(1);
+    finishRemoteRead();
+
+    await expect(firstSlot).resolves.toMatchObject({ id: "local-thread" });
+    await expect(secondSlot).resolves.toMatchObject({ id: "local-thread" });
+    expect(readRemoteThreads).toHaveBeenCalledOnce();
   });
 
   it("continues scanning global recency rows until it finds a workspace match", async () => {

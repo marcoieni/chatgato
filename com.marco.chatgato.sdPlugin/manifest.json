@@ -13,7 +13,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Show and open one of the 20 most recent Codex tasks with live status color.",
+      "Tooltip": "Show and open one of the 20 most recent Codex tasks with live status color. SSH-hosted tasks require the Search Chats shortcut shown in the property inspector.",
       "UUID": "com.marco.chatgato.agent-status"
     },
     {

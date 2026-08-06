@@ -6,15 +6,17 @@ import {
   type WillAppearEvent,
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
+import streamDeck from "@elgato/streamdeck";
 import { normalizeAgentSlot } from "../lib/agent-slots.js";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { buildThreadUrl } from "../lib/deep-links.js";
-import { openUrl } from "../lib/codex-controller.js";
+import { openThreadBySearch, openUrl } from "../lib/codex-controller.js";
 import { agentImage, effectiveStatus, keyTitle } from "../lib/visuals.js";
 import type { AgentSettings, CodexThread } from "../types.js";
 
 type VisibleAction = WillAppearEvent<AgentSettings>["action"];
+const logger = streamDeck.logger.createScope("Agent Status");
 
 @action({ UUID: "com.marco.chatgato.agent-status" })
 export class AgentStatusAction extends SingletonAction<AgentSettings> {
@@ -40,23 +42,34 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
   }
 
   override async onKeyDown(ev: KeyDownEvent<AgentSettings>): Promise<void> {
-    const thread =
-      this.visibleThreads.get(ev.action.id) ??
-      (await this.store.threadAtSlot(
-        this.slot(ev.payload.settings),
-        ev.payload.settings.cwdFilter,
-      ));
-    if (!thread) {
-      await ev.action.showAlert();
-      return;
-    }
+    const slot = this.slot(ev.payload.settings);
+    try {
+      const thread =
+        this.visibleThreads.get(ev.action.id) ??
+        (await this.store.threadAtSlot(slot, ev.payload.settings.cwdFilter));
+      if (!thread) {
+        await ev.action.showAlert();
+        return;
+      }
 
-    await ev.action.setSettings({
-      ...ev.payload.settings,
-      acknowledgedThreadId: thread.id,
-      acknowledgedAtMs: Date.now(),
-    });
-    await openUrl(buildThreadUrl(thread.id));
+      if (thread.remoteHostId) {
+        // Codex's external thread deep link only checks the local app server.
+        // Its chat switcher retains each result's host-aware thread key.
+        const result = await this.store.threadSearchResult(thread.id);
+        await openThreadBySearch(result.title, result.resultIndex);
+      } else {
+        await openUrl(buildThreadUrl(thread.id));
+      }
+
+      await ev.action.setSettings({
+        ...ev.payload.settings,
+        acknowledgedThreadId: thread.id,
+        acknowledgedAtMs: Date.now(),
+      });
+    } catch (error) {
+      logger.error(`Failed to open task in slot ${slot}`, error);
+      await ev.action.showAlert();
+    }
   }
 
   private async startPolling(

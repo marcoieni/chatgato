@@ -5,6 +5,12 @@ import { join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { usageFromRollout } from "./codex-usage.js";
 import {
+  isWithinRemotePath,
+  RemoteCodexStore,
+  type RemotePlatform,
+  type RemoteThreadRow,
+} from "./remote-codex-store.js";
+import {
   inferRolloutStatus,
   parseRolloutLines,
   planModeFromRollout,
@@ -15,7 +21,7 @@ import type {
   RolloutRecord,
 } from "../types.js";
 
-type ThreadRow = {
+type LocalThreadRow = {
   id: string;
   title: string;
   cwd: string;
@@ -23,7 +29,33 @@ type ThreadRow = {
   updated_at_ms: number;
   reasoning_effort: string | null;
   spawn_status: string | null;
+  recency_at_ms: number;
 };
+
+type ThreadDescriptorBase = {
+  id: string;
+  title: string;
+  cwd: string;
+  updatedAtMs: number;
+  recencyAtMs: number;
+};
+
+type LocalThreadDescriptor = ThreadDescriptorBase & {
+  kind: "local";
+  reasoningEffort: string | null;
+  rolloutPath: string;
+  spawnStatus: string | null;
+};
+
+type RemoteThreadDescriptor = ThreadDescriptorBase & {
+  kind: "remote";
+  remoteHostId: string;
+  remotePlatform: RemotePlatform;
+  rolloutPath: string | null;
+  status: CodexThread["status"];
+};
+
+type ThreadDescriptor = LocalThreadDescriptor | RemoteThreadDescriptor;
 
 type RolloutPathRow = {
   rollout_path: string;
@@ -60,6 +92,9 @@ export type ReasoningSnapshot = {
 const TAIL_BYTES = 512 * 1024;
 
 type RolloutTailReader = (path: string) => Promise<RolloutRecord[]>;
+type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
+
+const THREAD_DESCRIPTORS_CACHE_MS = 1_000;
 
 export class CodexStore {
   readonly codexHome: string;
@@ -68,15 +103,21 @@ export class CodexStore {
   constructor(
     codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
     private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
+    private readonly readRemoteThreads: RemoteThreadReader = new RemoteCodexStore()
+      .readThreadRows,
   ) {
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
   }
 
+  private threadDescriptorsCache:
+    | { descriptors: Promise<ThreadDescriptor[]>; expiresAtMs: number }
+    | undefined;
+
   async recentThreads(limit = 12, cwdFilter?: string): Promise<CodexThread[]> {
     return Promise.all(
-      this.recentThreadRows(limit, cwdFilter).map((row) =>
-        this.hydrateThread(row),
+      (await this.recentThreadDescriptors(limit, cwdFilter)).map((descriptor) =>
+        this.hydrateThread(descriptor),
       ),
     );
   }
@@ -85,20 +126,92 @@ export class CodexStore {
     slot: number,
     cwdFilter?: string,
   ): Promise<CodexThread | null> {
-    const row = this.recentThreadRows(slot, cwdFilter)[slot - 1];
-    return row ? this.hydrateThread(row) : null;
+    const descriptor = (await this.recentThreadDescriptors(slot, cwdFilter))[
+      slot - 1
+    ];
+    return descriptor ? this.hydrateThread(descriptor) : null;
   }
 
-  private recentThreadRows(limit: number, cwdFilter?: string): ThreadRow[] {
+  async threadSearchResult(
+    threadId: string,
+  ): Promise<{ resultIndex: number; title: string }> {
+    const descriptors = await this.allThreadDescriptors();
+    const selected = descriptors.find(
+      (descriptor) => descriptor.id === threadId,
+    );
+    if (!selected) {
+      throw new Error(`Codex task is no longer available: ${threadId}`);
+    }
+
+    const title = selected.title || "Untitled task";
+    const searchKey = threadSearchKey(title);
+    let resultIndex = 0;
+
+    for (const descriptor of descriptors) {
+      if (descriptor.id === threadId) return { resultIndex, title };
+      if (threadSearchKey(descriptor.title || "Untitled task") === searchKey) {
+        resultIndex += 1;
+      }
+    }
+
+    throw new Error(`Codex task ordering changed while selecting: ${threadId}`);
+  }
+
+  private async recentThreadDescriptors(
+    limit: number,
+    cwdFilter?: string,
+  ): Promise<ThreadDescriptor[]> {
     const rowLimit = Number.isFinite(limit)
       ? Math.max(0, Math.trunc(limit))
       : 0;
     if (rowLimit === 0) return [];
-    const filter = cwdFilter?.trim() ? resolve(cwdFilter.trim()) : null;
-    return this.withDatabase((db) => {
+    const filter = cwdFilter?.trim() || null;
+    const selected: ThreadDescriptor[] = [];
+
+    for (const descriptor of await this.allThreadDescriptors()) {
+      if (filter && !matchesWorkspaceFilter(descriptor, filter)) continue;
+      selected.push(descriptor);
+      if (selected.length === rowLimit) break;
+    }
+    return selected;
+  }
+
+  private allThreadDescriptors(): Promise<ThreadDescriptor[]> {
+    const now = Date.now();
+    if (
+      this.threadDescriptorsCache &&
+      this.threadDescriptorsCache.expiresAtMs > now
+    ) {
+      return this.threadDescriptorsCache.descriptors;
+    }
+
+    const descriptors = this.loadThreadDescriptors();
+    const cache = {
+      descriptors,
+      expiresAtMs: Number.POSITIVE_INFINITY,
+    };
+    this.threadDescriptorsCache = cache;
+    void descriptors.then(
+      () => {
+        if (this.threadDescriptorsCache === cache) {
+          cache.expiresAtMs = Date.now() + THREAD_DESCRIPTORS_CACHE_MS;
+        }
+      },
+      () => {
+        if (this.threadDescriptorsCache === cache) {
+          this.threadDescriptorsCache = undefined;
+        }
+      },
+    );
+    return descriptors;
+  }
+
+  private async loadThreadDescriptors(): Promise<ThreadDescriptor[]> {
+    const localRows = this.withDatabase((db) => {
       const statement = db.prepare(
         `SELECT t.id, t.title, t.cwd, t.rollout_path,
                 COALESCE(t.updated_at_ms, t.updated_at * 1000) AS updated_at_ms,
+                t.recency_at_ms,
                 t.reasoning_effort,
                 e.status AS spawn_status
            FROM threads t
@@ -106,33 +219,54 @@ export class CodexStore {
           WHERE t.archived = 0 AND t.preview <> ''
        ORDER BY t.recency_at_ms DESC, t.id DESC`,
       );
-      const selected: ThreadRow[] = [];
-
-      for (const row of statement.iterate() as unknown as Iterable<ThreadRow>) {
-        if (filter) {
-          const cwd = resolve(row.cwd);
-          if (cwd !== filter && !cwd.startsWith(`${filter}${sep}`)) continue;
-        }
-        selected.push(row);
-        if (selected.length === rowLimit) break;
-      }
-
-      return selected;
+      return [...(statement.iterate() as unknown as Iterable<LocalThreadRow>)];
     });
+
+    const remoteRows = await this.readRemoteThreads(this.codexHome).catch(
+      () => [],
+    );
+    const descriptorsById = new Map<string, ThreadDescriptor>();
+    for (const row of localRows) {
+      const descriptor = localThreadDescriptor(row);
+      descriptorsById.set(descriptor.id, descriptor);
+    }
+    for (const row of remoteRows) {
+      descriptorsById.set(row.id, remoteThreadDescriptor(row));
+    }
+    return [...descriptorsById.values()].sort(
+      (left, right) =>
+        right.recencyAtMs - left.recencyAtMs || right.id.localeCompare(left.id),
+    );
   }
 
-  private async hydrateThread(row: ThreadRow): Promise<CodexThread> {
+  private async hydrateThread(
+    descriptor: ThreadDescriptor,
+  ): Promise<CodexThread> {
+    if (descriptor.kind === "remote") {
+      return {
+        id: descriptor.id,
+        title: descriptor.title || "Untitled task",
+        cwd: descriptor.cwd,
+        rolloutPath: descriptor.rolloutPath,
+        remoteHostId: descriptor.remoteHostId,
+        updatedAtMs: Number(descriptor.updatedAtMs) || 0,
+        reasoningEffort: null,
+        spawnStatus: null,
+        status: descriptor.status,
+      };
+    }
+
     return {
-      id: row.id,
-      title: row.title || "Untitled task",
-      cwd: row.cwd,
-      rolloutPath: row.rollout_path,
-      updatedAtMs: Number(row.updated_at_ms) || 0,
-      reasoningEffort: row.reasoning_effort,
-      spawnStatus: row.spawn_status,
+      id: descriptor.id,
+      title: descriptor.title || "Untitled task",
+      cwd: descriptor.cwd,
+      rolloutPath: descriptor.rolloutPath,
+      updatedAtMs: Number(descriptor.updatedAtMs) || 0,
+      reasoningEffort: descriptor.reasoningEffort,
+      spawnStatus: descriptor.spawnStatus,
       status: inferRolloutStatus(
-        await this.readRolloutTail(row.rollout_path),
-        row.spawn_status,
+        await this.readRolloutTail(descriptor.rolloutPath),
+        descriptor.spawnStatus,
       ),
     };
   }
@@ -272,6 +406,37 @@ export class CodexStore {
       db.close();
     }
   }
+}
+
+function localThreadDescriptor(row: LocalThreadRow): LocalThreadDescriptor {
+  return {
+    cwd: row.cwd,
+    id: row.id,
+    kind: "local",
+    reasoningEffort: row.reasoning_effort,
+    recencyAtMs: row.recency_at_ms,
+    rolloutPath: row.rollout_path,
+    spawnStatus: row.spawn_status,
+    title: row.title,
+    updatedAtMs: row.updated_at_ms,
+  };
+}
+
+function remoteThreadDescriptor(row: RemoteThreadRow): RemoteThreadDescriptor {
+  return {
+    ...row,
+    kind: "remote",
+  };
+}
+
+export function normalizeThreadSearchQuery(title: string): string {
+  const clean = title.trim().replace(/\s+/gu, " ").slice(0, 200);
+  if (!clean) throw new Error("Thread title is required for task search");
+  return clean;
+}
+
+function threadSearchKey(title: string): string {
+  return normalizeThreadSearchQuery(title).toLocaleLowerCase();
 }
 
 export function resolveCodexSqliteHome(
@@ -427,4 +592,23 @@ export function reasoningTargetIndex(
   const distance = Math.max(1, Math.trunc(Math.abs(steps)) || 1);
   const delta = direction === "increase" ? distance : -distance;
   return Math.min(efforts.length - 1, Math.max(0, currentIndex + delta));
+}
+
+function matchesWorkspaceFilter(
+  descriptor: ThreadDescriptor,
+  filter: string,
+): boolean {
+  if (descriptor.kind === "remote") {
+    return isWithinRemotePath(
+      descriptor.cwd,
+      filter,
+      descriptor.remotePlatform,
+    );
+  }
+
+  const normalizedFilter = resolve(filter);
+  const cwd = resolve(descriptor.cwd);
+  return (
+    cwd === normalizedFilter || cwd.startsWith(`${normalizedFilter}${sep}`)
+  );
 }
