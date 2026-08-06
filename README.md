@@ -59,7 +59,7 @@ ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not a
 | macOS    | Command+Option+Shift+S | Command+Option+Shift+F | Command+Option+Shift+P |
 | Windows  | Ctrl+Alt+Shift+S       | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
 
-**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. Before sending a remote task title, ChatGato validates both the Search Chats binding and that ChatGPT started after the binding was saved. A missing or unloaded shortcut therefore cannot write into the terminal or composer.
+**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. Before sending a remote task title, ChatGato validates the Search Chats binding, verifies that ChatGPT started after the binding was saved, and moves ChatGPT to its non-executable Settings surface. A missing, unloaded, or dropped shortcut therefore cannot write into the terminal or composer.
 
 ## Build and install for development
 

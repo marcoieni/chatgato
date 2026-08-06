@@ -3,9 +3,11 @@ on run argv
 	set controlMode to item 1 of argv
 	set payload to item 2 of argv
 	set resultIndex to 0
+	set maxResultIndex to 0
 	if controlMode is "thread" then
-		if (count of argv) < 3 then error "Missing Codex task search index"
+		if (count of argv) < 4 then error "Missing Codex task search bounds"
 		set resultIndex to item 3 of argv as integer
+		set maxResultIndex to item 4 of argv as integer
 	end if
 
 	if controlMode is "shortcut" and payload is "dictationUp" then
@@ -21,7 +23,7 @@ on run argv
 
 	repeat with attempt from 1 to 3
 		try
-			my sendControl(controlMode, payload, resultIndex)
+			my sendControl(controlMode, payload, resultIndex, maxResultIndex)
 			return
 		on error errorMessage number errorNumber
 			if errorNumber is not -600 then error errorMessage number errorNumber
@@ -34,16 +36,18 @@ on run argv
 	end repeat
 end run
 
-on sendControl(controlMode, payload, resultIndex)
+on sendControl(controlMode, payload, resultIndex, maxResultIndex)
 	tell application "System Events"
 		if controlMode is "thread" then
-			if resultIndex < 0 or resultIndex > 19 then error "Invalid Codex task search index"
+			if maxResultIndex < 0 or resultIndex < 0 or resultIndex > maxResultIndex then error "Invalid Codex task search index"
+			my prepareThreadSearch()
 			keystroke "s" using {command down, option down, shift down}
-			delay 0.5
+			delay 0.75
 			keystroke payload
-			delay 0.6
+			delay 1.5
 			repeat resultIndex times
 				key code 125
+				delay 0.05
 			end repeat
 			key code 36
 		else if controlMode is "slash" then
@@ -94,3 +98,11 @@ on sendControl(controlMode, payload, resultIndex)
 		end if
 	end tell
 end sendControl
+
+on prepareThreadSearch()
+	open location "codex://settings"
+	delay 1
+	tell application "ChatGPT" to activate
+	delay 0.18
+	tell application "System Events" to key code 53
+end prepareThreadSearch

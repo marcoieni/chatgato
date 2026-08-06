@@ -195,6 +195,7 @@ export async function openThreadBySearch(
   await assertThreadSearchShortcutConfigured();
   await runControlScript("thread", query, "host-aware task navigation", [
     String(selectedResultIndex),
+    String(MAX_AGENT_SLOTS - 1),
   ]);
 }
 

@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join, posix, win32 } from "node:path";
 import { createInterface, type Interface } from "node:readline";
+import { MAX_AGENT_SLOTS } from "./agent-slots.js";
 import { inferRolloutStatus, parseRolloutLines } from "./rollout-status.js";
 import type { AgentStatus, RolloutRecord } from "../types.js";
 
@@ -10,7 +11,6 @@ const INITIAL_HOST_WAIT_MS = 500;
 const INITIAL_HOST_SETTLE_MS = 25;
 const REMOTE_HOST_CACHE_MS = 1_000;
 const REMOTE_ROLLOUT_TAIL_BYTES = 512 * 1024;
-const THREADS_PER_PROJECT = 20;
 const THREADS_PER_PAGE = 100;
 
 type JsonObject = Record<string, unknown>;
@@ -51,7 +51,7 @@ export type RemoteThreadRow = {
   recencyAtMs: number;
   remoteHostId: string;
   remotePlatform: RemotePlatform;
-  rolloutPath: string;
+  rolloutPath: string | null;
   status: AgentStatus;
   title: string;
   updatedAtMs: number;
@@ -299,81 +299,88 @@ class AppServerSession {
   }
 }
 
-const remoteHostCache = new Map<string, RemoteHostCacheEntry>();
+export class RemoteCodexStore {
+  private readonly hostCache = new Map<string, RemoteHostCacheEntry>();
 
-/**
- * Reads SSH projects saved by the desktop app and asks each host's Codex app
- * server for its recent tasks. Host results use stale-while-revalidate caching,
- * so an unavailable host cannot delay local or healthy-host task discovery.
- */
-export async function readRemoteThreadRows(
-  codexHome: string,
-  readHostThreads: RemoteHostThreadReader = readThreadsFromHost,
-): Promise<RemoteThreadRow[]> {
-  let state: unknown;
-  try {
-    state = JSON.parse(
-      await readFile(join(codexHome, ".codex-global-state.json"), "utf8"),
-    ) as unknown;
-  } catch {
-    return [];
-  }
+  constructor(
+    private readonly readHostThreads: RemoteHostThreadReader = readThreadsFromHost,
+  ) {}
 
-  const groups = remoteProjectGroups(state);
-  const activeKeys = new Set<string>();
-  const initialRefreshes: Promise<void>[] = [];
-
-  for (const { connection, paths } of groups.values()) {
-    const key = remoteHostCacheKey(codexHome, connection.hostId);
-    activeKeys.add(key);
-    const normalizedPaths = [...paths].sort();
-    const signature = JSON.stringify([connection, normalizedPaths]);
-    let entry = remoteHostCache.get(key);
-    if (!entry || entry.signature !== signature) {
-      entry = {
-        expiresAtMs: 0,
-        hasValue: false,
-        rows: [],
-        signature,
-      };
-      remoteHostCache.set(key, entry);
+  /**
+   * Reads SSH projects saved by the desktop app and asks each host's Codex app
+   * server for its recent tasks. Host results use stale-while-revalidate caching,
+   * so an unavailable host cannot delay local or healthy-host task discovery.
+   */
+  readonly readThreadRows = async (
+    codexHome: string,
+  ): Promise<RemoteThreadRow[]> => {
+    let state: unknown;
+    try {
+      state = JSON.parse(
+        await readFile(join(codexHome, ".codex-global-state.json"), "utf8"),
+      ) as unknown;
+    } catch {
+      return [];
     }
 
-    if (!entry.refresh && entry.expiresAtMs <= Date.now()) {
-      const wasEmpty = !entry.hasValue;
-      entry.refresh = refreshRemoteHost(
-        entry,
-        connection,
-        normalizedPaths,
-        readHostThreads,
-      );
-      if (wasEmpty) initialRefreshes.push(entry.refresh);
+    const groups = remoteProjectGroups(state);
+    const activeKeys = new Set<string>();
+    const initialRefreshes: Promise<void>[] = [];
+
+    for (const { connection, paths } of groups.values()) {
+      const key = remoteHostCacheKey(codexHome, connection.hostId);
+      activeKeys.add(key);
+      const normalizedPaths = [...paths].sort();
+      const signature = JSON.stringify([connection, normalizedPaths]);
+      let entry = this.hostCache.get(key);
+      if (!entry || entry.signature !== signature) {
+        entry = {
+          expiresAtMs: 0,
+          hasValue: false,
+          rows: [],
+          signature,
+        };
+        this.hostCache.set(key, entry);
+      }
+
+      if (!entry.refresh && entry.expiresAtMs <= Date.now()) {
+        const wasEmpty = !entry.hasValue;
+        entry.refresh = refreshRemoteHost(
+          entry,
+          connection,
+          normalizedPaths,
+          this.readHostThreads,
+        );
+        if (wasEmpty) initialRefreshes.push(entry.refresh);
+      }
     }
-  }
 
-  for (const key of remoteHostCache.keys()) {
-    if (key.startsWith(`${codexHome}\0`) && !activeKeys.has(key)) {
-      remoteHostCache.delete(key);
+    for (const key of this.hostCache.keys()) {
+      if (key.startsWith(`${codexHome}\0`) && !activeKeys.has(key)) {
+        this.hostCache.delete(key);
+      }
     }
+
+    if (initialRefreshes.length > 0) {
+      const firstSettled = Promise.race(initialRefreshes);
+      await Promise.race([
+        Promise.allSettled(initialRefreshes),
+        firstSettled.then(() => delay(INITIAL_HOST_SETTLE_MS)),
+        delay(INITIAL_HOST_WAIT_MS),
+      ]);
+    }
+
+    return [...activeKeys].flatMap(
+      (key) => this.hostCache.get(key)?.rows ?? [],
+    );
+  };
+
+  /** Returns the latest structured failure retained by this store. */
+  hostFailures(): RemoteHostFailure[] {
+    return [...this.hostCache.values()].flatMap((entry) =>
+      entry.failure ? [entry.failure] : [],
+    );
   }
-
-  if (initialRefreshes.length > 0) {
-    const firstSettled = Promise.race(initialRefreshes);
-    await Promise.race([
-      Promise.allSettled(initialRefreshes),
-      firstSettled.then(() => delay(INITIAL_HOST_SETTLE_MS)),
-      delay(INITIAL_HOST_WAIT_MS),
-    ]);
-  }
-
-  return [...activeKeys].flatMap((key) => remoteHostCache.get(key)?.rows ?? []);
-}
-
-/** Returns the latest structured failure retained for each remote host. */
-export function remoteHostFailures(): RemoteHostFailure[] {
-  return [...remoteHostCache.values()].flatMap((entry) =>
-    entry.failure ? [entry.failure] : [],
-  );
 }
 
 export async function readThreadsFromHost(
@@ -425,22 +432,24 @@ export async function readThreadsFromHost(
   const rolloutPaths = selectedThreads.flatMap((thread) =>
     typeof thread.path === "string" ? [thread.path] : [],
   );
-  let rollouts: Map<string, RolloutRecord[]>;
-  try {
-    rollouts = await readRolloutTails(
-      connection,
-      rolloutPaths,
-      sshCommand,
-      remotePlatform,
-    );
-  } catch (error) {
-    throw error instanceof RemoteReadError
-      ? error
-      : new RemoteReadError(
-          "rollout",
-          `Failed to read persisted Codex status from ${connection.hostId}`,
-          { cause: error },
-        );
+  let rollouts = new Map<string, RolloutRecord[]>();
+  if (rolloutPaths.length > 0) {
+    try {
+      rollouts = await readRolloutTails(
+        connection,
+        rolloutPaths,
+        sshCommand,
+        remotePlatform,
+      );
+    } catch (error) {
+      throw error instanceof RemoteReadError
+        ? error
+        : new RemoteReadError(
+            "rollout",
+            `Failed to read persisted Codex status from ${connection.hostId}`,
+            { cause: error },
+          );
+    }
   }
 
   return selectedThreads
@@ -498,7 +507,7 @@ async function readAppServerThreads(
     if (cursor) seenCursors.add(cursor);
   } while (cursor);
 
-  retainRecentProjectThreads(threads, projectPaths, platform);
+  retainRecentThreads(threads, MAX_AGENT_SLOTS);
   return threads;
 }
 
@@ -594,7 +603,7 @@ function remoteThreadRow(
   if (
     typeof thread.id !== "string" ||
     typeof thread.cwd !== "string" ||
-    typeof thread.path !== "string"
+    (thread.path !== null && typeof thread.path !== "string")
   ) {
     return null;
   }
@@ -998,42 +1007,17 @@ function delay(milliseconds: number): Promise<void> {
   });
 }
 
-function retainRecentProjectThreads(
+function retainRecentThreads(
   threads: Map<string, AppServerThread>,
-  projectPaths: readonly string[],
-  platform: RemotePlatform,
+  limit: number,
 ): void {
-  const counts = projectPaths.map(() => 0);
-  const selected = new Map<string, AppServerThread>();
-  const sorted = [...threads.values()].sort(
-    (left, right) =>
-      secondsToMilliseconds(right.recencyAt) -
-      secondsToMilliseconds(left.recencyAt),
-  );
-
-  for (const thread of sorted) {
-    if (typeof thread.id !== "string" || typeof thread.cwd !== "string") {
-      continue;
-    }
-    const matchingIndexes = projectPaths.flatMap((path, index) =>
-      isWithinRemotePath(thread.cwd as string, path, platform) ? [index] : [],
-    );
-    if (
-      !matchingIndexes.some(
-        (index) => (counts[index] ?? THREADS_PER_PROJECT) < THREADS_PER_PROJECT,
-      )
-    ) {
-      continue;
-    }
-
-    selected.set(thread.id, thread);
-    for (const index of matchingIndexes) {
-      if ((counts[index] ?? THREADS_PER_PROJECT) < THREADS_PER_PROJECT) {
-        counts[index] = (counts[index] ?? 0) + 1;
-      }
-    }
-  }
-
+  const selected = [...threads.entries()]
+    .sort(
+      ([, left], [, right]) =>
+        secondsToMilliseconds(right.recencyAt) -
+        secondsToMilliseconds(left.recencyAt),
+    )
+    .slice(0, limit);
   threads.clear();
   for (const [threadId, thread] of selected) threads.set(threadId, thread);
 }

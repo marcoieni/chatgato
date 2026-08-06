@@ -123,14 +123,15 @@ describe("CodexStore", () => {
     const store = new CodexStore(home);
 
     await expect(
-      store.threadSearchResultIndex("selected-duplicate", "Remote task"),
-    ).resolves.toBe(1);
+      store.threadSearchResult("selected-duplicate"),
+    ).resolves.toEqual({ resultIndex: 1, title: "Remote task" });
+    await expect(store.threadSearchResult("other-task")).resolves.toEqual({
+      resultIndex: 0,
+      title: "Other task",
+    });
     await expect(
-      store.threadSearchResultIndex("other-task", "Other task"),
-    ).resolves.toBe(0);
-    await expect(
-      store.threadSearchResultIndex("selected-long-title", `${sharedPrefix}B`),
-    ).resolves.toBe(1);
+      store.threadSearchResult("selected-long-title"),
+    ).resolves.toEqual({ resultIndex: 1, title: `${sharedPrefix}B` });
   });
 
   it("reads the database from CODEX_SQLITE_HOME", async () => {
@@ -388,7 +389,7 @@ describe("CodexStore", () => {
         recencyAtMs: 3_000,
         remoteHostId: "remote-ssh-discovered:devbox",
         remotePlatform: "posix" as const,
-        rolloutPath: "/home/user/.codex/remote.jsonl",
+        rolloutPath: null,
         status: "unread" as const,
         title: "Remote task",
         updatedAtMs: 3_100,
@@ -399,6 +400,7 @@ describe("CodexStore", () => {
     await expect(store.threadAtSlot(1)).resolves.toMatchObject({
       id: "remote-thread",
       remoteHostId: "remote-ssh-discovered:devbox",
+      rolloutPath: null,
       status: "unread",
       title: "Remote task",
     });

@@ -6,8 +6,10 @@ const mocks = vi.hoisted(() => ({
   openThreadBySearch:
     vi.fn<(title: string, resultIndex: number) => Promise<void>>(),
   openUrl: vi.fn<(url: string) => Promise<void>>(),
-  threadSearchResultIndex:
-    vi.fn<(threadId: string, title: string) => Promise<number>>(),
+  threadSearchResult:
+    vi.fn<
+      (threadId: string) => Promise<{ resultIndex: number; title: string }>
+    >(),
   threadAtSlot:
     vi.fn<(slot: number, cwdFilter?: string) => Promise<CodexThread | null>>(),
 }));
@@ -32,7 +34,7 @@ vi.mock("../src/lib/codex-controller.js", () => ({
 
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
-    threadSearchResultIndex = mocks.threadSearchResultIndex;
+    threadSearchResult = mocks.threadSearchResult;
     threadAtSlot = mocks.threadAtSlot;
   },
 }));
@@ -69,8 +71,11 @@ describe("AgentStatusAction navigation", () => {
     mocks.openUrl.mockResolvedValue();
     mocks.openThreadBySearch.mockReset();
     mocks.openThreadBySearch.mockResolvedValue();
-    mocks.threadSearchResultIndex.mockReset();
-    mocks.threadSearchResultIndex.mockResolvedValue(0);
+    mocks.threadSearchResult.mockReset();
+    mocks.threadSearchResult.mockResolvedValue({
+      resultIndex: 0,
+      title: "Task one",
+    });
     mocks.threadAtSlot.mockReset();
     mocks.threadAtSlot.mockResolvedValue(null);
   });
@@ -99,7 +104,10 @@ describe("AgentStatusAction navigation", () => {
       title: "Remote task",
     });
     mocks.threadAtSlot.mockResolvedValue(selected);
-    mocks.threadSearchResultIndex.mockResolvedValue(1);
+    mocks.threadSearchResult.mockResolvedValue({
+      resultIndex: 1,
+      title: "Remote task",
+    });
     const action = actionHarness();
 
     await new AgentStatusAction().onKeyDown({
@@ -107,10 +115,7 @@ describe("AgentStatusAction navigation", () => {
       payload: { settings: { slot: 3 } },
     } as never);
 
-    expect(mocks.threadSearchResultIndex).toHaveBeenCalledWith(
-      "remote-thread",
-      "Remote task",
-    );
+    expect(mocks.threadSearchResult).toHaveBeenCalledWith("remote-thread");
     expect(mocks.openThreadBySearch).toHaveBeenCalledWith("Remote task", 1);
     expect(mocks.openUrl).not.toHaveBeenCalled();
     expect(action.setSettings).toHaveBeenCalledWith(

@@ -182,7 +182,7 @@
         ),
         "Seconds between local status reads.",
       );
-    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign <code>⌘⌥⇧S</code> on macOS or <code>Ctrl+Alt+Shift+S</code> on Windows. Restart ChatGPT after saving it. ChatGato checks that the running app loaded this binding before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
+    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign <code>⌘⌥⇧S</code> on macOS or <code>Ctrl+Alt+Shift+S</code> on Windows. Restart ChatGPT after saving it. ChatGato verifies the loaded binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>
       <span><i style="background:#ff6d00"></i>Approval</span><span><i style="background:#9e5bff"></i>Needs response</span>
       <span><i style="background:#ff0033"></i>Error</span>

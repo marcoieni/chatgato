@@ -3,10 +3,10 @@ import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  readRemoteThreadRows,
+  RemoteCodexStore,
   readThreadsFromHost,
   remoteAgentStatus,
-  remoteHostFailures,
+  type RemoteRolloutTailReader,
 } from "../src/lib/remote-codex-store.js";
 
 const temporaryDirectories: string[] = [];
@@ -72,7 +72,8 @@ describe("remote Codex task discovery", () => {
       },
     ]);
 
-    await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+    const store = new RemoteCodexStore(readHost);
+    await expect(store.readThreadRows(home)).resolves.toEqual([
       expect.objectContaining({
         id: "remote-thread",
         remoteHostId: "remote-ssh-discovered:devbox",
@@ -86,6 +87,48 @@ describe("remote Codex task discovery", () => {
       }),
       ["/srv/work", "/srv/work/nested"],
     );
+  });
+
+  it("keeps caches and failures isolated between store instances", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
+    temporaryDirectories.push(home);
+    await writeFile(
+      join(home, ".codex-global-state.json"),
+      JSON.stringify({
+        "codex-managed-remote-connections": [
+          { hostId: "shared-host", alias: "shared-host" },
+        ],
+        "remote-projects": [
+          { hostId: "shared-host", remotePath: "/work/shared" },
+        ],
+      }),
+    );
+    const row = {
+      cwd: "/work/shared",
+      recencyAtMs: 1,
+      remoteHostId: "shared-host",
+      remotePlatform: "posix" as const,
+      rolloutPath: null,
+      status: "idle" as const,
+      title: "Shared",
+      updatedAtMs: 1,
+    };
+    const healthyStore = new RemoteCodexStore(async () => [
+      { ...row, id: "healthy-thread" },
+    ]);
+    const failingStore = new RemoteCodexStore(async () => {
+      throw new Error("offline");
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await expect(healthyStore.readThreadRows(home)).resolves.toEqual([
+      expect.objectContaining({ id: "healthy-thread" }),
+    ]);
+    await expect(failingStore.readThreadRows(home)).resolves.toEqual([]);
+    expect(healthyStore.hostFailures()).toEqual([]);
+    expect(failingStore.hostFailures()).toEqual([
+      expect.objectContaining({ hostId: "shared-host", message: "offline" }),
+    ]);
   });
 
   it("keeps available hosts when another SSH host is offline", async () => {
@@ -122,10 +165,11 @@ describe("remote Codex task discovery", () => {
     });
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+    const store = new RemoteCodexStore(readHost);
+    await expect(store.readThreadRows(home)).resolves.toEqual([
       expect.objectContaining({ id: "thread-b" }),
     ]);
-    expect(remoteHostFailures()).toContainEqual(
+    expect(store.hostFailures()).toContainEqual(
       expect.objectContaining({
         hostId: "host-a",
         kind: "transport",
@@ -169,7 +213,8 @@ describe("remote Codex task discovery", () => {
     });
 
     const startedAt = performance.now();
-    await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+    const store = new RemoteCodexStore(readHost);
+    await expect(store.readThreadRows(home)).resolves.toEqual([
       expect.objectContaining({ id: "healthy-thread" }),
     ]);
     expect(performance.now() - startedAt).toBeLessThan(1_000);
@@ -211,11 +256,12 @@ describe("remote Codex task discovery", () => {
 
     vi.useFakeTimers();
     try {
-      await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+      const store = new RemoteCodexStore(readHost);
+      await expect(store.readThreadRows(home)).resolves.toEqual([
         expect.objectContaining({ id: "cached-thread" }),
       ]);
       await vi.advanceTimersByTimeAsync(1_001);
-      await expect(readRemoteThreadRows(home, readHost)).resolves.toEqual([
+      await expect(store.readThreadRows(home)).resolves.toEqual([
         expect.objectContaining({ id: "cached-thread" }),
       ]);
       expect(readHost).toHaveBeenCalledTimes(2);
@@ -313,6 +359,93 @@ lines.on("line", (line) => {
         updatedAtMs: 12_000,
       },
     ]);
+  });
+
+  it("keeps app-server threads that do not have a rollout path", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "thread/list") {
+    send({ id: message.id, result: { data: [{
+      id: "memory-thread",
+      name: "In-memory task",
+      cwd: "/srv/work/project",
+      path: null,
+      updatedAt: 12,
+      recencyAt: 11,
+      status: { type: "active", activeFlags: ["waitingOnUserInput"] }
+    }], nextCursor: null } });
+  } else if (message.method === "thread/turns/list") {
+    send({ id: message.id, result: { data: [{ status: "inProgress" }] } });
+  }
+});
+`);
+    const readRollouts = vi.fn(async () => new Map());
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "devbox", hostId: "null-path" },
+        ["/srv/work"],
+        fakeSsh,
+        readRollouts,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "memory-thread",
+        rolloutPath: null,
+        status: "awaiting-response",
+      }),
+    ]);
+    expect(readRollouts).not.toHaveBeenCalled();
+  });
+
+  it("caps rollout hydration across projects to the visible slot count", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+const threads = Array.from({ length: 30 }, (_, index) => ({
+  id: "thread-" + index,
+  name: "Task " + index,
+  cwd: index % 2 === 0 ? "/srv/a/repo" : "/srv/b/repo",
+  path: "/rollout-" + index + ".jsonl",
+  updatedAt: 30 - index,
+  recencyAt: 30 - index,
+  status: { type: "notLoaded" }
+}));
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "thread/list") {
+    send({ id: message.id, result: { data: threads, nextCursor: null } });
+  } else if (message.method === "thread/turns/list") {
+    send({ id: message.id, result: { data: [{ status: "completed" }] } });
+  }
+});
+`);
+    const readRollouts = vi.fn<RemoteRolloutTailReader>(
+      async (_connection, paths) => new Map(paths.map((path) => [path, []])),
+    );
+
+    const rows = await readThreadsFromHost(
+      { destination: "devbox", hostId: "many-projects" },
+      ["/srv/a", "/srv/b"],
+      fakeSsh,
+      readRollouts,
+    );
+
+    expect(rows).toHaveLength(20);
+    expect(rows.map((row) => row.id)).toEqual(
+      Array.from({ length: 20 }, (_, index) => `thread-${index}`),
+    );
+    expect(readRollouts).toHaveBeenCalledOnce();
+    expect(readRollouts.mock.calls[0]?.[1]).toHaveLength(20);
   });
 
   it("correlates concurrent turn responses by request id", async () => {

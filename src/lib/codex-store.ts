@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { usageFromRollout } from "./codex-usage.js";
 import {
   isWithinRemotePath,
-  readRemoteThreadRows,
+  RemoteCodexStore,
   type RemotePlatform,
   type RemoteThreadRow,
 } from "./remote-codex-store.js";
@@ -32,19 +32,30 @@ type LocalThreadRow = {
   recency_at_ms: number;
 };
 
-type ThreadDescriptor = {
+type ThreadDescriptorBase = {
   id: string;
   title: string;
   cwd: string;
-  rolloutPath: string;
   updatedAtMs: number;
-  reasoningEffort: string | null;
-  spawnStatus: string | null;
   recencyAtMs: number;
-  remoteHostId?: string;
-  remotePlatform?: RemotePlatform;
-  status?: CodexThread["status"];
 };
+
+type LocalThreadDescriptor = ThreadDescriptorBase & {
+  kind: "local";
+  reasoningEffort: string | null;
+  rolloutPath: string;
+  spawnStatus: string | null;
+};
+
+type RemoteThreadDescriptor = ThreadDescriptorBase & {
+  kind: "remote";
+  remoteHostId: string;
+  remotePlatform: RemotePlatform;
+  rolloutPath: string | null;
+  status: CodexThread["status"];
+};
+
+type ThreadDescriptor = LocalThreadDescriptor | RemoteThreadDescriptor;
 
 type RolloutPathRow = {
   rollout_path: string;
@@ -92,7 +103,8 @@ export class CodexStore {
   constructor(
     codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
     private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
-    private readonly readRemoteThreads: RemoteThreadReader = readRemoteThreadRows,
+    private readonly readRemoteThreads: RemoteThreadReader = new RemoteCodexStore()
+      .readThreadRows,
   ) {
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
@@ -120,21 +132,29 @@ export class CodexStore {
     return descriptor ? this.hydrateThread(descriptor) : null;
   }
 
-  async threadSearchResultIndex(
+  async threadSearchResult(
     threadId: string,
-    title: string,
-  ): Promise<number> {
+  ): Promise<{ resultIndex: number; title: string }> {
+    const descriptors = await this.allThreadDescriptors();
+    const selected = descriptors.find(
+      (descriptor) => descriptor.id === threadId,
+    );
+    if (!selected) {
+      throw new Error(`Codex task is no longer available: ${threadId}`);
+    }
+
+    const title = selected.title || "Untitled task";
     const searchKey = threadSearchKey(title);
     let resultIndex = 0;
 
-    for (const descriptor of await this.allThreadDescriptors()) {
-      if (descriptor.id === threadId) return resultIndex;
+    for (const descriptor of descriptors) {
+      if (descriptor.id === threadId) return { resultIndex, title };
       if (threadSearchKey(descriptor.title || "Untitled task") === searchKey) {
         resultIndex += 1;
       }
     }
 
-    throw new Error(`Codex task is no longer available: ${threadId}`);
+    throw new Error(`Codex task ordering changed while selecting: ${threadId}`);
   }
 
   private async recentThreadDescriptors(
@@ -222,21 +242,32 @@ export class CodexStore {
   private async hydrateThread(
     descriptor: ThreadDescriptor,
   ): Promise<CodexThread> {
+    if (descriptor.kind === "remote") {
+      return {
+        id: descriptor.id,
+        title: descriptor.title || "Untitled task",
+        cwd: descriptor.cwd,
+        rolloutPath: descriptor.rolloutPath,
+        remoteHostId: descriptor.remoteHostId,
+        updatedAtMs: Number(descriptor.updatedAtMs) || 0,
+        reasoningEffort: null,
+        spawnStatus: null,
+        status: descriptor.status,
+      };
+    }
+
     return {
       id: descriptor.id,
       title: descriptor.title || "Untitled task",
       cwd: descriptor.cwd,
       rolloutPath: descriptor.rolloutPath,
-      remoteHostId: descriptor.remoteHostId,
       updatedAtMs: Number(descriptor.updatedAtMs) || 0,
       reasoningEffort: descriptor.reasoningEffort,
       spawnStatus: descriptor.spawnStatus,
-      status:
-        descriptor.status ??
-        inferRolloutStatus(
-          await this.readRolloutTail(descriptor.rolloutPath),
-          descriptor.spawnStatus,
-        ),
+      status: inferRolloutStatus(
+        await this.readRolloutTail(descriptor.rolloutPath),
+        descriptor.spawnStatus,
+      ),
     };
   }
 
@@ -377,10 +408,11 @@ export class CodexStore {
   }
 }
 
-function localThreadDescriptor(row: LocalThreadRow): ThreadDescriptor {
+function localThreadDescriptor(row: LocalThreadRow): LocalThreadDescriptor {
   return {
     cwd: row.cwd,
     id: row.id,
+    kind: "local",
     reasoningEffort: row.reasoning_effort,
     recencyAtMs: row.recency_at_ms,
     rolloutPath: row.rollout_path,
@@ -390,11 +422,10 @@ function localThreadDescriptor(row: LocalThreadRow): ThreadDescriptor {
   };
 }
 
-function remoteThreadDescriptor(row: RemoteThreadRow): ThreadDescriptor {
+function remoteThreadDescriptor(row: RemoteThreadRow): RemoteThreadDescriptor {
   return {
     ...row,
-    reasoningEffort: null,
-    spawnStatus: null,
+    kind: "remote",
   };
 }
 
@@ -567,11 +598,11 @@ function matchesWorkspaceFilter(
   descriptor: ThreadDescriptor,
   filter: string,
 ): boolean {
-  if (descriptor.remoteHostId) {
+  if (descriptor.kind === "remote") {
     return isWithinRemotePath(
       descriptor.cwd,
       filter,
-      descriptor.remotePlatform ?? "posix",
+      descriptor.remotePlatform,
     );
   }
 

@@ -1,7 +1,8 @@
 param(
   [Parameter(Mandatory = $true)][string]$Mode,
   [Parameter(Mandatory = $true)][string]$Payload,
-  [int]$ResultIndex = 0
+  [int]$ResultIndex = 0,
+  [int]$MaxResultIndex = -1
 )
 
 $shell = New-Object -ComObject WScript.Shell
@@ -67,17 +68,24 @@ if ($Mode -eq "reasoning") {
 }
 
 if ($Mode -eq "thread") {
-  if ($ResultIndex -lt 0 -or $ResultIndex -gt 19) {
+  if ($MaxResultIndex -lt 0 -or $ResultIndex -lt 0 -or $ResultIndex -gt $MaxResultIndex) {
     throw "Invalid Codex task search index"
   }
+  Start-Process "codex://settings"
+  Start-Sleep -Seconds 1
+  if (-not $shell.AppActivate("ChatGPT")) {
+    throw "ChatGPT is not running"
+  }
+  Start-Sleep -Milliseconds 180
+  $shell.SendKeys("{ESC}")
   $escapedQuery = $Payload -replace '([+^%~(){}\[\]])', '{$1}'
   $shell.SendKeys("^%+s")
-  Start-Sleep -Milliseconds 500
-
+  Start-Sleep -Milliseconds 750
   $shell.SendKeys($escapedQuery)
-  Start-Sleep -Milliseconds 600
+  Start-Sleep -Milliseconds 1500
   for ($index = 0; $index -lt $ResultIndex; $index += 1) {
     $shell.SendKeys("{DOWN}")
+    Start-Sleep -Milliseconds 50
   }
   $shell.SendKeys("{ENTER}")
   exit 0
