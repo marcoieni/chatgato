@@ -102,11 +102,7 @@ The plugin reads Codex's `state_5.sqlite` from `sqlite_home` in
 plugin's current working directory. For SSH projects saved in the ChatGPT desktop
 app, it discovers the configured host and project path from Codex's global state,
 then uses the remote host's documented `codex app-server` over the same SSH
-connection to read its recent task metadata. It derives live task status from the
-persisted remote rollout because a newly started app server does not own another
-server's in-memory approval and input state. Remote hosts refresh independently
-behind a short stale-while-revalidate cache, so a temporarily unavailable host
-does not prevent local or healthy-host tasks from loading.
+connection to read its recent task metadata.
 
 Rollout files and `models_cache.json` remain under `CODEX_HOME`. See the official
 [Codex environment-variable documentation](https://learn.chatgpt.com/docs/config-file/environment-variables).
