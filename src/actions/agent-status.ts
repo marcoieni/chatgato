@@ -84,7 +84,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
         acknowledgedAtMs: Date.now(),
       });
     } catch (error) {
-      logger.error(`Failed to open task in slot ${slot}`, error);
+      logger.error(`Failed to open chat in slot ${slot}`, error);
       await ev.action.showAlert();
     }
   }
@@ -210,7 +210,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
     } catch (error) {
       if (this.workingAnimations.get(id) === animation) {
         this.workingAnimations.delete(id);
-        logger.error(`Failed to animate task in slot ${animation.slot}`, error);
+        logger.error(`Failed to animate chat in slot ${animation.slot}`, error);
       }
     }
   }

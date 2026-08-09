@@ -45,7 +45,7 @@ describe("Codex controller", () => {
     );
   });
 
-  it("normalizes task titles before using the chat search", () => {
+  it("normalizes chat titles before using the chat search", () => {
     expect(normalizeThreadSearchQuery("  Fix   remote\nbuttons  ")).toBe(
       "Fix remote buttons",
     );
@@ -57,7 +57,7 @@ describe("Codex controller", () => {
     );
   });
 
-  it("supports every advertised task search result", () => {
+  it("supports every advertised chat search result", () => {
     expect(validateThreadSearchResultIndex(0)).toBe(0);
     expect(validateThreadSearchResultIndex(19)).toBe(19);
     expect(() => validateThreadSearchResultIndex(20)).toThrow(

@@ -16,7 +16,7 @@ import {
   ToggleTerminalAction,
 } from "./actions/dedicated-command.js";
 import { FastModeAction } from "./actions/fast-mode.js";
-import { NewTaskAction } from "./actions/new-task.js";
+import { NewChatAction } from "./actions/new-chat.js";
 import { PlanModeAction } from "./actions/plan-mode.js";
 import { PushToTalkAction } from "./actions/push-to-talk.js";
 import {
@@ -30,7 +30,7 @@ import { PromptAction } from "./actions/prompt.js";
 
 streamDeck.logger.setLevel("info");
 streamDeck.actions.registerAction(new AgentStatusAction());
-streamDeck.actions.registerAction(new NewTaskAction());
+streamDeck.actions.registerAction(new NewChatAction());
 streamDeck.actions.registerAction(new PromptAction());
 streamDeck.actions.registerAction(new FastModeAction());
 streamDeck.actions.registerAction(new PushToTalkAction());

@@ -50,8 +50,8 @@
       case "com.marco.chatgato.agent-status":
         renderAgent();
         break;
-      case "com.marco.chatgato.new-task":
-        renderNewTask();
+      case "com.marco.chatgato.new-chat":
+        renderNewChat();
         break;
       case "com.marco.chatgato.prompt":
         renderPrompt();
@@ -62,13 +62,13 @@
       case "com.marco.chatgato.fork":
         renderDedicatedCommand(
           "Fork",
-          "Copy the current task into a new local task.",
+          "Copy the current chat into a new local chat.",
         );
         break;
       case "com.marco.chatgato.review-tab":
         renderDedicatedCommand(
           "Review Tab",
-          "Open the review tab for the current task.",
+          "Open the review tab for the current chat.",
         );
         break;
       case "com.marco.chatgato.toggle-terminal":
@@ -77,7 +77,7 @@
       case "com.marco.chatgato.open-review":
         renderDedicatedCommand(
           "Review",
-          "Start code review mode for the current task.",
+          "Start code review mode for the current chat.",
         );
         break;
       case "com.marco.chatgato.settings":
@@ -131,13 +131,13 @@
       case "com.marco.chatgato.decrease-reasoning":
         renderDedicatedCommand(
           "Decrease Reasoning",
-          "Lower the current task's reasoning effort by one level.",
+          "Lower the current chat's reasoning effort by one level.",
         );
         break;
       case "com.marco.chatgato.increase-reasoning":
         renderDedicatedCommand(
           "Increase Reasoning",
-          "Raise the current task's reasoning effort by one level.",
+          "Raise the current chat's reasoning effort by one level.",
         );
         break;
       case "com.marco.chatgato.reasoning":
@@ -153,7 +153,7 @@
   }
 
   function renderAgent() {
-    subtitle.textContent = "Live task status and navigation";
+    subtitle.textContent = "Live chat status and navigation";
     form.innerHTML =
       field(
         "Agent slot",
@@ -186,7 +186,7 @@
         ),
         "Seconds between local status reads.",
       );
-    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
+    note.innerHTML = `<strong>Remote chat setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>
       <span><i style="background:#ff6d00"></i>Approval</span><span><i style="background:#9e5bff"></i>Needs response</span>
       <span><i style="background:#ff0033"></i>Error</span>
@@ -194,8 +194,8 @@
     </div>`;
   }
 
-  function renderNewTask() {
-    subtitle.textContent = "Open a new local Codex task";
+  function renderNewChat() {
+    subtitle.textContent = "Open a new local Codex chat";
     form.innerHTML =
       field(
         "Workspace",
@@ -233,7 +233,7 @@
   }
 
   function renderPrompt() {
-    subtitle.textContent = "Open a task with your prompt";
+    subtitle.textContent = "Open a chat with your prompt";
     form.innerHTML =
       field(
         "Prompt",
@@ -335,7 +335,7 @@
       "Seconds between local usage reads.",
     );
     note.textContent =
-      "The key shows the percentage left in each rate-limit window (for example, 5H and 1W). Press it to refresh immediately. Data updates locally whenever Codex reports usage for a task.";
+      "The key shows the percentage left in each rate-limit window (for example, 5H and 1W). Press it to refresh immediately. Data updates locally whenever Codex reports usage for a chat.";
   }
 
   function bind() {

@@ -168,7 +168,7 @@ class AppServerSession {
       this.fail(
         new RemoteReadError(
           "timeout",
-          `Timed out reading Codex tasks from ${connection.hostId}`,
+          `Timed out reading Codex chats from ${connection.hostId}`,
         ),
       );
     }, APP_SERVER_TIMEOUT_MS);
@@ -308,8 +308,8 @@ export class RemoteCodexStore {
 
   /**
    * Reads SSH projects saved by the desktop app and asks each host's Codex app
-   * server for its recent tasks. Host results use stale-while-revalidate caching,
-   * so an unavailable host cannot delay local or healthy-host task discovery.
+   * server for its recent chats. Host results use stale-while-revalidate caching,
+   * so an unavailable host cannot delay local or healthy-host chat discovery.
    */
   readonly readThreadRows = async (
     codexHome: string,
@@ -614,7 +614,7 @@ function remoteThreadRow(
   const title =
     typeof thread.name === "string" && thread.name.trim()
       ? thread.name.trim()
-      : preview || "Untitled task";
+      : preview || "Untitled chat";
   const updatedAtMs = secondsToMilliseconds(thread.updatedAt);
   const recencyAtMs = secondsToMilliseconds(thread.recencyAt) || updatedAtMs;
 

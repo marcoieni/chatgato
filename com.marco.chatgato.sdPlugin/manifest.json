@@ -13,7 +13,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Show and open one of the 20 most recent Codex tasks with live status color. SSH-hosted tasks require the Search Chats shortcut shown in the property inspector.",
+      "Tooltip": "Show and open one of the 20 most recent Codex chats with live status color. SSH-hosted chats require the Search Chats shortcut shown in the property inspector.",
       "UUID": "com.marco.chatgato.agent-status"
     },
     {
@@ -77,7 +77,7 @@
           "FontSize": 12
         }
       ],
-      "Tooltip": "Lower the current Codex task's reasoning effort by one level.",
+      "Tooltip": "Lower the current Codex chat's reasoning effort by one level.",
       "UUID": "com.marco.chatgato.decrease-reasoning"
     },
     {
@@ -109,7 +109,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Copy the current Codex task into a new local task.",
+      "Tooltip": "Copy the current Codex chat into a new local chat.",
       "UUID": "com.marco.chatgato.fork"
     },
     {
@@ -141,24 +141,24 @@
           "FontSize": 12
         }
       ],
-      "Tooltip": "Raise the current Codex task's reasoning effort by one level.",
+      "Tooltip": "Raise the current Codex chat's reasoning effort by one level.",
       "UUID": "com.marco.chatgato.increase-reasoning"
     },
     {
       "Controllers": ["Keypad"],
-      "Icon": "imgs/action-list/new-task",
-      "Name": "New Task",
+      "Icon": "imgs/action-list/new-chat",
+      "Name": "New Chat",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/new-task",
-          "Title": "NEW\nTASK",
+          "Image": "imgs/actions/new-chat",
+          "Title": "NEW\nCHAT",
           "TitleAlignment": "bottom",
           "FontSize": 12
         }
       ],
-      "Tooltip": "Open a new Codex task, optionally scoped to a workspace with a prefilled prompt.",
-      "UUID": "com.marco.chatgato.new-task"
+      "Tooltip": "Open a new Codex chat, optionally scoped to a workspace with a prefilled prompt.",
+      "UUID": "com.marco.chatgato.new-chat"
     },
     {
       "Controllers": ["Keypad"],
@@ -189,7 +189,7 @@
           "FontSize": 12
         }
       ],
-      "Tooltip": "Open a new Codex task with your custom prompt, optionally in a workspace.",
+      "Tooltip": "Open a new Codex chat with your custom prompt, optionally in a workspace.",
       "UUID": "com.marco.chatgato.prompt"
     },
     {
@@ -228,7 +228,7 @@
           "Image": "imgs/actions/reasoning"
         }
       ],
-      "Tooltip": "Turn a Stream Deck+ dial to increase or decrease the current Codex task's reasoning effort.",
+      "Tooltip": "Turn a Stream Deck+ dial to increase or decrease the current Codex chat's reasoning effort.",
       "UUID": "com.marco.chatgato.reasoning"
     },
     {
@@ -244,7 +244,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Start Codex code review mode for the current task.",
+      "Tooltip": "Start Codex code review mode for the current chat.",
       "UUID": "com.marco.chatgato.open-review"
     },
     {
@@ -260,7 +260,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Open the review tab for the current Codex task.",
+      "Tooltip": "Open the review tab for the current Codex chat.",
       "UUID": "com.marco.chatgato.review-tab"
     },
     {
@@ -395,7 +395,7 @@
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
-  "Description": "A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex). ChatGato shows live status for up to 20 local or SSH-hosted tasks, displays remaining Codex usage limits, and provides keys for approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, Review, and more. No API key is required; task and usage data are read from local Codex files or through your configured SSH connection. Requires Stream Deck 7.1 or later, ChatGPT desktop with Codex, and macOS 13+ or Windows 10+. After installation, add ChatGato actions to your profile and assign a unique slot (1–20) to each Agent Status key. For remote task navigation and the Fast and Plan buttons, configure any shortcuts you prefer for ChatGPT's Switch chat, Toggle Fast mode, and Toggle plan mode commands; ChatGato reads them from Codex's keybindings file. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven actions such as Submit and Fork.",
+  "Description": "A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex). ChatGato shows live status for up to 20 local or SSH-hosted chats, displays remaining Codex usage limits, and provides keys for approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, Review, and more. No API key is required; chat and usage data are read from local Codex files or through your configured SSH connection. Requires Stream Deck 7.1 or later, ChatGPT desktop with Codex, and macOS 13+ or Windows 10+. After installation, add ChatGato actions to your profile and assign a unique slot (1–20) to each Agent Status key. For remote chat navigation and the Fast and Plan buttons, configure any shortcuts you prefer for ChatGPT's Switch chat, Toggle Fast mode, and Toggle plan mode commands; ChatGato reads them from Codex's keybindings file. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven actions such as Submit and Fork.",
   "Icon": "imgs/plugin",
   "Name": "ChatGato",
   "Nodejs": {

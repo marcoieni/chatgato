@@ -27,7 +27,7 @@ export type AgentSettings = {
   acknowledgedAtMs?: number;
 };
 
-export type NewTaskSettings = {
+export type NewChatSettings = {
   path?: string;
   prompt?: string;
   autoSubmit?: boolean;

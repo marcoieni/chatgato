@@ -140,21 +140,21 @@ export class CodexStore {
       (descriptor) => descriptor.id === threadId,
     );
     if (!selected) {
-      throw new Error(`Codex task is no longer available: ${threadId}`);
+      throw new Error(`Codex chat is no longer available: ${threadId}`);
     }
 
-    const title = selected.title || "Untitled task";
+    const title = selected.title || "Untitled chat";
     const searchKey = threadSearchKey(title);
     let resultIndex = 0;
 
     for (const descriptor of descriptors) {
       if (descriptor.id === threadId) return { resultIndex, title };
-      if (threadSearchKey(descriptor.title || "Untitled task") === searchKey) {
+      if (threadSearchKey(descriptor.title || "Untitled chat") === searchKey) {
         resultIndex += 1;
       }
     }
 
-    throw new Error(`Codex task ordering changed while selecting: ${threadId}`);
+    throw new Error(`Codex chat ordering changed while selecting: ${threadId}`);
   }
 
   private async recentThreadDescriptors(
@@ -245,7 +245,7 @@ export class CodexStore {
     if (descriptor.kind === "remote") {
       return {
         id: descriptor.id,
-        title: descriptor.title || "Untitled task",
+        title: descriptor.title || "Untitled chat",
         cwd: descriptor.cwd,
         rolloutPath: descriptor.rolloutPath,
         remoteHostId: descriptor.remoteHostId,
@@ -258,7 +258,7 @@ export class CodexStore {
 
     return {
       id: descriptor.id,
-      title: descriptor.title || "Untitled task",
+      title: descriptor.title || "Untitled chat",
       cwd: descriptor.cwd,
       rolloutPath: descriptor.rolloutPath,
       updatedAtMs: Number(descriptor.updatedAtMs) || 0,
@@ -348,7 +348,7 @@ export class CodexStore {
     );
 
     if (!row?.model || !row.reasoning_effort) {
-      throw new Error("The current Codex task has no reasoning setting");
+      throw new Error("The current Codex chat has no reasoning setting");
     }
 
     const cache = JSON.parse(
@@ -431,7 +431,7 @@ function remoteThreadDescriptor(row: RemoteThreadRow): RemoteThreadDescriptor {
 
 export function normalizeThreadSearchQuery(title: string): string {
   const clean = title.trim().replace(/\s+/gu, " ").slice(0, 200);
-  if (!clean) throw new Error("Thread title is required for task search");
+  if (!clean) throw new Error("Thread title is required for chat search");
   return clean;
 }
 

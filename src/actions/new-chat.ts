@@ -3,13 +3,9 @@ import { openAndMaybeSubmit } from "../lib/codex-controller.js";
 import { buildNewChatUrl } from "../lib/deep-links.js";
 import type { NewChatSettings } from "../types.js";
 
-@action({ UUID: "com.marco.chatgato.prompt" })
-export class PromptAction extends SingletonAction<NewChatSettings> {
+@action({ UUID: "com.marco.chatgato.new-chat" })
+export class NewChatAction extends SingletonAction<NewChatSettings> {
   override async onKeyDown(ev: KeyDownEvent<NewChatSettings>): Promise<void> {
-    if (!ev.payload.settings.prompt?.trim()) {
-      await ev.action.showAlert();
-      return;
-    }
     try {
       await openAndMaybeSubmit(
         buildNewChatUrl(ev.payload.settings),

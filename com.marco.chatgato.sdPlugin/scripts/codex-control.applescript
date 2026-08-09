@@ -6,7 +6,7 @@ on run argv
 	set maxResultIndex to 0
 	set shortcutBinding to ""
 	if controlMode is "thread" then
-		if (count of argv) < 5 then error "Missing Codex task search arguments"
+		if (count of argv) < 5 then error "Missing Codex chat search arguments"
 		set resultIndex to item 3 of argv as integer
 		set maxResultIndex to item 4 of argv as integer
 		set shortcutBinding to item 5 of argv
@@ -41,7 +41,7 @@ end run
 on sendControl(controlMode, payload, resultIndex, maxResultIndex, shortcutBinding)
 	tell application "System Events"
 		if controlMode is "thread" then
-			if maxResultIndex < 0 or resultIndex < 0 or resultIndex > maxResultIndex then error "Invalid Codex task search index"
+			if maxResultIndex < 0 or resultIndex < 0 or resultIndex > maxResultIndex then error "Invalid Codex chat search index"
 			my sendKeybinding(shortcutBinding)
 			delay 0.75
 			keystroke payload

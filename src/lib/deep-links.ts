@@ -1,6 +1,6 @@
-import type { NewTaskSettings } from "../types.js";
+import type { NewChatSettings } from "../types.js";
 
-export function buildNewTaskUrl(settings: NewTaskSettings): string {
+export function buildNewChatUrl(settings: NewChatSettings): string {
   const prompt = settings.prompt?.trim();
   const path = settings.path?.trim();
 

@@ -137,7 +137,7 @@ const result = await tools.apply_patch(patch);`,
     ).toBe("working");
   });
 
-  it("marks a completed task unread", () => {
+  it("marks a completed chat unread", () => {
     expect(
       inferRolloutStatus([
         { type: "event_msg", payload: { type: "task_started" } },

@@ -119,7 +119,7 @@ function projectName(cwd: string): string {
 }
 
 function chatTitleLines(title: string, maxLength = 13): string[] {
-  let remaining = title.trim().replace(/\s+/gu, " ") || "Untitled task";
+  let remaining = title.trim().replace(/\s+/gu, " ") || "Untitled chat";
   const lines: string[] = [];
 
   while (remaining && lines.length < 3) {

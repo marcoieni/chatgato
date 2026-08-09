@@ -32,7 +32,7 @@ export const actionIconSources = {
   fast: Zap,
   "go-back": ArrowLeft,
   "go-forward": ArrowRight,
-  "new-task": SquarePlus,
+  "new-chat": SquarePlus,
   "open-review": ScanSearch,
   plan: Lightbulb,
   prompt: MessageSquarePlus,

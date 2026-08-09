@@ -104,19 +104,19 @@ describe("CodexStore", () => {
       id: "newer-duplicate",
       recencyAtMs: 3_000,
       rolloutPath: join(home, "newer.jsonl"),
-      title: "Remote task",
+      title: "Remote chat",
     });
     insertThread(db, {
       id: "selected-duplicate",
       recencyAtMs: 2_000,
       rolloutPath: join(home, "selected.jsonl"),
-      title: "Remote task",
+      title: "Remote chat",
     });
     insertThread(db, {
       id: "other-task",
       recencyAtMs: 1_000,
       rolloutPath: join(home, "other.jsonl"),
-      title: "Other task",
+      title: "Other chat",
     });
     db.close();
 
@@ -124,10 +124,10 @@ describe("CodexStore", () => {
 
     await expect(
       store.threadSearchResult("selected-duplicate"),
-    ).resolves.toEqual({ resultIndex: 1, title: "Remote task" });
+    ).resolves.toEqual({ resultIndex: 1, title: "Remote chat" });
     await expect(store.threadSearchResult("other-task")).resolves.toEqual({
       resultIndex: 0,
-      title: "Other task",
+      title: "Other chat",
     });
     await expect(
       store.threadSearchResult("selected-long-title"),
@@ -231,7 +231,7 @@ describe("CodexStore", () => {
     insertThread(db, {
       id: "thread-1",
       rolloutPath: rollout,
-      title: "Test task",
+      title: "Test chat",
     });
     db.close();
     await writeFile(
@@ -252,7 +252,7 @@ describe("CodexStore", () => {
     const thread = await store.threadAtSlot(1);
     expect(thread).toMatchObject({
       id: "thread-1",
-      title: "Test task",
+      title: "Test chat",
       cwd: "/tmp/project",
       reasoningEffort: "high",
       status: "working",
@@ -299,7 +299,7 @@ describe("CodexStore", () => {
     await expect(store.fastModeEnabled()).resolves.toBe(false);
   });
 
-  it("reads plan mode from the latest visible task's rollout", async () => {
+  it("reads plan mode from the latest visible chat's rollout", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-plan-mode-"));
     temporaryDirectories.push(home);
     const db = createThreadDatabase(home);
@@ -348,7 +348,7 @@ describe("CodexStore", () => {
         id: `thread-${slot}`,
         recencyAtMs: 1_000 - slot,
         rolloutPath: join(home, `rollout-${slot}.jsonl`),
-        title: `Task ${slot}`,
+        title: `Chat ${slot}`,
         updatedAtMs: 1_000 - slot,
       });
     }
@@ -366,7 +366,7 @@ describe("CodexStore", () => {
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "rollout-4.jsonl"));
   });
 
-  it("merges cached SSH tasks with local tasks by recency", async () => {
+  it("merges cached SSH chats with local chats by recency", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
     temporaryDirectories.push(home);
     const db = createThreadDatabase(home);
@@ -374,7 +374,7 @@ describe("CodexStore", () => {
       id: "local-thread",
       recencyAtMs: 2_000,
       rolloutPath: join(home, "local.jsonl"),
-      title: "Local task",
+      title: "Local chat",
       updatedAtMs: 2_000,
     });
     db.close();
@@ -391,7 +391,7 @@ describe("CodexStore", () => {
         remotePlatform: "posix" as const,
         rolloutPath: null,
         status: "unread" as const,
-        title: "Remote task",
+        title: "Remote chat",
         updatedAtMs: 3_100,
       },
     ]);
@@ -402,7 +402,7 @@ describe("CodexStore", () => {
       remoteHostId: "remote-ssh-discovered:devbox",
       rolloutPath: null,
       status: "unread",
-      title: "Remote task",
+      title: "Remote chat",
     });
     await expect(store.threadAtSlot(2)).resolves.toMatchObject({
       id: "local-thread",
@@ -430,7 +430,7 @@ describe("CodexStore", () => {
         remotePlatform: "windows" as const,
         rolloutPath: "C:\\Users\\dev\\.codex\\remote.jsonl",
         status: "unread" as const,
-        title: "Windows remote task",
+        title: "Windows remote chat",
         updatedAtMs: 3_100,
       },
     ]);
@@ -488,7 +488,7 @@ describe("CodexStore", () => {
       id: "matching-thread",
       recencyAtMs: 959,
       rolloutPath: join(home, "matching.jsonl"),
-      title: "Matching task",
+      title: "Matching chat",
       updatedAtMs: 959,
     });
     db.close();
@@ -543,7 +543,7 @@ describe("CodexStore", () => {
       id: "matching-thread",
       recencyAtMs: 963,
       rolloutPath: join(home, "matching.jsonl"),
-      title: "Matching task",
+      title: "Matching chat",
       updatedAtMs: 963,
     });
     db.close();
