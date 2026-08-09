@@ -73,11 +73,4 @@ You can stop optional processing at any time:
   to retain it.
 
 Because the developer does not receive or retain plugin data, there is no remote
-ChatGato account or server-side record to delete. For help with a deletion request
-or a privacy question, use the
-[ChatGato support page](https://github.com/marcoieni/chatgato/issues). Do not
-include prompts, paths, SSH details, or other personal data in a public issue.
-
-## Changes to this policy
-
-Material changes will be published in this file with an updated effective date.
+ChatGato account or server-side record to delete.
