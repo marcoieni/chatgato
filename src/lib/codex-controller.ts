@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -58,44 +58,21 @@ const CUSTOM_SHORTCUT_COMMANDS: Record<
 // Stream Deck can deliver adjacent key/dial events before the first automation finishes.
 let reasoningQueue: Promise<unknown> = Promise.resolve();
 
-type SubprocessOptions = {
-  captureStdout?: boolean;
-};
-
-function runSubprocess(
-  executable: string,
-  args: string[],
-  options: { captureStdout: true },
-): Promise<string>;
-function runSubprocess(
-  executable: string,
-  args: string[],
-  options?: { captureStdout?: false },
-): Promise<void>;
-function runSubprocess(
-  executable: string,
-  args: string[],
-  { captureStdout = false }: SubprocessOptions = {},
-): Promise<string | void> {
+function runSubprocess(executable: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
-      stdio: ["ignore", captureStdout ? "pipe" : "ignore", "pipe"],
+      stdio: ["ignore", "ignore", "pipe"],
       windowsHide: true,
     });
-    let stdout = "";
     let stderr = "";
 
-    child.stdout?.setEncoding("utf8");
-    child.stdout?.on("data", (chunk: string) => {
-      stdout = (stdout + chunk).slice(-4000);
-    });
     child.stderr?.setEncoding("utf8");
     child.stderr?.on("data", (chunk: string) => {
       stderr = (stderr + chunk).slice(-4000);
     });
     child.once("error", reject);
     child.once("exit", (code) => {
-      if (code === 0) resolve(captureStdout ? stdout.trim() : undefined);
+      if (code === 0) resolve();
       else {
         const detail = stderr.trim();
         reject(
@@ -168,7 +145,7 @@ export async function runShortcut(shortcut: string): Promise<void> {
     );
     await runControlScript(
       "keybinding",
-      binding.key,
+      binding,
       `${customShortcut.label} keyboard control`,
     );
     return;
@@ -222,11 +199,10 @@ export async function openThreadBySearch(
     THREAD_SEARCH_COMMAND,
     "Switch chat",
   );
-  await assertThreadSearchShortcutLoaded(binding.modifiedAtMs);
   await runControlScript("thread", query, "host-aware task navigation", [
     String(selectedResultIndex),
     String(MAX_AGENT_SLOTS - 1),
-    binding.key,
+    binding,
   ]);
 }
 
@@ -254,17 +230,6 @@ export function hasThreadSearchShortcut(
 ): boolean {
   return (
     resolveCodexKeybinding(bindings, THREAD_SEARCH_COMMAND, platform) !== null
-  );
-}
-
-export function shortcutWasLoadedAtLaunch(
-  bindingModifiedAtMs: number,
-  appStartedAtMs: number,
-): boolean {
-  return (
-    Number.isFinite(bindingModifiedAtMs) &&
-    Number.isFinite(appStartedAtMs) &&
-    bindingModifiedAtMs < appStartedAtMs
   );
 }
 
@@ -353,103 +318,29 @@ function normalizeKeyName(key: string): string | null {
     : null;
 }
 
-type CodexKeybindings = {
-  bindings: unknown;
-  modifiedAtMs: number;
-};
-
-async function readCodexKeybindings(): Promise<CodexKeybindings> {
+async function readCodexKeybindings(): Promise<unknown> {
   const codexHome = process.env.CODEX_HOME || join(homedir(), ".codex");
   const bindingsPath = join(codexHome, "keybindings.json");
   try {
     const contents = await readFile(bindingsPath, "utf8");
-    const metadata = await stat(bindingsPath);
-    return {
-      bindings: JSON.parse(contents) as unknown,
-      modifiedAtMs: metadata.mtimeMs,
-    };
+    return JSON.parse(contents) as unknown;
   } catch {
-    return { bindings: null, modifiedAtMs: Number.NaN };
+    return null;
   }
 }
 
 async function requireCodexKeybinding(
   command: string,
   label: string,
-): Promise<{ key: string; modifiedAtMs: number }> {
-  const keybindings = await readCodexKeybindings();
-  const key = resolveCodexKeybinding(keybindings.bindings, command);
+): Promise<string> {
+  const bindings = await readCodexKeybindings();
+  const key = resolveCodexKeybinding(bindings, command);
   if (key === null) {
     throw new Error(
       `Configure Codex ${label} in Settings → Keyboard Shortcuts`,
     );
   }
-  return { key, modifiedAtMs: keybindings.modifiedAtMs };
-}
-
-async function assertThreadSearchShortcutLoaded(
-  bindingModifiedAtMs: number,
-): Promise<void> {
-  const appStartedAtMs = await chatGptStartedAtMs();
-  if (appStartedAtMs === null) {
-    throw new Error(
-      "Open ChatGPT after configuring the Switch chat shortcut, then try again",
-    );
-  }
-  if (!shortcutWasLoadedAtLaunch(bindingModifiedAtMs, appStartedAtMs)) {
-    throw new Error(
-      "Restart ChatGPT to load the Switch chat shortcut before using remote task keys",
-    );
-  }
-}
-
-async function chatGptStartedAtMs(): Promise<number | null> {
-  if (process.platform === "darwin") {
-    try {
-      const pids = (
-        await runSubprocess("/usr/bin/pgrep", ["-x", "ChatGPT"], {
-          captureStdout: true,
-        })
-      )
-        .split(/\s+/u)
-        .filter(Boolean);
-      const startedAt = await Promise.all(
-        pids.map(async (pid) =>
-          Date.parse(
-            await runSubprocess("/bin/ps", ["-o", "lstart=", "-p", pid], {
-              captureStdout: true,
-            }),
-          ),
-        ),
-      );
-      const valid = startedAt.filter(Number.isFinite);
-      return valid.length > 0 ? Math.min(...valid) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  if (process.platform === "win32") {
-    try {
-      const startedAt = Date.parse(
-        await runSubprocess(
-          "powershell.exe",
-          [
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "$p = Get-Process -Name ChatGPT -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1; if ($p) { $p.StartTime.ToUniversalTime().ToString('o') }",
-          ],
-          { captureStdout: true },
-        ),
-      );
-      return Number.isFinite(startedAt) ? startedAt : null;
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
+  return key;
 }
 
 export async function runReasoning(

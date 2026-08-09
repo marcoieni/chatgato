@@ -52,7 +52,7 @@ ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not a
 4. Search for **“Toggle Fast mode”** and assign any shortcut you prefer.
 5. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
 
-**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. Before sending a remote task title, ChatGato validates the loaded Search Chats binding and verifies that ChatGPT started after the binding was saved, so restart ChatGPT after changing it.
+**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote task title, so shortcut changes take effect immediately.
 
 ChatGato supports Command/Control, Option/Alt, and Shift modifiers with printable keys, navigation keys, or F1–F20.
 

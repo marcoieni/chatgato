@@ -6,7 +6,6 @@ import {
   normalizeThreadSearchQuery,
   pushToTalkPayload,
   resolveCodexKeybinding,
-  shortcutWasLoadedAtLaunch,
   validateThreadSearchResultIndex,
 } from "../src/lib/codex-controller.js";
 
@@ -152,13 +151,6 @@ describe("Codex controller", () => {
         "darwin",
       ),
     ).toBeNull();
-  });
-
-  it("requires the shortcut file to predate the running app", () => {
-    expect(shortcutWasLoadedAtLaunch(1_000, 2_000)).toBe(true);
-    expect(shortcutWasLoadedAtLaunch(2_000, 2_000)).toBe(false);
-    expect(shortcutWasLoadedAtLaunch(3_000, 2_000)).toBe(false);
-    expect(shortcutWasLoadedAtLaunch(Number.NaN, 2_000)).toBe(false);
   });
 
   it("maps push-to-talk state to distinct key-down and key-up events", () => {
