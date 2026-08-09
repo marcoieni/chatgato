@@ -51,8 +51,7 @@ ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not a
 3. Search for **“Switch chat”** and assign the required Search Chats shortcut.
 4. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
 5. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
-6. Restart ChatGPT so the desktop app loads the bindings.
-7. Use the exact platform-specific bindings below.
+6. Use the exact platform-specific bindings below.
 
 | Platform | Search Chats           | Fast                   | Plan                   |
 | -------- | ---------------------- | ---------------------- | ---------------------- |
