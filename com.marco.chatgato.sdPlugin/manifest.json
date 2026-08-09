@@ -395,7 +395,7 @@
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
-  "Description": "A tactile Stream Deck control surface for OpenAI Codex in the ChatGPT desktop app, with live agent colors, usage limits, custom prompts, core commands, push-to-talk, and reasoning control.",
+  "Description": "A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex). ChatGato shows live status for up to 20 local or SSH-hosted tasks, displays remaining Codex usage limits, and provides keys for approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, Review, and more. No API key is required; task and usage data are read from local Codex files or through your configured SSH connection. Requires Stream Deck 7.1 or later, ChatGPT desktop with Codex, and macOS 13+ or Windows 10+. After installation, add ChatGato actions to your profile and assign a unique slot (1–20) to each Agent Status key. For remote task navigation and the Fast and Plan buttons, configure ChatGPT's Switch chat, Toggle Fast mode, and Toggle plan mode shortcuts exactly as follows: Command+Option+Shift+S/F/P on macOS, or Ctrl+Alt+Shift+S/F/P on Windows. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven actions such as Submit and Fork.",
   "Icon": "imgs/plugin",
   "Name": "ChatGato",
   "Nodejs": {
