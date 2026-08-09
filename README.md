@@ -137,3 +137,8 @@ The name **ChatGato** combines both:
 
 - This app was partially vibe-coded: the maintainer didn't read all its code.
 - ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
+
+> [!NOTE]
+> ChatGato processes Codex task data and plugin settings locally and does not send
+> them to the developer or third parties. See the [Privacy Policy](PRIVACY.md) for
+> the data it reads, optional SSH behavior, retention, and deletion instructions.
