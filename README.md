@@ -135,5 +135,4 @@ The name **ChatGato** combines both:
 
 ## Disclaimer
 
-- This app was partially vibe-coded: the maintainer didn't read all its code.
 - ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.

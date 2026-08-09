@@ -3,7 +3,7 @@
 ## Reporting issues
 
 Before reporting an issue on the
-[issue tracker](https://github.com/release-plz/release-plz/issues),
+[issue tracker](https://github.com/marcoieni/chatgato/issues),
 please check that it has not already been reported by searching for some related
 keywords.
 
