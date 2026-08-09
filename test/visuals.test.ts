@@ -95,7 +95,7 @@ describe("Stream Deck visuals", () => {
       working: "loader-circle",
       "awaiting-approval": "shield-check",
       "awaiting-response": "message-circle-question-mark",
-      error: "circle-x",
+      error: "x",
     } as const;
 
     for (const [status, icon] of Object.entries(expectedIcons)) {

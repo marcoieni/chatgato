@@ -25,7 +25,7 @@ type WorkingAnimation = {
   timer: NodeJS.Timeout | null;
 };
 
-const WORKING_FRAME_INTERVAL_MS = 100;
+const WORKING_FRAME_INTERVAL_MS = 150;
 const WORKING_FRAME_COUNT = 16;
 const WORKING_FRAME_DEGREES = 360 / WORKING_FRAME_COUNT;
 const logger = streamDeck.logger.createScope("Agent Status");

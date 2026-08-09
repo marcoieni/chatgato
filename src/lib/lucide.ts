@@ -1,13 +1,13 @@
 import ArrowDown from "lucide-static/dist/esm/icons/arrow-down.mjs";
 import ArrowUp from "lucide-static/dist/esm/icons/arrow-up.mjs";
 import Brain from "lucide-static/dist/esm/icons/brain.mjs";
-import CircleX from "lucide-static/dist/esm/icons/circle-x.mjs";
 import Lightbulb from "lucide-static/dist/esm/icons/lightbulb.mjs";
 import LoaderCircle from "lucide-static/dist/esm/icons/loader-circle.mjs";
 import MessageCircleQuestion from "lucide-static/dist/esm/icons/message-circle-question-mark.mjs";
 import Mic from "lucide-static/dist/esm/icons/mic.mjs";
 import Power from "lucide-static/dist/esm/icons/power.mjs";
 import ShieldCheck from "lucide-static/dist/esm/icons/shield-check.mjs";
+import X from "lucide-static/dist/esm/icons/x.mjs";
 import Zap from "lucide-static/dist/esm/icons/zap.mjs";
 import type { AgentStatus } from "../types.js";
 
@@ -28,7 +28,7 @@ export const AGENT_STATUS_ICON_SOURCES: Partial<Record<AgentStatus, string>> = {
   working: LoaderCircle,
   "awaiting-approval": ShieldCheck,
   "awaiting-response": MessageCircleQuestion,
-  error: CircleX,
+  error: X,
 };
 
 interface LucideGlyphOptions {

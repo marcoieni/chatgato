@@ -168,7 +168,10 @@ describe("AgentStatusAction navigation", () => {
         'transform="rotate(0 28 30)"',
       );
 
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(149);
+      expect(action.setImage).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(1);
       expect(action.setImage).toHaveBeenCalledTimes(2);
       expect(decodedSvg(action.setImage.mock.calls[1]![0])).toContain(
         'transform="rotate(22.5 28 30)"',
