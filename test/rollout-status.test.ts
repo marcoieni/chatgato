@@ -96,27 +96,32 @@ describe("Codex rollout status", () => {
     ).toBe("working");
   });
 
-  it("recognizes a pending apply_patch call as an approval wait", () => {
-    const callId = "call-needs-write-approval";
-    const approvalCall = {
-      type: "response_item",
-      payload: {
-        type: "custom_tool_call",
-        name: "exec",
-        call_id: callId,
-        status: "completed",
-        input: String.raw`const patch = "*** Begin Patch\n*** Add File: /Users/marco/hello.txt\n+hello\n*** End Patch";
-const result = await tools.apply_patch(patch);`,
-      },
-    };
-
-    expect(inferRolloutStatus([approvalCall])).toBe("awaiting-approval");
+  it("does not mistake a normal apply_patch call for an approval wait", () => {
     expect(
       inferRolloutStatus([
-        approvalCall,
         {
           type: "response_item",
-          payload: { type: "custom_tool_call_output", call_id: callId },
+          payload: {
+            type: "custom_tool_call",
+            name: "apply_patch",
+            call_id: "direct-patch",
+            input:
+              "*** Begin Patch\n*** Update File: src/index.ts\n*** End Patch",
+          },
+        },
+      ]),
+    ).toBe("working");
+
+    expect(
+      inferRolloutStatus([
+        {
+          type: "response_item",
+          payload: {
+            type: "custom_tool_call",
+            name: "exec",
+            call_id: "nested-patch",
+            input: String.raw`const result = await tools.apply_patch("*** Begin Patch\n*** Update File: src/index.ts\n*** End Patch");`,
+          },
         },
       ]),
     ).toBe("working");

@@ -26,7 +26,6 @@ const WAITING_RESPONSE = new Set([
 ]);
 const ESCALATED_SANDBOX_PROPERTY =
   /(?:^|[{,]\s*)["']?sandbox_permissions["']?\s*:\s*["']require_escalated["'](?=\s*[,}])/u;
-const APPLY_PATCH_CALL = /\b(?:tools\.)?apply_patch\s*\(/u;
 export const STALE_WORKING_TIMEOUT_MS = 10 * 60 * 1000;
 
 export function planModeFromRollout(
@@ -63,11 +62,9 @@ function isApprovalToolCall(record: RolloutRecord): boolean {
   }
 
   const input = record.payload.input ?? record.payload.arguments;
-  return (
-    record.payload.name === "apply_patch" ||
-    (typeof input === "string" &&
-      (ESCALATED_SANDBOX_PROPERTY.test(input) || APPLY_PATCH_CALL.test(input)))
-  );
+  // A normal apply_patch has the same pending call shape as a gated one, so
+  // only treat a tool call as approval-bound when it explicitly escalates.
+  return typeof input === "string" && ESCALATED_SANDBOX_PROPERTY.test(input);
 }
 
 export function statusFromSpawnEdge(
