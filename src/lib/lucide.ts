@@ -1,8 +1,6 @@
 import ArrowDown from "lucide-static/dist/esm/icons/arrow-down.mjs";
 import ArrowUp from "lucide-static/dist/esm/icons/arrow-up.mjs";
 import Brain from "lucide-static/dist/esm/icons/brain.mjs";
-import CircleCheck from "lucide-static/dist/esm/icons/circle-check.mjs";
-import CirclePause from "lucide-static/dist/esm/icons/circle-pause.mjs";
 import CircleX from "lucide-static/dist/esm/icons/circle-x.mjs";
 import Lightbulb from "lucide-static/dist/esm/icons/lightbulb.mjs";
 import LoaderCircle from "lucide-static/dist/esm/icons/loader-circle.mjs";
@@ -25,15 +23,13 @@ export const DYNAMIC_ICON_SOURCES = {
   pushToTalk: Mic,
 } as const;
 
-export const AGENT_STATUS_ICON_SOURCES = {
+export const AGENT_STATUS_ICON_SOURCES: Partial<Record<AgentStatus, string>> = {
   off: Power,
   working: LoaderCircle,
-  unread: CircleCheck,
-  idle: CirclePause,
   "awaiting-approval": ShieldCheck,
   "awaiting-response": MessageCircleQuestion,
   error: CircleX,
-} as const satisfies Record<AgentStatus, string>;
+};
 
 interface LucideGlyphOptions {
   center?: readonly [number, number];

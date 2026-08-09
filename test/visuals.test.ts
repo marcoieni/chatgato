@@ -44,6 +44,9 @@ describe("Stream Deck visuals", () => {
       '<rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>',
     );
     expect(svg).toContain('data-lucide-icon="loader-circle"');
+    expect(svg).toContain(
+      'data-working-spinner="true" transform="rotate(0 28 30)"',
+    );
     expect(svg).toContain('stroke="#304FFE"');
     expect(svg).toContain('font-weight="800" font-size="15">4</text>');
     expect(svg).toContain('font-size="12" text-anchor="end">chatgato</text>');
@@ -73,12 +76,10 @@ describe("Stream Deck visuals", () => {
     expect(svg).not.toContain("<unsafe>");
   });
 
-  it("uses a colored Lucide symbol instead of a status label", () => {
+  it("uses colored state symbols instead of status labels", () => {
     const expectedIcons = {
       off: "power",
       working: "loader-circle",
-      unread: "circle-check",
-      idle: "circle-pause",
       "awaiting-approval": "shield-check",
       "awaiting-response": "message-circle-question-mark",
       error: "circle-x",
@@ -91,6 +92,17 @@ describe("Stream Deck visuals", () => {
         `stroke="${STATUS_COLORS[status as keyof typeof expectedIcons]}"`,
       );
     }
+
+    const doneSvg = agentSvg(1, "unread");
+    expect(doneSvg).toContain(
+      '<circle data-agent-status-icon="done" cx="28" cy="30" r="8" fill="#00FF4C"/>',
+    );
+    expect(doneSvg).not.toContain('data-lucide-icon="circle"');
+
+    const idleSvg = agentSvg(1, "idle");
+    expect(idleSvg).not.toContain("data-agent-status-icon");
+    expect(idleSvg).not.toContain("data-lucide-icon");
+    expect(idleSvg).toContain('<text x="20" y="35"');
 
     const formerLabels = {
       off: "OFF",
@@ -106,6 +118,18 @@ describe("Stream Deck visuals", () => {
         `>${label}</text>`,
       );
     }
+  });
+
+  it("renders distinct working-spinner rotation frames", () => {
+    const thread = { title: "Task", cwd: "/tmp/project" };
+    const firstFrame = agentSvg(1, "working", thread, 0);
+    const nextFrame = agentSvg(1, "working", thread, 45);
+
+    expect(nextFrame).toContain('transform="rotate(45 28 30)"');
+    expect(nextFrame).not.toBe(firstFrame);
+    expect(agentImage(1, "working", thread, 45)).not.toBe(
+      agentImage(1, "working", thread, 0),
+    );
   });
 
   it("highlights the fast-mode shape without changing its background", () => {

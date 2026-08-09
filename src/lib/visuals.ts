@@ -146,6 +146,7 @@ export function agentSvg(
   slot: number,
   status: AgentStatus,
   thread?: AgentVisualThread,
+  spinnerRotation = 0,
 ): string {
   const color = STATUS_COLORS[status];
   const project = thread ? projectName(thread.cwd) : "CODEX";
@@ -160,18 +161,33 @@ export function agentSvg(
         `<text x="72" y="${firstTitleY + index * 23}" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="750" font-size="21"${fittedTitleAttributes(line)} text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("\n      ");
+  const statusIconSource = AGENT_STATUS_ICON_SOURCES[status];
+  const statusGlyph =
+    status === "unread"
+      ? `<circle data-agent-status-icon="done" cx="28" cy="30" r="8" fill="${color}"/>`
+      : statusIconSource
+        ? lucideGlyph(statusIconSource, {
+            center: [28, 30],
+            color,
+            size: 20,
+            strokeWidth: 2.5,
+          })
+        : "";
+  const normalizedRotation = ((spinnerRotation % 360) + 360) % 360;
+  const statusSymbol =
+    status === "working"
+      ? `<g data-working-spinner="true" transform="rotate(${normalizedRotation} 28 30)">
+      ${statusGlyph}
+    </g>`
+      : statusGlyph;
+  const slotX = status === "idle" ? 20 : 42;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${LUCIDE_LICENSE}
     ${keyShell()}
     <rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>
-    ${lucideGlyph(AGENT_STATUS_ICON_SOURCES[status], {
-      center: [28, 30],
-      color,
-      size: 20,
-      strokeWidth: 2.5,
-    })}
-    <text x="42" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="15">${slot}</text>
+    ${statusSymbol}
+    <text x="${slotX}" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="15">${slot}</text>
     <text x="124" y="34" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="700" font-size="12"${fittedProjectAttributes(project)} text-anchor="end">${escapeXml(project)}</text>
     ${titleRows}
   </svg>`;
@@ -185,8 +201,9 @@ export function agentImage(
   slot: number,
   status: AgentStatus,
   thread?: AgentVisualThread,
+  spinnerRotation = 0,
 ): string {
-  return svgDataUri(agentSvg(slot, status, thread));
+  return svgDataUri(agentSvg(slot, status, thread, spinnerRotation));
 }
 
 export function reasoningSvg(
