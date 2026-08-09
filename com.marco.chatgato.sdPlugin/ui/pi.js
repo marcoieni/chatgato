@@ -5,6 +5,8 @@
   let settings = {};
   let saveTimer;
   const MAX_AGENT_SLOTS = 20;
+  const SETUP_GUIDE_URL =
+    "https://github.com/marcoieni/chatgato#required-keyboard-shortcut-setup";
 
   const form = document.getElementById("settings");
   const subtitle = document.getElementById("subtitle");
@@ -18,6 +20,8 @@
     `<input data-setting="${name}" type="checkbox" ${checked ? "checked" : ""}>`;
   const option = (value, label, selected) =>
     `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`;
+  const setupGuideLink = () =>
+    `<a class="support-link" href="${SETUP_GUIDE_URL}" data-open-url="${SETUP_GUIDE_URL}" target="_blank" rel="noopener noreferrer">Open shortcut setup guide</a>`;
 
   function escapeHtml(value) {
     return value.replace(
@@ -168,7 +172,7 @@
           "cwdFilter",
           selected("cwdFilter", ""),
           "text",
-          'placeholder="All workspaces"',
+          'placeholder="All workspaces" data-validation="workspace-path" spellcheck="false"',
         ),
         "Optional absolute path. Includes nested workspaces.",
       ) +
@@ -178,11 +182,11 @@
           "pollSeconds",
           selected("pollSeconds", 2),
           "number",
-          'min="1" max="30" step="1"',
+          'min="1" max="30" step="1" required',
         ),
         "Seconds between local status reads.",
       );
-    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign <code>⌘⌥⇧S</code> on macOS or <code>Ctrl+Alt+Shift+S</code> on Windows. Restart ChatGPT after saving it. ChatGato verifies the loaded binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
+    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign <code>⌘⌥⇧S</code> on macOS or <code>Ctrl+Alt+Shift+S</code> on Windows. Restart ChatGPT after saving it. ${setupGuideLink()} ChatGato verifies the loaded binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>
       <span><i style="background:#ff6d00"></i>Approval</span><span><i style="background:#9e5bff"></i>Needs response</span>
       <span><i style="background:#ff0033"></i>Error</span>
@@ -199,7 +203,7 @@
           "path",
           selected("path", ""),
           "text",
-          'placeholder="/absolute/path/to/project"',
+          'placeholder="/absolute/path/to/project" data-validation="workspace-path" spellcheck="false"',
         ),
       ) +
       field(
@@ -220,7 +224,7 @@
           "submitDelayMs",
           selected("submitDelayMs", 900),
           "number",
-          'min="300" max="5000" step="100"',
+          'min="300" max="5000" step="100" required',
         ),
         "Milliseconds; only used with auto-submit.",
       );
@@ -243,7 +247,7 @@
           "path",
           selected("path", ""),
           "text",
-          'placeholder="/absolute/path/to/project"',
+          'placeholder="/absolute/path/to/project" data-validation="workspace-path" spellcheck="false"',
         ),
       ) +
       field(
@@ -258,7 +262,7 @@
           "submitDelayMs",
           selected("submitDelayMs", 900),
           "number",
-          'min="300" max="5000" step="100"',
+          'min="300" max="5000" step="100" required',
         ),
       );
     note.innerHTML =
@@ -296,7 +300,7 @@
 
   function renderModeShortcut(label, commandName, letter, onColor) {
     subtitle.textContent = `Toggle Codex ${label.toLowerCase()}`;
-    form.innerHTML = `<p><strong>Required setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “${commandName}”, and assign <code>⌘⌥⇧${letter}</code> on macOS or <code>Ctrl+Alt+Shift+${letter}</code> on Windows.</p>`;
+    form.innerHTML = `<p><strong>Required setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “${commandName}”, and assign <code>⌘⌥⇧${letter}</code> on macOS or <code>Ctrl+Alt+Shift+${letter}</code> on Windows. ${setupGuideLink()}</p>`;
     note.innerHTML = `<strong>This action will not work until the shortcut is configured exactly.</strong> A warning means ChatGato could not send the shortcut to ChatGPT.<div class="legend">
       <span><i style="background:#303840"></i>Off</span><span><i style="background:${onColor}"></i>On</span>
     </div>`;
@@ -310,7 +314,7 @@
         "maxStepsPerGesture",
         selected("maxStepsPerGesture", 3),
         "number",
-        'min="1" max="5" step="1"',
+        'min="1" max="5" step="1" required',
       ),
       "Caps commands from one fast dial gesture.",
     );
@@ -326,7 +330,7 @@
         "pollSeconds",
         selected("pollSeconds", 15),
         "number",
-        'min="5" max="300" step="1"',
+        'min="5" max="300" step="1" required',
       ),
       "Seconds between local usage reads.",
     );
@@ -336,9 +340,102 @@
 
   function bind() {
     for (const element of form.querySelectorAll("[data-setting]")) {
-      element.addEventListener("input", scheduleSave);
-      element.addEventListener("change", scheduleSave);
+      if (element.type === "number" || element.dataset.validation) {
+        ensureValidationMessage(element);
+      }
+      element.addEventListener("input", handleSettingChange);
+      element.addEventListener("change", handleSettingChange);
     }
+    for (const link of document.querySelectorAll("[data-open-url]")) {
+      link.addEventListener("click", openSupportLink);
+    }
+    validateForm();
+  }
+
+  function openSupportLink(event) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    event.preventDefault();
+    socket.send(
+      JSON.stringify({
+        event: "openUrl",
+        payload: { url: event.currentTarget.dataset.openUrl },
+      }),
+    );
+  }
+
+  function handleSettingChange() {
+    validateForm();
+    scheduleSave();
+  }
+
+  function ensureValidationMessage(element) {
+    const label = element.closest("label");
+    if (!label) return;
+    const message = document.createElement("small");
+    message.id = `${element.dataset.setting}-error`;
+    message.className = "validation-error";
+    message.setAttribute("aria-live", "polite");
+    label.append(message);
+    element.setAttribute("aria-describedby", message.id);
+  }
+
+  function validateForm() {
+    let valid = true;
+    for (const element of form.querySelectorAll("[data-setting]")) {
+      const message = validationMessage(element);
+      element.setCustomValidity(message);
+      element.setAttribute("aria-invalid", String(Boolean(message)));
+      element
+        .closest("label")
+        ?.querySelector(".validation-error")
+        ?.replaceChildren(message);
+      if (message) valid = false;
+    }
+    return valid;
+  }
+
+  function validationMessage(element) {
+    const label = element.closest("label")?.firstElementChild?.textContent;
+    const name = label || "This value";
+    const value = element.value.trim();
+
+    if (element.type === "number") {
+      if (!value || !Number.isFinite(Number(value))) {
+        return `${name} must be a number.`;
+      }
+
+      const number = Number(value);
+      const min = element.min === "" ? null : Number(element.min);
+      const max = element.max === "" ? null : Number(element.max);
+      if (min !== null && number < min) {
+        return `${name} must be at least ${min}.`;
+      }
+      if (max !== null && number > max) {
+        return `${name} must be at most ${max}.`;
+      }
+      if (element.validity.stepMismatch) {
+        return `${name} must use increments of ${element.step}.`;
+      }
+    }
+
+    if (
+      element.dataset.validation === "workspace-path" &&
+      value &&
+      !isAbsoluteWorkspacePath(value)
+    ) {
+      return "Workspace must be an absolute path, such as /Users/name/project or C:\\Users\\name\\project.";
+    }
+
+    return "";
+  }
+
+  function isAbsoluteWorkspacePath(value) {
+    return (
+      value.startsWith("/") ||
+      /^[A-Za-z]:[\\/]/.test(value) ||
+      /^\\\\[^\\]+\\[^\\]+/.test(value) ||
+      /^\/\/[^/]+\/[^/]+/.test(value)
+    );
   }
 
   function scheduleSave() {
@@ -348,6 +445,7 @@
 
   function save() {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!validateForm()) return;
     const next = { ...settings };
     for (const element of form.querySelectorAll("[data-setting]")) {
       const key = element.dataset.setting;
