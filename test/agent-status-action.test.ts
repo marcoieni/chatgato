@@ -55,13 +55,20 @@ function thread(overrides: Partial<CodexThread> = {}): CodexThread {
   };
 }
 
-function actionHarness() {
+function actionHarness(settings: AgentSettings = { slot: 1 }) {
   const action = {
+    getSettings: vi.fn(async () => settings),
     id: "agent-status-test",
+    setImage: vi.fn(async (_image: string) => undefined),
     setSettings: vi.fn(async (_settings: AgentSettings) => undefined),
+    setTitle: vi.fn(async (_title: string) => undefined),
     showAlert: vi.fn(async () => undefined),
   };
   return action;
+}
+
+function decodedSvg(image: string): string {
+  return Buffer.from(image.split(",")[1]!, "base64").toString();
 }
 
 describe("AgentStatusAction navigation", () => {
@@ -142,5 +149,41 @@ describe("AgentStatusAction navigation", () => {
       "Failed to open task in slot 1",
       expect.objectContaining({ message: "Codex unavailable" }),
     );
+  });
+
+  it("rotates the working spinner until the key disappears", async () => {
+    vi.useFakeTimers();
+    mocks.threadAtSlot.mockResolvedValue(thread({ status: "working" }));
+    const action = actionHarness();
+    const agentStatus = new AgentStatusAction();
+
+    try {
+      await agentStatus.onWillAppear({
+        action,
+        payload: { settings: { slot: 1 } },
+      } as never);
+
+      expect(action.setImage).toHaveBeenCalledOnce();
+      expect(decodedSvg(action.setImage.mock.calls[0]![0])).toContain(
+        'transform="rotate(0 28 30)"',
+      );
+
+      await vi.advanceTimersByTimeAsync(149);
+      expect(action.setImage).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(action.setImage).toHaveBeenCalledTimes(2);
+      expect(decodedSvg(action.setImage.mock.calls[1]![0])).toContain(
+        'transform="rotate(22.5 28 30)"',
+      );
+
+      agentStatus.onWillDisappear({ action } as never);
+      const stoppedAt = action.setImage.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(300);
+      expect(action.setImage).toHaveBeenCalledTimes(stoppedAt);
+    } finally {
+      agentStatus.onWillDisappear({ action } as never);
+      vi.useRealTimers();
+    }
   });
 });

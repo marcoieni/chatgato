@@ -1,5 +1,10 @@
 import { remainingPercent, usageWindowLabel } from "./codex-usage.js";
-import { DYNAMIC_ICON_SOURCES, LUCIDE_LICENSE, lucideGlyph } from "./lucide.js";
+import {
+  AGENT_STATUS_ICON_SOURCES,
+  DYNAMIC_ICON_SOURCES,
+  LUCIDE_LICENSE,
+  lucideGlyph,
+} from "./lucide.js";
 import type { AgentStatus, CodexThread, CodexUsageSnapshot } from "../types.js";
 
 // Status colors used by ChatGato actions.
@@ -11,16 +16,6 @@ export const STATUS_COLORS: Record<AgentStatus, string> = {
   "awaiting-approval": "#FF6D00",
   "awaiting-response": "#9E5BFF",
   error: "#FF0033",
-};
-
-export const STATUS_LABELS: Record<AgentStatus, string> = {
-  off: "OFF",
-  working: "WORKING",
-  unread: "DONE",
-  idle: "IDLE",
-  "awaiting-approval": "APPROVE",
-  "awaiting-response": "INPUT",
-  error: "ERROR",
 };
 
 export const FAST_MODE_COLORS = {
@@ -40,6 +35,8 @@ export const PUSH_TO_TALK_COLORS = {
 
 const KEY_BACKGROUND = "#071018";
 const KEY_GLYPH_CENTER = [72, 54] as const;
+const PROJECT_LABEL_FONT_SIZE = 13;
+const PROJECT_LABEL_WIDTH = 72;
 
 function keyShell(): string {
   return `<rect width="144" height="144" rx="24" fill="${KEY_BACKGROUND}"/>
@@ -76,16 +73,141 @@ export function effectiveStatus(
   return thread.status;
 }
 
-export function agentSvg(slot: number, status: AgentStatus): string {
+type AgentVisualThread = Pick<CodexThread, "title" | "cwd">;
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function compactText(value: string, maxLength: number): string {
+  const normalized = value.trim().replace(/\s+/gu, " ");
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength - 1).trimEnd()}…`
+    : normalized;
+}
+
+function projectName(cwd: string): string {
+  const project = cwd.split(/[\\/]/u).filter(Boolean).at(-1)?.trim() || "Codex";
+  if (
+    estimatedEmWidth(project) * PROJECT_LABEL_FONT_SIZE <=
+    PROJECT_LABEL_WIDTH
+  ) {
+    return project;
+  }
+
+  const characters = Array.from(project);
+
+  while (
+    characters.length > 1 &&
+    estimatedEmWidth(`${characters.join("").trimEnd()}…`) *
+      PROJECT_LABEL_FONT_SIZE >
+      PROJECT_LABEL_WIDTH
+  ) {
+    characters.pop();
+  }
+
+  const compact = characters
+    .join("")
+    .trimEnd()
+    .replace(/[-_.]+$/u, "");
+  return `${compact || characters[0]}…`;
+}
+
+function chatTitleLines(title: string, maxLength = 13): string[] {
+  let remaining = title.trim().replace(/\s+/gu, " ") || "Untitled task";
+  const lines: string[] = [];
+
+  while (remaining && lines.length < 3) {
+    if (remaining.length <= maxLength) {
+      lines.push(remaining);
+      break;
+    }
+
+    if (lines.length === 2) {
+      lines.push(compactText(remaining, maxLength));
+      break;
+    }
+
+    const lastSpace = remaining.lastIndexOf(" ", maxLength);
+    const splitAt =
+      lastSpace >= Math.ceil(maxLength / 2) ? lastSpace : maxLength;
+    lines.push(remaining.slice(0, splitAt).trim());
+    remaining = remaining.slice(splitAt).trim();
+  }
+
+  return lines;
+}
+
+function estimatedEmWidth(value: string): number {
+  return Array.from(value).reduce((width, character) => {
+    if (character === " ") return width + 0.3;
+    if (/[MW@#%&]/u.test(character)) return width + 0.9;
+    if (/[fijlrtI1.,'!:|]/u.test(character)) return width + 0.34;
+    if (/[A-Z]/u.test(character)) return width + 0.68;
+    if (character.codePointAt(0)! > 0x7f) return width + 1;
+    return width + 0.56;
+  }, 0);
+}
+
+function fittedTitleAttributes(line: string): string {
+  return estimatedEmWidth(line) * 21 > 116
+    ? ' textLength="116" lengthAdjust="spacingAndGlyphs"'
+    : "";
+}
+
+export function agentSvg(
+  slot: number,
+  status: AgentStatus,
+  thread?: AgentVisualThread,
+  spinnerRotation = 0,
+): string {
   const color = STATUS_COLORS[status];
-  const darkText =
-    status === "idle" || status === "unread" || status === "awaiting-approval";
-  const foreground = darkText ? "#071018" : "#FFFFFF";
-  const fontSize = slot >= 10 ? 46 : 54;
+  const project = thread ? projectName(thread.cwd) : "CODEX";
+  const title =
+    thread?.title || (status === "error" ? "Codex offline" : "Empty slot");
+  const titleLines = chatTitleLines(title);
+  const firstTitleY =
+    titleLines.length === 1 ? 91 : titleLines.length === 2 ? 80 : 68;
+  const titleRows = titleLines
+    .map(
+      (line, index) =>
+        `<text x="72" y="${firstTitleY + index * 23}" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="750" font-size="21"${fittedTitleAttributes(line)} text-anchor="middle">${escapeXml(line)}</text>`,
+    )
+    .join("\n      ");
+  const statusIconSource = AGENT_STATUS_ICON_SOURCES[status];
+  const statusGlyph =
+    status === "unread"
+      ? `<circle data-agent-status-icon="done" cx="28" cy="30" r="8" fill="${color}"/>`
+      : statusIconSource
+        ? lucideGlyph(statusIconSource, {
+            center: [28, 30],
+            color,
+            size: 20,
+            strokeWidth: 2.5,
+          })
+        : "";
+  const normalizedRotation = ((spinnerRotation % 360) + 360) % 360;
+  const statusSymbol =
+    status === "working"
+      ? `<g data-working-spinner="true" transform="rotate(${normalizedRotation} 28 30)">
+      ${statusGlyph}
+    </g>`
+      : statusGlyph;
+  const slotX = status === "idle" ? 20 : 42;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    ${LUCIDE_LICENSE}
     ${keyShell()}
-    ${accentPanel(color)}
-    ${centeredGlyph(`<text x="72" y="72" fill="${foreground}" font-family="Arial,sans-serif" font-weight="800" font-size="${fontSize}" text-anchor="middle">${slot}</text>`)}
+    <rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>
+    ${statusSymbol}
+    <text x="${slotX}" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="15">${slot}</text>
+    <text x="128" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="${PROJECT_LABEL_FONT_SIZE}" text-anchor="end">${escapeXml(project)}</text>
+    ${titleRows}
   </svg>`;
 }
 
@@ -93,15 +215,13 @@ export function svgDataUri(svg: string): string {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
-export function agentImage(slot: number, status: AgentStatus): string {
-  return svgDataUri(agentSvg(slot, status));
-}
-
-export function keyTitle(thread: CodexThread, status: AgentStatus): string {
-  const project = thread.cwd.split(/[\\/]/u).filter(Boolean).at(-1) || "Codex";
-  const compactProject =
-    project.length > 10 ? `${project.slice(0, 9)}…` : project;
-  return `${STATUS_LABELS[status]}\n${compactProject}`;
+export function agentImage(
+  slot: number,
+  status: AgentStatus,
+  thread?: AgentVisualThread,
+  spinnerRotation = 0,
+): string {
+  return svgDataUri(agentSvg(slot, status, thread, spinnerRotation));
 }
 
 export function reasoningSvg(

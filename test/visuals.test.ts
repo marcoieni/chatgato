@@ -14,7 +14,6 @@ import {
   pushToTalkImage,
   pushToTalkSvg,
   reasoningSvg,
-  keyTitle,
   usageSvg,
 } from "../src/lib/visuals.js";
 import type { CodexThread, CodexUsageSnapshot } from "../src/types.js";
@@ -31,25 +30,119 @@ describe("Stream Deck visuals", () => {
     );
   });
 
-  it("renders the task number over the status color without a terminal icon", () => {
-    expect(agentSvg(4, "working")).toContain(
+  it("renders a compact task card led by the chat title", () => {
+    const thread = {
+      title: "Redesign the chats button",
+      cwd: "/Users/marco/me/proj/chatgato",
+    };
+    const svg = agentSvg(4, "working", thread);
+
+    expect(svg).toContain(
       '<rect width="144" height="144" rx="24" fill="#071018"/>',
     );
-    expect(agentSvg(4, "working")).toContain(
-      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#304FFE"/>',
+    expect(svg).toContain(
+      '<rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>',
     );
-    expect(agentSvg(4, "unread")).toContain(
-      '<rect x="28" y="14" width="88" height="80" rx="22" fill="#00FF4C"/>',
+    expect(svg).toContain('data-lucide-icon="loader-circle"');
+    expect(svg).toContain(
+      'data-working-spinner="true" transform="rotate(0 28 30)"',
     );
-    expect(agentSvg(4, "working")).toContain(
-      '<text x="72" y="72" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="800" font-size="54" text-anchor="middle">4</text>',
+    expect(svg).toContain('stroke="#304FFE"');
+    expect(svg).toContain('font-weight="800" font-size="15">4</text>');
+    expect(svg).toContain(
+      'fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">chatgato</text>',
     );
-    expect(agentSvg(14, "unread")).toContain(
-      '<text x="72" y="72" fill="#071018" font-family="Arial,sans-serif" font-weight="800" font-size="46" text-anchor="middle">14</text>',
+    expect(svg).toContain('font-size="21"');
+    expect(svg).toContain(">Redesign the</text>");
+    expect(svg).toContain(">chats button</text>");
+    expect(svg).toContain('textLength="116" lengthAdjust="spacingAndGlyphs"');
+    expect(svg).not.toContain(">#4</text>");
+    expect(svg).not.toContain(">WORKING</text>");
+    expect(svg).not.toContain(
+      '<rect x="28" y="14" width="88" height="80" rx="22"',
     );
-    expect(agentSvg(4, "working")).not.toContain("dominant-baseline");
-    expect(agentSvg(4, "working")).not.toContain("<path");
-    expect(agentSvg(4, "working")).not.toContain("<circle");
+  });
+
+  it("keeps representative project names readable without squeezing them", () => {
+    const svg = agentSvg(2, "unread", {
+      title: "Explain release",
+      cwd: "/Users/marco/me/proj/release-plz",
+    });
+
+    expect(svg).toContain(
+      '<text x="128" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">release-plz</text>',
+    );
+    expect(svg).not.toContain('textLength="72"');
+  });
+
+  it("truncates and XML-escapes task metadata safely", () => {
+    const svg = agentSvg(12, "unread", {
+      title: "Investigate <unsafe> & unusuallylongwordwithoutspaces",
+      cwd: "/tmp/a-project-name-that-is-too-long",
+    });
+
+    expect(svg).toContain('font-size="15">12</text>');
+    expect(svg).toContain(">a-project…</text>");
+    expect(svg).toContain("&lt;unsafe&gt;");
+    expect(svg).toContain("&amp;");
+    expect(svg).toContain("…</text>");
+    expect(svg).not.toContain("<unsafe>");
+  });
+
+  it("uses colored state symbols instead of status labels", () => {
+    const expectedIcons = {
+      off: "power",
+      working: "loader-circle",
+      "awaiting-approval": "shield-check",
+      "awaiting-response": "message-circle-question-mark",
+      error: "x",
+    } as const;
+
+    for (const [status, icon] of Object.entries(expectedIcons)) {
+      const svg = agentSvg(1, status as keyof typeof expectedIcons);
+      expect(svg).toContain(`data-lucide-icon="${icon}"`);
+      expect(svg).toContain(
+        `stroke="${STATUS_COLORS[status as keyof typeof expectedIcons]}"`,
+      );
+    }
+
+    const doneSvg = agentSvg(1, "unread");
+    expect(doneSvg).toContain(
+      '<circle data-agent-status-icon="done" cx="28" cy="30" r="8" fill="#00FF4C"/>',
+    );
+    expect(doneSvg).not.toContain('data-lucide-icon="circle"');
+
+    const idleSvg = agentSvg(1, "idle");
+    expect(idleSvg).not.toContain("data-agent-status-icon");
+    expect(idleSvg).not.toContain("data-lucide-icon");
+    expect(idleSvg).toContain('<text x="20" y="35"');
+
+    const formerLabels = {
+      off: "OFF",
+      working: "WORKING",
+      unread: "DONE",
+      idle: "IDLE",
+      "awaiting-approval": "APPROVE",
+      "awaiting-response": "INPUT",
+      error: "ERROR",
+    } as const;
+    for (const [status, label] of Object.entries(formerLabels)) {
+      expect(agentSvg(1, status as keyof typeof formerLabels)).not.toContain(
+        `>${label}</text>`,
+      );
+    }
+  });
+
+  it("renders distinct working-spinner rotation frames", () => {
+    const thread = { title: "Task", cwd: "/tmp/project" };
+    const firstFrame = agentSvg(1, "working", thread, 0);
+    const nextFrame = agentSvg(1, "working", thread, 45);
+
+    expect(nextFrame).toContain('transform="rotate(45 28 30)"');
+    expect(nextFrame).not.toBe(firstFrame);
+    expect(agentImage(1, "working", thread, 45)).not.toBe(
+      agentImage(1, "working", thread, 0),
+    );
   });
 
   it("highlights the fast-mode shape without changing its background", () => {
@@ -72,7 +165,6 @@ describe("Stream Deck visuals", () => {
 
   it("keeps every dynamic keypad glyph centered in the accent panel", () => {
     const images = [
-      agentSvg(4, "working"),
       fastModeSvg(false),
       fastModeSvg(true),
       planModeSvg(false),
@@ -128,10 +220,11 @@ describe("Stream Deck visuals", () => {
   });
 
   it("encodes generated SVGs as images for Stream Deck", () => {
-    const image = agentImage(2, "unread");
+    const thread = { title: "Task", cwd: "/tmp/project" };
+    const image = agentImage(2, "unread", thread);
     expect(image).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toBe(
-      agentSvg(2, "unread"),
+      agentSvg(2, "unread", thread),
     );
   });
 
@@ -176,7 +269,9 @@ describe("Stream Deck visuals", () => {
       spawnStatus: null,
       status: "working",
     };
-    expect(keyTitle(thread, "working")).toBe("WORKING\nwork");
+    expect(agentSvg(1, "working", thread)).toContain(
+      'font-size="13" text-anchor="end">work</text>',
+    );
   });
 
   it("renders remaining usage for both rate-limit windows", () => {
