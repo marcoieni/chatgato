@@ -186,7 +186,7 @@
         ),
         "Seconds between local status reads.",
       );
-    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. Restart ChatGPT after saving it. ChatGato reads the binding from <code>.codex/keybindings.json</code>. ${setupGuideLink()} It verifies the loaded binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
+    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>
       <span><i style="background:#ff6d00"></i>Approval</span><span><i style="background:#9e5bff"></i>Needs response</span>
       <span><i style="background:#ff0033"></i>Error</span>
