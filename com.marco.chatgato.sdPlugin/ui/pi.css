@@ -97,6 +97,11 @@ textarea:focus {
   border-color: #677dff;
   box-shadow: 0 0 0 2px #304ffe33;
 }
+input[aria-invalid="true"],
+input[aria-invalid="true"]:focus {
+  border-color: #ff5c6c;
+  box-shadow: 0 0 0 2px #ff003333;
+}
 textarea {
   min-height: 78px;
   resize: vertical;
@@ -118,6 +123,15 @@ input[type="checkbox"] {
 .check .hint {
   grid-column: 3;
   margin: 0;
+}
+.validation-error {
+  grid-column: 2;
+  margin-top: -5px;
+  color: #ff8b96;
+  font-size: 11px;
+}
+.validation-error:empty {
+  display: none;
 }
 .note {
   margin-top: 15px;
@@ -151,4 +165,16 @@ input[type="checkbox"] {
 strong {
   color: var(--text);
   font-weight: 600;
+}
+.support-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: #9cacff;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.support-link:hover,
+.support-link:focus {
+  color: #c6ceff;
 }
