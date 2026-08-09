@@ -49,7 +49,9 @@ describe("Stream Deck visuals", () => {
     );
     expect(svg).toContain('stroke="#304FFE"');
     expect(svg).toContain('font-weight="800" font-size="15">4</text>');
-    expect(svg).toContain('font-size="12" text-anchor="end">chatgato</text>');
+    expect(svg).toContain(
+      'fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">chatgato</text>',
+    );
     expect(svg).toContain('font-size="21"');
     expect(svg).toContain(">Redesign the</text>");
     expect(svg).toContain(">chats button</text>");
@@ -61,6 +63,18 @@ describe("Stream Deck visuals", () => {
     );
   });
 
+  it("keeps representative project names readable without squeezing them", () => {
+    const svg = agentSvg(2, "unread", {
+      title: "Explain release",
+      cwd: "/Users/marco/me/proj/release-plz",
+    });
+
+    expect(svg).toContain(
+      '<text x="128" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">release-plz</text>',
+    );
+    expect(svg).not.toContain('textLength="72"');
+  });
+
   it("truncates and XML-escapes task metadata safely", () => {
     const svg = agentSvg(12, "unread", {
       title: "Investigate <unsafe> & unusuallylongwordwithoutspaces",
@@ -68,8 +82,7 @@ describe("Stream Deck visuals", () => {
     });
 
     expect(svg).toContain('font-size="15">12</text>');
-    expect(svg).toContain(">a-project-na…</text>");
-    expect(svg).toContain('textLength="62" lengthAdjust="spacingAndGlyphs"');
+    expect(svg).toContain(">a-project…</text>");
     expect(svg).toContain("&lt;unsafe&gt;");
     expect(svg).toContain("&amp;");
     expect(svg).toContain("…</text>");
@@ -257,7 +270,7 @@ describe("Stream Deck visuals", () => {
       status: "working",
     };
     expect(agentSvg(1, "working", thread)).toContain(
-      'font-size="12" text-anchor="end">work</text>',
+      'font-size="13" text-anchor="end">work</text>',
     );
   });
 

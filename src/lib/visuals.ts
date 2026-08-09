@@ -35,6 +35,8 @@ export const PUSH_TO_TALK_COLORS = {
 
 const KEY_BACKGROUND = "#071018";
 const KEY_GLYPH_CENTER = [72, 54] as const;
+const PROJECT_LABEL_FONT_SIZE = 13;
+const PROJECT_LABEL_WIDTH = 72;
 
 function keyShell(): string {
   return `<rect width="144" height="144" rx="24" fill="${KEY_BACKGROUND}"/>
@@ -90,8 +92,30 @@ function compactText(value: string, maxLength: number): string {
 }
 
 function projectName(cwd: string): string {
-  const project = cwd.split(/[\\/]/u).filter(Boolean).at(-1) || "Codex";
-  return compactText(project, 13);
+  const project = cwd.split(/[\\/]/u).filter(Boolean).at(-1)?.trim() || "Codex";
+  if (
+    estimatedEmWidth(project) * PROJECT_LABEL_FONT_SIZE <=
+    PROJECT_LABEL_WIDTH
+  ) {
+    return project;
+  }
+
+  const characters = Array.from(project);
+
+  while (
+    characters.length > 1 &&
+    estimatedEmWidth(`${characters.join("").trimEnd()}…`) *
+      PROJECT_LABEL_FONT_SIZE >
+      PROJECT_LABEL_WIDTH
+  ) {
+    characters.pop();
+  }
+
+  const compact = characters
+    .join("")
+    .trimEnd()
+    .replace(/[-_.]+$/u, "");
+  return `${compact || characters[0]}…`;
 }
 
 function chatTitleLines(title: string, maxLength = 13): string[] {
@@ -133,12 +157,6 @@ function estimatedEmWidth(value: string): number {
 function fittedTitleAttributes(line: string): string {
   return estimatedEmWidth(line) * 21 > 116
     ? ' textLength="116" lengthAdjust="spacingAndGlyphs"'
-    : "";
-}
-
-function fittedProjectAttributes(project: string): string {
-  return estimatedEmWidth(project) * 12 > 62
-    ? ' textLength="62" lengthAdjust="spacingAndGlyphs"'
     : "";
 }
 
@@ -188,7 +206,7 @@ export function agentSvg(
     <rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>
     ${statusSymbol}
     <text x="${slotX}" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="15">${slot}</text>
-    <text x="124" y="34" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="700" font-size="12"${fittedProjectAttributes(project)} text-anchor="end">${escapeXml(project)}</text>
+    <text x="128" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="${PROJECT_LABEL_FONT_SIZE}" text-anchor="end">${escapeXml(project)}</text>
     ${titleRows}
   </svg>`;
 }
