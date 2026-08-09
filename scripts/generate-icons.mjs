@@ -65,7 +65,7 @@ const actionStyles = {
   fast: { accent: colors.slate },
   "go-back": { accent: colors.blue },
   "go-forward": { accent: colors.blue },
-  "new-task": { accent: colors.slate },
+  "new-chat": { accent: colors.slate },
   "open-review": { accent: colors.orange },
   plan: { accent: colors.slate },
   prompt: { accent: colors.purple },

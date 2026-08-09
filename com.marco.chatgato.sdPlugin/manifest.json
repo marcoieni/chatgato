@@ -146,19 +146,19 @@
     },
     {
       "Controllers": ["Keypad"],
-      "Icon": "imgs/action-list/new-task",
+      "Icon": "imgs/action-list/new-chat",
       "Name": "New Chat",
       "PropertyInspectorPath": "ui/pi.html",
       "States": [
         {
-          "Image": "imgs/actions/new-task",
+          "Image": "imgs/actions/new-chat",
           "Title": "NEW\nCHAT",
           "TitleAlignment": "bottom",
           "FontSize": 12
         }
       ],
       "Tooltip": "Open a new Codex chat, optionally scoped to a workspace with a prefilled prompt.",
-      "UUID": "com.marco.chatgato.new-task"
+      "UUID": "com.marco.chatgato.new-chat"
     },
     {
       "Controllers": ["Keypad"],

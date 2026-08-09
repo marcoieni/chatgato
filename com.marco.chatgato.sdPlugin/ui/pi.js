@@ -50,7 +50,7 @@
       case "com.marco.chatgato.agent-status":
         renderAgent();
         break;
-      case "com.marco.chatgato.new-task":
+      case "com.marco.chatgato.new-chat":
         renderNewChat();
         break;
       case "com.marco.chatgato.prompt":
