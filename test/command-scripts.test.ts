@@ -62,7 +62,7 @@ describe("Codex control scripts", () => {
     expect(powerShell).not.toContain("togglePlanMode =");
   });
 
-  it("opens host-aware task search results on macOS", () => {
+  it("opens host-aware chat search results on macOS", () => {
     expect(appleScript).toMatch(/controlMode is "thread" then/u);
     expect(appleScript).toContain("resultIndex > maxResultIndex");
     expect(appleScript).toMatch(
@@ -74,7 +74,7 @@ describe("Codex control scripts", () => {
     expect(appleScript).not.toContain('keystroke "k" using {command down}');
   });
 
-  it("opens host-aware task search results on Windows", () => {
+  it("opens host-aware chat search results on Windows", () => {
     expect(powerShell).toContain('if ($Mode -eq "thread")');
     expect(powerShell).toContain("$ResultIndex -gt $MaxResultIndex");
     expect(powerShell).toContain(

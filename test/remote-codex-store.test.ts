@@ -27,8 +27,8 @@ async function fakeSshScript(source: string): Promise<string> {
   return path;
 }
 
-describe("remote Codex task discovery", () => {
-  it("reads each configured SSH project's tasks", async () => {
+describe("remote Codex chat discovery", () => {
+  it("reads each configured SSH project's chats", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
     temporaryDirectories.push(home);
     await writeFile(
@@ -318,7 +318,7 @@ lines.on("line", (line) => {
     send({ id: message.id, result: { data: [
       {
         id: "remote-thread",
-        name: "Remote task",
+        name: "Remote chat",
         preview: "Fallback title",
         cwd: "/srv/work/project",
         path: "/home/user/.codex/rollout.jsonl",
@@ -355,7 +355,7 @@ lines.on("line", (line) => {
         remotePlatform: "posix",
         rolloutPath: "/home/user/.codex/rollout.jsonl",
         status: "awaiting-approval",
-        title: "Remote task",
+        title: "Remote chat",
         updatedAtMs: 12_000,
       },
     ]);
@@ -373,7 +373,7 @@ lines.on("line", (line) => {
   } else if (message.method === "thread/list") {
     send({ id: message.id, result: { data: [{
       id: "memory-thread",
-      name: "In-memory task",
+      name: "In-memory chat",
       cwd: "/srv/work/project",
       path: null,
       updatedAt: 12,
@@ -411,7 +411,7 @@ const lines = createInterface({ input: process.stdin });
 const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
 const threads = Array.from({ length: 30 }, (_, index) => ({
   id: "thread-" + index,
-  name: "Task " + index,
+  name: "Chat " + index,
   cwd: index % 2 === 0 ? "/srv/a/repo" : "/srv/b/repo",
   path: "/rollout-" + index + ".jsonl",
   updatedAt: 30 - index,
@@ -539,7 +539,7 @@ lines.on("line", (line) => {
     send({ id: message.id, result: { data: [
       {
         id: "windows-thread",
-        name: "Windows task",
+        name: "Windows chat",
         cwd: "c:\\\\WORK\\\\repo",
         path: "C:\\\\Users\\\\dev\\\\.codex\\\\rollout.jsonl",
         updatedAt: 12,
@@ -579,7 +579,7 @@ lines.on("line", (line) => {
         remotePlatform: "windows",
         rolloutPath: "C:\\Users\\dev\\.codex\\rollout.jsonl",
         status: "awaiting-response",
-        title: "Windows task",
+        title: "Windows chat",
         updatedAtMs: 12_000,
       },
     ]);

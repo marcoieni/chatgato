@@ -140,7 +140,7 @@ if ($Mode -eq "reasoning") {
 
 if ($Mode -eq "thread") {
   if ($MaxResultIndex -lt 0 -or $ResultIndex -lt 0 -or $ResultIndex -gt $MaxResultIndex) {
-    throw "Invalid Codex task search index"
+    throw "Invalid Codex chat search index"
   }
   $escapedQuery = $Payload -replace '([+^%~(){}\[\]])', '{$1}'
   $shell.SendKeys((ConvertTo-SendKeys $ShortcutBinding))

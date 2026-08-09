@@ -175,7 +175,7 @@ export function inferRolloutStatus(
   }
 
   // A Codex runtime restart can interrupt a turn before it writes task_complete.
-  // Once completed output has gone quiet, avoid leaving that task blue forever.
+  // Once completed output has gone quiet, avoid leaving that chat blue forever.
   // A live spawn edge or an outstanding tool call remains authoritative because
   // either may legitimately be silent for longer than this fallback window.
   if (

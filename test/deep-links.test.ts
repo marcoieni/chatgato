@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildNewTaskUrl, buildThreadUrl } from "../src/lib/deep-links.js";
+import { buildNewChatUrl, buildThreadUrl } from "../src/lib/deep-links.js";
 
 describe("Codex deep links", () => {
-  it("uses the canonical empty-task link", () => {
-    expect(buildNewTaskUrl({})).toBe("codex://threads/new");
+  it("uses the canonical empty-chat link", () => {
+    expect(buildNewChatUrl({})).toBe("codex://threads/new");
   });
 
   it("encodes workspace and prompt parameters", () => {
-    const url = buildNewTaskUrl({
+    const url = buildNewChatUrl({
       path: "/tmp/my project",
       prompt: "Review a & b",
     });
@@ -16,7 +16,7 @@ describe("Codex deep links", () => {
   });
 
   it("encodes an explicit skill mention in a custom prompt", () => {
-    const url = buildNewTaskUrl({
+    const url = buildNewChatUrl({
       prompt: "  $debugger Investigate the flaky test  ",
       path: "/tmp/repo",
     });

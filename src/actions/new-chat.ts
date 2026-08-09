@@ -1,14 +1,15 @@
 import { action, SingletonAction, type KeyDownEvent } from "@elgato/streamdeck";
 import { openAndMaybeSubmit } from "../lib/codex-controller.js";
-import { buildNewTaskUrl } from "../lib/deep-links.js";
-import type { NewTaskSettings } from "../types.js";
+import { buildNewChatUrl } from "../lib/deep-links.js";
+import type { NewChatSettings } from "../types.js";
 
+// Keep the original UUID so existing Stream Deck profiles continue to work.
 @action({ UUID: "com.marco.chatgato.new-task" })
-export class NewTaskAction extends SingletonAction<NewTaskSettings> {
-  override async onKeyDown(ev: KeyDownEvent<NewTaskSettings>): Promise<void> {
+export class NewChatAction extends SingletonAction<NewChatSettings> {
+  override async onKeyDown(ev: KeyDownEvent<NewChatSettings>): Promise<void> {
     try {
       await openAndMaybeSubmit(
-        buildNewTaskUrl(ev.payload.settings),
+        buildNewChatUrl(ev.payload.settings),
         ev.payload.settings.autoSubmit,
         ev.payload.settings.submitDelayMs,
       );

@@ -183,7 +183,7 @@ export function validateThreadSearchResultIndex(resultIndex: number): number {
     resultIndex >= MAX_AGENT_SLOTS
   ) {
     throw new Error(
-      `Codex task search supports result indexes 0 through ${MAX_AGENT_SLOTS - 1}`,
+      `Codex chat search supports result indexes 0 through ${MAX_AGENT_SLOTS - 1}`,
     );
   }
   return resultIndex;
@@ -199,7 +199,7 @@ export async function openThreadBySearch(
     THREAD_SEARCH_COMMAND,
     "Switch chat",
   );
-  await runControlScript("thread", query, "host-aware task navigation", [
+  await runControlScript("thread", query, "host-aware chat navigation", [
     String(selectedResultIndex),
     String(MAX_AGENT_SLOTS - 1),
     binding,

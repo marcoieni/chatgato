@@ -9,16 +9,16 @@ No API key required.
 
 ## Features
 
-- Keep track of up to 20 **Agent Status** keys, showing the task's project, status (working, done, require approval, etc). On press, they open the task.
-- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex task data.
-- **Prompt** starts a task with any custom prompt
+- Keep track of up to 20 **Agent Status** keys, showing the chat's project, status (working, done, require approval, etc). On press, they open the chat.
+- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex chat data.
+- **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
   - **Allow** / **Decline**
   - **Push to Talk** / **Tap to Talk**
   - **Fast Mode** (shows if active)
   - **Plan Mode** (shows if active)
   - **Increase reasoning** / **Decrease reasoning**
-  - **New Task**
+  - **New Chat**
   - **Submit**
   - **Fork**
   - **Review**
@@ -52,7 +52,7 @@ ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not a
 4. Search for **“Toggle Fast mode”** and assign any shortcut you prefer.
 5. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
 
-**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote task title, so shortcut changes take effect immediately.
+**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted chats; local chats use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote chat title, so shortcut changes take effect immediately.
 
 ## Build and install for development
 
@@ -95,7 +95,7 @@ The plugin reads Codex's `state_5.sqlite` from `sqlite_home` in
 plugin's current working directory. For SSH projects saved in the ChatGPT desktop
 app, it discovers the configured host and project path from Codex's global state,
 then uses the remote host's documented `codex app-server` over the same SSH
-connection to read its recent task metadata.
+connection to read its recent chat metadata.
 
 Rollout files and `models_cache.json` remain under `CODEX_HOME`. See the official
 [Codex environment-variable documentation](https://learn.chatgpt.com/docs/config-file/environment-variables).
@@ -106,14 +106,14 @@ as the desktop app's
 Local discovery integrates with Codex's internal, version-sensitive SQLite
 schema, while remote discovery combines the documented app-server API with the
 desktop app's internal saved-project state. Codex releases may change these
-formats and require a corresponding plugin update. The plugin does not send task
-titles, paths, prompts, or status to a cloud service or third party; remote task
+formats and require a corresponding plugin update. The plugin does not send chat
+titles, paths, prompts, or status to a cloud service or third party; remote chat
 metadata only crosses the user-configured SSH connection. Status changes are
 polled every two seconds by default.
 
-Completion is shown as green/unread. Pressing that Agent key acknowledges the completion and opens the task, changing the key to idle white until the task updates again.
+Completion is shown as green/unread. Pressing that Agent key acknowledges the completion and opens the chat, changing the key to idle white until the chat updates again.
 
-The Usage Limits key reads the latest account-wide Codex rate-limit snapshot that Codex writes to local task rollouts. It displays remaining allowance rather than consumed allowance; for example, a Codex `used_percent` value of 18 is shown as 82% left. Press the key to refresh immediately. The snapshot advances when Codex reports usage during a task, so it can remain unchanged while Codex is idle.
+The Usage Limits key reads the latest account-wide Codex rate-limit snapshot that Codex writes to local chat rollouts. It displays remaining allowance rather than consumed allowance; for example, a Codex `used_percent` value of 18 is shown as 82% left. Press the key to refresh immediately. The snapshot advances when Codex reports usage during a chat, so it can remain unchanged while Codex is idle.
 
 ## Notes and limitations
 
@@ -133,6 +133,6 @@ The name **ChatGato** combines both:
 - ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
 
 > [!NOTE]
-> ChatGato processes Codex task data and plugin settings locally and does not send
+> ChatGato processes Codex chat data and plugin settings locally and does not send
 > them to the developer or third parties. See the [Privacy Policy](PRIVACY.md) for
 > the data it reads, optional SSH behavior, retention, and deletion instructions.

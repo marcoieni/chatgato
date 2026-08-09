@@ -8,11 +8,11 @@ const manifest = JSON.parse(
   ),
 ) as { Actions: Array<{ Name: string; UUID: string }> };
 
-describe("New Task action", () => {
-  it("is exposed as a dedicated Stream Deck action", () => {
+describe("New Chat action", () => {
+  it("is exposed as a dedicated Stream Deck action without changing its legacy UUID", () => {
     expect(manifest.Actions).toContainEqual(
       expect.objectContaining({
-        Name: "New Task",
+        Name: "New Chat",
         UUID: "com.marco.chatgato.new-task",
       }),
     );

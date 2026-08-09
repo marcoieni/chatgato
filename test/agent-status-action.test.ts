@@ -49,7 +49,7 @@ function thread(overrides: Partial<CodexThread> = {}): CodexThread {
     rolloutPath: "/tmp/rollout.jsonl",
     spawnStatus: null,
     status: "idle",
-    title: "Task one",
+    title: "Chat one",
     updatedAtMs: 100,
     ...overrides,
   };
@@ -81,13 +81,13 @@ describe("AgentStatusAction navigation", () => {
     mocks.threadSearchResult.mockReset();
     mocks.threadSearchResult.mockResolvedValue({
       resultIndex: 0,
-      title: "Task one",
+      title: "Chat one",
     });
     mocks.threadAtSlot.mockReset();
     mocks.threadAtSlot.mockResolvedValue(null);
   });
 
-  it("keeps exact deep-link navigation for local tasks", async () => {
+  it("keeps exact deep-link navigation for local chats", async () => {
     const selected = thread();
     mocks.threadAtSlot.mockResolvedValue(selected);
     const action = actionHarness();
@@ -104,16 +104,16 @@ describe("AgentStatusAction navigation", () => {
     expect(action.showAlert).not.toHaveBeenCalled();
   });
 
-  it("navigates SSH-hosted tasks through the host-aware chat search", async () => {
+  it("navigates SSH-hosted chats through the host-aware chat search", async () => {
     const selected = thread({
       id: "remote-thread",
       remoteHostId: "remote-ssh-discovered:devbox",
-      title: "Remote task",
+      title: "Remote chat",
     });
     mocks.threadAtSlot.mockResolvedValue(selected);
     mocks.threadSearchResult.mockResolvedValue({
       resultIndex: 1,
-      title: "Remote task",
+      title: "Remote chat",
     });
     const action = actionHarness();
 
@@ -123,7 +123,7 @@ describe("AgentStatusAction navigation", () => {
     } as never);
 
     expect(mocks.threadSearchResult).toHaveBeenCalledWith("remote-thread");
-    expect(mocks.openThreadBySearch).toHaveBeenCalledWith("Remote task", 1);
+    expect(mocks.openThreadBySearch).toHaveBeenCalledWith("Remote chat", 1);
     expect(mocks.openUrl).not.toHaveBeenCalled();
     expect(action.setSettings).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -133,7 +133,7 @@ describe("AgentStatusAction navigation", () => {
     );
   });
 
-  it("does not acknowledge a task when navigation fails", async () => {
+  it("does not acknowledge a chat when navigation fails", async () => {
     mocks.threadAtSlot.mockResolvedValue(thread());
     mocks.openUrl.mockRejectedValue(new Error("Codex unavailable"));
     const action = actionHarness();
@@ -146,7 +146,7 @@ describe("AgentStatusAction navigation", () => {
     expect(action.setSettings).not.toHaveBeenCalled();
     expect(action.showAlert).toHaveBeenCalledOnce();
     expect(mocks.logError).toHaveBeenCalledWith(
-      "Failed to open task in slot 1",
+      "Failed to open chat in slot 1",
       expect.objectContaining({ message: "Codex unavailable" }),
     );
   });

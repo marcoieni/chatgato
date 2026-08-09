@@ -30,7 +30,7 @@ describe("Stream Deck visuals", () => {
     );
   });
 
-  it("renders a compact task card led by the chat title", () => {
+  it("renders a compact chat card led by the chat title", () => {
     const thread = {
       title: "Redesign the chats button",
       cwd: "/Users/marco/me/proj/chatgato",
@@ -75,7 +75,7 @@ describe("Stream Deck visuals", () => {
     expect(svg).not.toContain('textLength="72"');
   });
 
-  it("truncates and XML-escapes task metadata safely", () => {
+  it("truncates and XML-escapes chat metadata safely", () => {
     const svg = agentSvg(12, "unread", {
       title: "Investigate <unsafe> & unusuallylongwordwithoutspaces",
       cwd: "/tmp/a-project-name-that-is-too-long",
@@ -134,7 +134,7 @@ describe("Stream Deck visuals", () => {
   });
 
   it("renders distinct working-spinner rotation frames", () => {
-    const thread = { title: "Task", cwd: "/tmp/project" };
+    const thread = { title: "Chat", cwd: "/tmp/project" };
     const firstFrame = agentSvg(1, "working", thread, 0);
     const nextFrame = agentSvg(1, "working", thread, 45);
 
@@ -220,7 +220,7 @@ describe("Stream Deck visuals", () => {
   });
 
   it("encodes generated SVGs as images for Stream Deck", () => {
-    const thread = { title: "Task", cwd: "/tmp/project" };
+    const thread = { title: "Chat", cwd: "/tmp/project" };
     const image = agentImage(2, "unread", thread);
     expect(image).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(Buffer.from(image.split(",")[1]!, "base64").toString()).toBe(
@@ -243,10 +243,10 @@ describe("Stream Deck visuals", () => {
     }
   });
 
-  it("clears unread after the matching task is acknowledged", () => {
+  it("clears unread after the matching chat is acknowledged", () => {
     const thread: CodexThread = {
       id: "thread-1",
-      title: "Task",
+      title: "Chat",
       cwd: "/tmp",
       rolloutPath: "/tmp/rollout",
       updatedAtMs: 1000,
