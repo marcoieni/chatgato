@@ -12,7 +12,7 @@ import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { buildThreadUrl } from "../lib/deep-links.js";
 import { openThreadBySearch, openUrl } from "../lib/codex-controller.js";
-import { agentImage, effectiveStatus, keyTitle } from "../lib/visuals.js";
+import { agentImage, effectiveStatus } from "../lib/visuals.js";
 import type { AgentSettings, CodexThread } from "../types.js";
 
 type VisibleAction = WillAppearEvent<AgentSettings>["action"];
@@ -114,8 +114,8 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
         settings.acknowledgedAtMs,
       );
       await Promise.all([
-        actionInstance.setImage(agentImage(slot, status)),
-        actionInstance.setTitle(keyTitle(thread, status)),
+        actionInstance.setImage(agentImage(slot, status, thread)),
+        actionInstance.setTitle(""),
       ]);
     } catch {
       this.visibleThreads.delete(actionInstance.id);
