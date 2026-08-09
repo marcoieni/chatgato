@@ -54,8 +54,6 @@ ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not a
 
 **Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote task title, so shortcut changes take effect immediately.
 
-ChatGato supports Command/Control, Option/Alt, and Shift modifiers with printable keys, navigation keys, or F1–F20.
-
 ## Build and install for development
 
 ```bash
