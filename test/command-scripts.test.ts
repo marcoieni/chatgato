@@ -31,19 +31,20 @@ describe("Codex control scripts", () => {
     expect(powerShell).toContain("terminal = '^`'");
   });
 
-  it("sends the configured Fast and Plan shortcuts on macOS", () => {
-    expect(appleScript).toMatch(
-      /payload is "toggleFastMode" then\s+keystroke "f" using \{command down, option down, shift down\}/u,
-    );
-    expect(appleScript).toMatch(
-      /payload is "togglePlanMode" then\s+keystroke "p" using \{command down, option down, shift down\}/u,
-    );
+  it("sends resolved custom keybindings on macOS", () => {
+    expect(appleScript).toContain('controlMode is "keybinding"');
+    expect(appleScript).toContain("my sendKeybinding(payload)");
+    expect(appleScript).toContain("on sendKeybinding(shortcutText)");
+    expect(appleScript).toContain('partText is "command"');
+    expect(appleScript).toContain('partText is "control"');
+    expect(appleScript).not.toContain('payload is "toggleFastMode"');
+    expect(appleScript).not.toContain('payload is "togglePlanMode"');
   });
 
   it("retries transient macOS activation failures", () => {
     expect(appleScript).toMatch(/repeat with attempt from 1 to 3/u);
     expect(appleScript).toContain(
-      "my sendControl(controlMode, payload, resultIndex, maxResultIndex)",
+      "my sendControl(controlMode, payload, resultIndex, maxResultIndex, shortcutBinding)",
     );
     expect(appleScript).toMatch(
       /if errorNumber is not -600 then error errorMessage number errorNumber/u,
@@ -53,16 +54,19 @@ describe("Codex control scripts", () => {
     );
   });
 
-  it("sends the configured Fast and Plan shortcuts on Windows", () => {
-    expect(powerShell).toContain('toggleFastMode = "^%+f"');
-    expect(powerShell).toContain('togglePlanMode = "^%+p"');
+  it("sends resolved custom keybindings on Windows", () => {
+    expect(powerShell).toContain('if ($Mode -eq "keybinding")');
+    expect(powerShell).toContain("function ConvertTo-SendKeys");
+    expect(powerShell).toContain("ConvertTo-SendKeys $Payload");
+    expect(powerShell).not.toContain("toggleFastMode =");
+    expect(powerShell).not.toContain("togglePlanMode =");
   });
 
   it("opens host-aware task search results on macOS", () => {
     expect(appleScript).toMatch(/controlMode is "thread" then/u);
     expect(appleScript).toContain("resultIndex > maxResultIndex");
     expect(appleScript).toMatch(
-      /keystroke "s" using \{command down, option down, shift down\}[\s\S]*keystroke payload[\s\S]*repeat resultIndex times/u,
+      /my sendKeybinding\(shortcutBinding\)[\s\S]*keystroke payload[\s\S]*repeat resultIndex times/u,
     );
     expect(appleScript).not.toContain('open location "codex://settings"');
     expect(appleScript).not.toContain("resultIndex > 19");
@@ -73,7 +77,9 @@ describe("Codex control scripts", () => {
   it("opens host-aware task search results on Windows", () => {
     expect(powerShell).toContain('if ($Mode -eq "thread")');
     expect(powerShell).toContain("$ResultIndex -gt $MaxResultIndex");
-    expect(powerShell).toContain('$shell.SendKeys("^%+s")');
+    expect(powerShell).toContain(
+      "$shell.SendKeys((ConvertTo-SendKeys $ShortcutBinding))",
+    );
     expect(powerShell).toContain("$shell.SendKeys($escapedQuery)");
     expect(powerShell).not.toContain('Start-Process "codex://settings"');
     expect(powerShell).toMatch(/for \(\$index = 0; \$index -lt \$ResultIndex/u);

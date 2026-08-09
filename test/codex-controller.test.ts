@@ -5,6 +5,7 @@ import {
   normalizeSlashCommand,
   normalizeThreadSearchQuery,
   pushToTalkPayload,
+  resolveCodexKeybinding,
   shortcutWasLoadedAtLaunch,
   validateThreadSearchResultIndex,
 } from "../src/lib/codex-controller.js";
@@ -68,16 +69,34 @@ describe("Codex controller", () => {
     );
   });
 
-  it("recognizes only the dedicated app-scoped chat search shortcut", () => {
+  it("resolves custom app-scoped keybindings for the current platform", () => {
     expect(
-      hasThreadSearchShortcut(
-        [{ command: "searchChats", key: "Command+Alt+Shift+S" }],
+      resolveCodexKeybinding(
+        [{ command: "composer.toggleFastMode", key: "Command+K" }],
+        "composer.toggleFastMode",
         "darwin",
       ),
-    ).toBe(true);
+    ).toBe("command+k");
     expect(
-      hasThreadSearchShortcut(
+      resolveCodexKeybinding(
         [{ command: "searchChats", key: "CmdOrCtrl+Option+Shift+S" }],
+        "searchChats",
+        "darwin",
+      ),
+    ).toBe("command+alt+shift+s");
+    expect(
+      resolveCodexKeybinding(
+        [{ command: "composer.togglePlanMode", key: "CmdOrCtrl+F12" }],
+        "composer.togglePlanMode",
+        "win32",
+      ),
+    ).toBe("control+f12");
+  });
+
+  it("recognizes any supported Switch chat binding", () => {
+    expect(
+      hasThreadSearchShortcut(
+        [{ command: "searchChats", key: "Control+K" }],
         "darwin",
       ),
     ).toBe(true);
@@ -89,28 +108,50 @@ describe("Codex controller", () => {
     ).toBe(true);
     expect(
       hasThreadSearchShortcut(
-        [{ command: "searchChats", key: "Ctrl+Alt+Shift+S" }],
-        "darwin",
-      ),
-    ).toBe(false);
-    expect(
-      hasThreadSearchShortcut(
-        [{ command: "searchChats", key: "Command+Alt+Shift+S" }],
-        "win32",
-      ),
-    ).toBe(false);
-    expect(
-      hasThreadSearchShortcut(
-        [{ command: "openCommandMenu", key: "Command+Alt+Shift+S" }],
+        [{ command: "openCommandMenu", key: "Command+K" }],
         "darwin",
       ),
     ).toBe(false);
     expect(
       hasThreadSearchShortcut(
         [{ command: "searchChats", key: "Command+K" }],
-        "darwin",
+        "win32",
       ),
     ).toBe(false);
+  });
+
+  it("honors the last command entry and rejects unsupported bindings", () => {
+    expect(
+      resolveCodexKeybinding(
+        [
+          { command: "searchChats", key: "Command+K" },
+          { command: "searchChats", key: null },
+        ],
+        "searchChats",
+        "darwin",
+      ),
+    ).toBeNull();
+    expect(
+      resolveCodexKeybinding(
+        [{ command: "searchChats", key: "Command+K+S" }],
+        "searchChats",
+        "darwin",
+      ),
+    ).toBeNull();
+    expect(
+      resolveCodexKeybinding(
+        [{ command: "searchChats", key: "Command+F21" }],
+        "searchChats",
+        "darwin",
+      ),
+    ).toBeNull();
+    expect(
+      resolveCodexKeybinding(
+        [{ command: "searchChats", key: "Command+Unsupported+K" }],
+        "searchChats",
+        "darwin",
+      ),
+    ).toBeNull();
   });
 
   it("requires the shortcut file to predate the running app", () => {

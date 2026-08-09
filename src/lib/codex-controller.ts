@@ -42,6 +42,19 @@ const appleScript = join(pluginDir, "scripts", "codex-control.applescript");
 const powerShellScript = join(pluginDir, "scripts", "codex-control.ps1");
 const reasoningTracker = new ReasoningTracker();
 const THREAD_SEARCH_COMMAND = "searchChats";
+const CUSTOM_SHORTCUT_COMMANDS: Record<
+  string,
+  { command: string; label: string }
+> = {
+  toggleFastMode: {
+    command: "composer.toggleFastMode",
+    label: "Toggle Fast mode",
+  },
+  togglePlanMode: {
+    command: "composer.togglePlanMode",
+    label: "Toggle plan mode",
+  },
+};
 // Stream Deck can deliver adjacent key/dial events before the first automation finishes.
 let reasoningQueue: Promise<unknown> = Promise.resolve();
 
@@ -96,7 +109,7 @@ function runSubprocess(
 }
 
 async function runControlScript(
-  mode: "shortcut" | "slash" | "reasoning" | "thread",
+  mode: "shortcut" | "keybinding" | "slash" | "reasoning" | "thread",
   payload: string,
   capability: string,
   extraArguments: string[] = [],
@@ -147,6 +160,19 @@ export async function openUrl(url: string): Promise<void> {
 }
 
 export async function runShortcut(shortcut: string): Promise<void> {
+  const customShortcut = CUSTOM_SHORTCUT_COMMANDS[shortcut];
+  if (customShortcut) {
+    const binding = await requireCodexKeybinding(
+      customShortcut.command,
+      customShortcut.label,
+    );
+    await runControlScript(
+      "keybinding",
+      binding.key,
+      `${customShortcut.label} keyboard control`,
+    );
+    return;
+  }
   await runControlScript("shortcut", shortcut, "keyboard control");
 }
 
@@ -192,43 +218,43 @@ export async function openThreadBySearch(
 ): Promise<void> {
   const query = normalizeThreadSearchQuery(title);
   const selectedResultIndex = validateThreadSearchResultIndex(resultIndex);
-  await assertThreadSearchShortcutConfigured();
+  const binding = await requireCodexKeybinding(
+    THREAD_SEARCH_COMMAND,
+    "Switch chat",
+  );
+  await assertThreadSearchShortcutLoaded(binding.modifiedAtMs);
   await runControlScript("thread", query, "host-aware task navigation", [
     String(selectedResultIndex),
     String(MAX_AGENT_SLOTS - 1),
+    binding.key,
   ]);
+}
+
+export function resolveCodexKeybinding(
+  bindings: unknown,
+  command: string,
+  platform = process.platform,
+): string | null {
+  if (!Array.isArray(bindings)) return null;
+  for (let index = bindings.length - 1; index >= 0; index -= 1) {
+    const binding: unknown = bindings[index];
+    if (!binding || typeof binding !== "object") continue;
+    const candidate = binding as Record<string, unknown>;
+    if (candidate.command !== command) continue;
+    return typeof candidate.key === "string"
+      ? normalizeCodexKeybinding(candidate.key, platform)
+      : null;
+  }
+  return null;
 }
 
 export function hasThreadSearchShortcut(
   bindings: unknown,
   platform = process.platform,
 ): boolean {
-  if (!Array.isArray(bindings)) return false;
-  return bindings.some((binding: unknown) => {
-    if (!binding || typeof binding !== "object") return false;
-    const { command, key } = binding as Record<string, unknown>;
-    if (command !== THREAD_SEARCH_COMMAND || typeof key !== "string") {
-      return false;
-    }
-
-    const parts = new Set(
-      key
-        .toLowerCase()
-        .split("+")
-        .map((part) => normalizeShortcutPart(part.trim())),
-    );
-    const primary =
-      parts.has("primary") ||
-      (platform === "darwin" && parts.has("command")) ||
-      (platform === "win32" && parts.has("control"));
-    return (
-      parts.size === 4 &&
-      primary &&
-      parts.has("alt") &&
-      parts.has("shift") &&
-      parts.has("s")
-    );
-  });
+  return (
+    resolveCodexKeybinding(bindings, THREAD_SEARCH_COMMAND, platform) !== null
+  );
 }
 
 export function shortcutWasLoadedAtLaunch(
@@ -250,25 +276,120 @@ function normalizeShortcutPart(part: string): string {
   return part;
 }
 
-async function assertThreadSearchShortcutConfigured(): Promise<void> {
+function normalizeCodexKeybinding(
+  keybinding: string,
+  platform: string,
+): string | null {
+  if (platform !== "darwin" && platform !== "win32") return null;
+  const parts = keybinding
+    .toLowerCase()
+    .split("+")
+    .map((part) => normalizeShortcutPart(part.trim()));
+  if (parts.some((part) => part.length === 0)) return null;
+
+  const modifiers = new Set<string>();
+  let key: string | null = null;
+  for (const part of parts) {
+    const resolved =
+      part === "primary"
+        ? platform === "darwin"
+          ? "command"
+          : "control"
+        : part;
+    if (["command", "control", "alt", "shift"].includes(resolved)) {
+      if (platform === "win32" && resolved === "command") return null;
+      modifiers.add(resolved);
+      continue;
+    }
+    if (key !== null) return null;
+    const normalizedKey = normalizeKeyName(resolved);
+    if (normalizedKey === null) return null;
+    key = normalizedKey;
+  }
+  if (key === null) return null;
+
+  return ["command", "control", "alt", "shift"]
+    .filter((modifier) => modifiers.has(modifier))
+    .concat(key)
+    .join("+");
+}
+
+function normalizeKeyName(key: string): string | null {
+  const aliases: Record<string, string> = {
+    arrowdown: "down",
+    arrowleft: "left",
+    arrowright: "right",
+    arrowup: "up",
+    esc: "escape",
+    forwarddelete: "delete",
+    pagedown: "pagedown",
+    pageup: "pageup",
+    return: "enter",
+  };
+  const normalized = aliases[key] ?? key;
+  const namedKeys = new Set([
+    "backspace",
+    "delete",
+    "down",
+    "end",
+    "enter",
+    "escape",
+    "home",
+    "insert",
+    "left",
+    "pagedown",
+    "pageup",
+    "plus",
+    "right",
+    "space",
+    "tab",
+    "up",
+  ]);
+  if (namedKeys.has(normalized) || /^f(?:[1-9]|1[0-9]|20)$/u.test(normalized)) {
+    return normalized;
+  }
+  return normalized.length === 1 && /^[\x21-\x7e]$/u.test(normalized)
+    ? normalized
+    : null;
+}
+
+type CodexKeybindings = {
+  bindings: unknown;
+  modifiedAtMs: number;
+};
+
+async function readCodexKeybindings(): Promise<CodexKeybindings> {
   const codexHome = process.env.CODEX_HOME || join(homedir(), ".codex");
   const bindingsPath = join(codexHome, "keybindings.json");
-  let bindings: unknown;
-  let bindingModifiedAtMs = Number.NaN;
   try {
     const contents = await readFile(bindingsPath, "utf8");
     const metadata = await stat(bindingsPath);
-    bindings = JSON.parse(contents) as unknown;
-    bindingModifiedAtMs = metadata.mtimeMs;
+    return {
+      bindings: JSON.parse(contents) as unknown,
+      modifiedAtMs: metadata.mtimeMs,
+    };
   } catch {
-    bindings = null;
+    return { bindings: null, modifiedAtMs: Number.NaN };
   }
-  if (!hasThreadSearchShortcut(bindings)) {
+}
+
+async function requireCodexKeybinding(
+  command: string,
+  label: string,
+): Promise<{ key: string; modifiedAtMs: number }> {
+  const keybindings = await readCodexKeybindings();
+  const key = resolveCodexKeybinding(keybindings.bindings, command);
+  if (key === null) {
     throw new Error(
-      "Configure Codex Switch chat as Command+Option+Shift+S (macOS) or Ctrl+Alt+Shift+S (Windows)",
+      `Configure Codex ${label} in Settings → Keyboard Shortcuts`,
     );
   }
+  return { key, modifiedAtMs: keybindings.modifiedAtMs };
+}
 
+async function assertThreadSearchShortcutLoaded(
+  bindingModifiedAtMs: number,
+): Promise<void> {
   const appStartedAtMs = await chatGptStartedAtMs();
   if (appStartedAtMs === null) {
     throw new Error(
