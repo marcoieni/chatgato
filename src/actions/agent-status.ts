@@ -102,7 +102,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
         this.visibleThreads.delete(actionInstance.id);
         await Promise.all([
           actionInstance.setImage(agentImage(slot, "off")),
-          actionInstance.setTitle(`AGENT ${slot}\nEMPTY`),
+          actionInstance.setTitle(""),
         ]);
         return;
       }
@@ -121,7 +121,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
       this.visibleThreads.delete(actionInstance.id);
       await Promise.all([
         actionInstance.setImage(agentImage(slot, "error")),
-        actionInstance.setTitle("CODEX\nOFFLINE"),
+        actionInstance.setTitle(""),
       ]);
     }
   }

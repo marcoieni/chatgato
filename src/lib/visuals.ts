@@ -1,5 +1,10 @@
 import { remainingPercent, usageWindowLabel } from "./codex-usage.js";
-import { DYNAMIC_ICON_SOURCES, LUCIDE_LICENSE, lucideGlyph } from "./lucide.js";
+import {
+  AGENT_STATUS_ICON_SOURCES,
+  DYNAMIC_ICON_SOURCES,
+  LUCIDE_LICENSE,
+  lucideGlyph,
+} from "./lucide.js";
 import type { AgentStatus, CodexThread, CodexUsageSnapshot } from "../types.js";
 
 // Status colors used by ChatGato actions.
@@ -11,16 +16,6 @@ export const STATUS_COLORS: Record<AgentStatus, string> = {
   "awaiting-approval": "#FF6D00",
   "awaiting-response": "#9E5BFF",
   error: "#FF0033",
-};
-
-export const STATUS_LABELS: Record<AgentStatus, string> = {
-  off: "OFF",
-  working: "WORKING",
-  unread: "DONE",
-  idle: "IDLE",
-  "awaiting-approval": "APPROVE",
-  "awaiting-response": "INPUT",
-  error: "ERROR",
 };
 
 export const FAST_MODE_COLORS = {
@@ -124,8 +119,8 @@ function chatTitleLines(title: string, maxLength = 13): string[] {
   return lines;
 }
 
-function fittedTitleAttributes(line: string): string {
-  const estimatedEmWidth = Array.from(line).reduce((width, character) => {
+function estimatedEmWidth(value: string): number {
+  return Array.from(value).reduce((width, character) => {
     if (character === " ") return width + 0.3;
     if (/[MW@#%&]/u.test(character)) return width + 0.9;
     if (/[fijlrtI1.,'!:|]/u.test(character)) return width + 0.34;
@@ -133,9 +128,17 @@ function fittedTitleAttributes(line: string): string {
     if (character.codePointAt(0)! > 0x7f) return width + 1;
     return width + 0.56;
   }, 0);
+}
 
-  return estimatedEmWidth * 21 > 116
+function fittedTitleAttributes(line: string): string {
+  return estimatedEmWidth(line) * 21 > 116
     ? ' textLength="116" lengthAdjust="spacingAndGlyphs"'
+    : "";
+}
+
+function fittedProjectAttributes(project: string): string {
+  return estimatedEmWidth(project) * 12 > 62
+    ? ' textLength="62" lengthAdjust="spacingAndGlyphs"'
     : "";
 }
 
@@ -145,12 +148,12 @@ export function agentSvg(
   thread?: AgentVisualThread,
 ): string {
   const color = STATUS_COLORS[status];
-  const project = escapeXml(thread ? projectName(thread.cwd) : "CODEX");
+  const project = thread ? projectName(thread.cwd) : "CODEX";
   const title =
     thread?.title || (status === "error" ? "Codex offline" : "Empty slot");
   const titleLines = chatTitleLines(title);
   const firstTitleY =
-    titleLines.length === 1 ? 82 : titleLines.length === 2 ? 72 : 59;
+    titleLines.length === 1 ? 91 : titleLines.length === 2 ? 80 : 68;
   const titleRows = titleLines
     .map(
       (line, index) =>
@@ -159,14 +162,18 @@ export function agentSvg(
     .join("\n      ");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+    ${LUCIDE_LICENSE}
     ${keyShell()}
-    <text x="16" y="28" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13">#${slot}</text>
-    <text x="128" y="28" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="700" font-size="12" text-anchor="end">${project}</text>
-    <rect x="16" y="37" width="112" height="1" fill="#FFFFFF" opacity=".1"/>
+    <rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>
+    ${lucideGlyph(AGENT_STATUS_ICON_SOURCES[status], {
+      center: [28, 30],
+      color,
+      size: 20,
+      strokeWidth: 2.5,
+    })}
+    <text x="42" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="15">${slot}</text>
+    <text x="124" y="34" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="700" font-size="12"${fittedProjectAttributes(project)} text-anchor="end">${escapeXml(project)}</text>
     ${titleRows}
-    <rect x="12" y="116" width="120" height="17" rx="8.5" fill="${color}" opacity=".16"/>
-    <circle cx="25" cy="124.5" r="4" fill="${color}"/>
-    <text x="72" y="128.5" fill="${color}" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="12" text-anchor="middle">${STATUS_LABELS[status]}</text>
   </svg>`;
 }
 

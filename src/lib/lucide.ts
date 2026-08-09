@@ -1,9 +1,17 @@
 import ArrowDown from "lucide-static/dist/esm/icons/arrow-down.mjs";
 import ArrowUp from "lucide-static/dist/esm/icons/arrow-up.mjs";
 import Brain from "lucide-static/dist/esm/icons/brain.mjs";
+import CircleCheck from "lucide-static/dist/esm/icons/circle-check.mjs";
+import CirclePause from "lucide-static/dist/esm/icons/circle-pause.mjs";
+import CircleX from "lucide-static/dist/esm/icons/circle-x.mjs";
 import Lightbulb from "lucide-static/dist/esm/icons/lightbulb.mjs";
+import LoaderCircle from "lucide-static/dist/esm/icons/loader-circle.mjs";
+import MessageCircleQuestion from "lucide-static/dist/esm/icons/message-circle-question-mark.mjs";
 import Mic from "lucide-static/dist/esm/icons/mic.mjs";
+import Power from "lucide-static/dist/esm/icons/power.mjs";
+import ShieldCheck from "lucide-static/dist/esm/icons/shield-check.mjs";
 import Zap from "lucide-static/dist/esm/icons/zap.mjs";
+import type { AgentStatus } from "../types.js";
 
 export const LUCIDE_LICENSE =
   "<!-- Icons: Lucide v1.27.0, ISC license. See LICENSES/Lucide.txt. -->";
@@ -16,6 +24,16 @@ export const DYNAMIC_ICON_SOURCES = {
   plan: Lightbulb,
   pushToTalk: Mic,
 } as const;
+
+export const AGENT_STATUS_ICON_SOURCES = {
+  off: Power,
+  working: LoaderCircle,
+  unread: CircleCheck,
+  idle: CirclePause,
+  "awaiting-approval": ShieldCheck,
+  "awaiting-response": MessageCircleQuestion,
+  error: CircleX,
+} as const satisfies Record<AgentStatus, string>;
 
 interface LucideGlyphOptions {
   center?: readonly [number, number];

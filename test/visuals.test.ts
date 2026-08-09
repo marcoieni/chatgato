@@ -41,15 +41,18 @@ describe("Stream Deck visuals", () => {
       '<rect width="144" height="144" rx="24" fill="#071018"/>',
     );
     expect(svg).toContain(
-      '<text x="16" y="28" fill="#9AA6B2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13">#4</text>',
+      '<rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>',
     );
+    expect(svg).toContain('data-lucide-icon="loader-circle"');
+    expect(svg).toContain('stroke="#304FFE"');
+    expect(svg).toContain('font-weight="800" font-size="15">4</text>');
     expect(svg).toContain('font-size="12" text-anchor="end">chatgato</text>');
     expect(svg).toContain('font-size="21"');
     expect(svg).toContain(">Redesign the</text>");
     expect(svg).toContain(">chats button</text>");
     expect(svg).toContain('textLength="116" lengthAdjust="spacingAndGlyphs"');
-    expect(svg).toContain('<circle cx="25" cy="124.5" r="4" fill="#304FFE"/>');
-    expect(svg).toContain('font-size="12" text-anchor="middle">WORKING</text>');
+    expect(svg).not.toContain(">#4</text>");
+    expect(svg).not.toContain(">WORKING</text>");
     expect(svg).not.toContain(
       '<rect x="28" y="14" width="88" height="80" rx="22"',
     );
@@ -61,12 +64,48 @@ describe("Stream Deck visuals", () => {
       cwd: "/tmp/a-project-name-that-is-too-long",
     });
 
-    expect(svg).toContain(">#12</text>");
+    expect(svg).toContain('font-size="15">12</text>');
     expect(svg).toContain(">a-project-na…</text>");
+    expect(svg).toContain('textLength="62" lengthAdjust="spacingAndGlyphs"');
     expect(svg).toContain("&lt;unsafe&gt;");
     expect(svg).toContain("&amp;");
     expect(svg).toContain("…</text>");
     expect(svg).not.toContain("<unsafe>");
+  });
+
+  it("uses a colored Lucide symbol instead of a status label", () => {
+    const expectedIcons = {
+      off: "power",
+      working: "loader-circle",
+      unread: "circle-check",
+      idle: "circle-pause",
+      "awaiting-approval": "shield-check",
+      "awaiting-response": "message-circle-question-mark",
+      error: "circle-x",
+    } as const;
+
+    for (const [status, icon] of Object.entries(expectedIcons)) {
+      const svg = agentSvg(1, status as keyof typeof expectedIcons);
+      expect(svg).toContain(`data-lucide-icon="${icon}"`);
+      expect(svg).toContain(
+        `stroke="${STATUS_COLORS[status as keyof typeof expectedIcons]}"`,
+      );
+    }
+
+    const formerLabels = {
+      off: "OFF",
+      working: "WORKING",
+      unread: "DONE",
+      idle: "IDLE",
+      "awaiting-approval": "APPROVE",
+      "awaiting-response": "INPUT",
+      error: "ERROR",
+    } as const;
+    for (const [status, label] of Object.entries(formerLabels)) {
+      expect(agentSvg(1, status as keyof typeof formerLabels)).not.toContain(
+        `>${label}</text>`,
+      );
+    }
   });
 
   it("highlights the fast-mode shape without changing its background", () => {
