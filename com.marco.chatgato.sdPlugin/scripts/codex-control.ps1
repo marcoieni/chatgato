@@ -2,7 +2,8 @@ param(
   [Parameter(Mandatory = $true)][string]$Mode,
   [Parameter(Mandatory = $true)][string]$Payload,
   [int]$ResultIndex = 0,
-  [int]$MaxResultIndex = -1
+  [int]$MaxResultIndex = -1,
+  [string]$ShortcutBinding = ""
 )
 
 $shell = New-Object -ComObject WScript.Shell
@@ -42,6 +43,76 @@ if ($Mode -eq "shortcut" -and $Payload -eq "dictationDown") {
   exit 0
 }
 
+function ConvertTo-SendKeys([string]$Keybinding) {
+  $control = $false
+  $alt = $false
+  $shift = $false
+  $keyName = ""
+  foreach ($part in $Keybinding.Split("+")) {
+    switch ($part) {
+      "control" { $control = $true }
+      "alt" { $alt = $true }
+      "shift" { $shift = $true }
+      default {
+        if ($keyName) { throw "Invalid Codex keybinding" }
+        $keyName = $part
+      }
+    }
+  }
+  if (-not $keyName) { throw "Invalid Codex keybinding" }
+
+  $namedKeys = @{
+    backspace = "{BACKSPACE}"
+    delete = "{DELETE}"
+    down = "{DOWN}"
+    end = "{END}"
+    enter = "{ENTER}"
+    escape = "{ESC}"
+    home = "{HOME}"
+    insert = "{INSERT}"
+    left = "{LEFT}"
+    pagedown = "{PGDN}"
+    pageup = "{PGUP}"
+    plus = "{+}"
+    right = "{RIGHT}"
+    space = " "
+    tab = "{TAB}"
+    up = "{UP}"
+  }
+  $reservedKeys = @{
+    "+" = "{+}"
+    "^" = "{^}"
+    "%" = "{%}"
+    "~" = "{~}"
+    "(" = "{(}"
+    ")" = "{)}"
+    "[" = "{[}"
+    "]" = "{]}"
+    "{" = "{{}"
+    "}" = "{}}"
+  }
+  if ($namedKeys.ContainsKey($keyName)) {
+    $sendKey = $namedKeys[$keyName]
+  } elseif ($keyName -match '^f(?:[1-9]|1[0-9]|20)$') {
+    $sendKey = "{$($keyName.ToUpperInvariant())}"
+  } elseif ($keyName.Length -eq 1) {
+    $sendKey = if ($reservedKeys.ContainsKey($keyName)) { $reservedKeys[$keyName] } else { $keyName }
+  } else {
+    throw "Invalid Codex keybinding"
+  }
+
+  $prefix = ""
+  if ($control) { $prefix += "^" }
+  if ($alt) { $prefix += "%" }
+  if ($shift) { $prefix += "+" }
+  return $prefix + $sendKey
+}
+
+if ($Mode -eq "keybinding") {
+  $shell.SendKeys((ConvertTo-SendKeys $Payload))
+  exit 0
+}
+
 if ($Mode -eq "slash") {
   if ($Payload -notmatch '^/[a-z][a-z-]*$') { throw "Invalid Codex slash command" }
   $shell.SendKeys($Payload)
@@ -72,7 +143,7 @@ if ($Mode -eq "thread") {
     throw "Invalid Codex task search index"
   }
   $escapedQuery = $Payload -replace '([+^%~(){}\[\]])', '{$1}'
-  $shell.SendKeys("^%+s")
+  $shell.SendKeys((ConvertTo-SendKeys $ShortcutBinding))
   Start-Sleep -Milliseconds 750
   $shell.SendKeys($escapedQuery)
   Start-Sleep -Milliseconds 1500
@@ -92,8 +163,6 @@ $shortcuts = @{
   submit = "{ENTER}"
   terminal = '^`'
   review = "^+g"
-  toggleFastMode = "^%+f"
-  togglePlanMode = "^%+p"
   navigateBack = "^{[}"
   navigateForward = "^{]}"
   toggleSidebar = "^b"

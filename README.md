@@ -44,21 +44,15 @@ Optionally set an absolute workspace path to filter the keys to one project.
 
 ### Required keyboard shortcut setup
 
-ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign the bindings ChatGato uses. Configure them once:
+ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign them by default. Configure them once; ChatGato reads your chosen bindings from `.codex/keybindings.json` whenever an action runs:
 
 1. Open ChatGPT desktop.
 2. Open **Settings → Keyboard Shortcuts**.
-3. Search for **“Switch chat”** and assign the required Search Chats shortcut.
-4. Search for **“Toggle Fast mode”** and assign the required Fast shortcut.
-5. Search for **“Toggle plan mode”** and assign the required Plan shortcut.
-6. Use the exact platform-specific bindings below.
+3. Search for **“Switch chat”** and assign any shortcut you prefer.
+4. Search for **“Toggle Fast mode”** and assign any shortcut you prefer.
+5. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
 
-| Platform | Search Chats           | Fast                   | Plan                   |
-| -------- | ---------------------- | ---------------------- | ---------------------- |
-| macOS    | Command+Option+Shift+S | Command+Option+Shift+F | Command+Option+Shift+P |
-| Windows  | Ctrl+Alt+Shift+S       | Ctrl+Alt+Shift+F       | Ctrl+Alt+Shift+P       |
-
-**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until these shortcuts are configured exactly.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. Before sending a remote task title, ChatGato validates the Search Chats binding and verifies that ChatGPT started after the binding was saved.
+**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted tasks; local tasks use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote task title, so shortcut changes take effect immediately.
 
 ## Build and install for development
 

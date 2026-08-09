@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -42,47 +42,37 @@ const appleScript = join(pluginDir, "scripts", "codex-control.applescript");
 const powerShellScript = join(pluginDir, "scripts", "codex-control.ps1");
 const reasoningTracker = new ReasoningTracker();
 const THREAD_SEARCH_COMMAND = "searchChats";
+const CUSTOM_SHORTCUT_COMMANDS: Record<
+  string,
+  { command: string; label: string }
+> = {
+  toggleFastMode: {
+    command: "composer.toggleFastMode",
+    label: "Toggle Fast mode",
+  },
+  togglePlanMode: {
+    command: "composer.togglePlanMode",
+    label: "Toggle plan mode",
+  },
+};
 // Stream Deck can deliver adjacent key/dial events before the first automation finishes.
 let reasoningQueue: Promise<unknown> = Promise.resolve();
 
-type SubprocessOptions = {
-  captureStdout?: boolean;
-};
-
-function runSubprocess(
-  executable: string,
-  args: string[],
-  options: { captureStdout: true },
-): Promise<string>;
-function runSubprocess(
-  executable: string,
-  args: string[],
-  options?: { captureStdout?: false },
-): Promise<void>;
-function runSubprocess(
-  executable: string,
-  args: string[],
-  { captureStdout = false }: SubprocessOptions = {},
-): Promise<string | void> {
+function runSubprocess(executable: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
-      stdio: ["ignore", captureStdout ? "pipe" : "ignore", "pipe"],
+      stdio: ["ignore", "ignore", "pipe"],
       windowsHide: true,
     });
-    let stdout = "";
     let stderr = "";
 
-    child.stdout?.setEncoding("utf8");
-    child.stdout?.on("data", (chunk: string) => {
-      stdout = (stdout + chunk).slice(-4000);
-    });
     child.stderr?.setEncoding("utf8");
     child.stderr?.on("data", (chunk: string) => {
       stderr = (stderr + chunk).slice(-4000);
     });
     child.once("error", reject);
     child.once("exit", (code) => {
-      if (code === 0) resolve(captureStdout ? stdout.trim() : undefined);
+      if (code === 0) resolve();
       else {
         const detail = stderr.trim();
         reject(
@@ -96,7 +86,7 @@ function runSubprocess(
 }
 
 async function runControlScript(
-  mode: "shortcut" | "slash" | "reasoning" | "thread",
+  mode: "shortcut" | "keybinding" | "slash" | "reasoning" | "thread",
   payload: string,
   capability: string,
   extraArguments: string[] = [],
@@ -147,6 +137,19 @@ export async function openUrl(url: string): Promise<void> {
 }
 
 export async function runShortcut(shortcut: string): Promise<void> {
+  const customShortcut = CUSTOM_SHORTCUT_COMMANDS[shortcut];
+  if (customShortcut) {
+    const binding = await requireCodexKeybinding(
+      customShortcut.command,
+      customShortcut.label,
+    );
+    await runControlScript(
+      "keybinding",
+      binding,
+      `${customShortcut.label} keyboard control`,
+    );
+    return;
+  }
   await runControlScript("shortcut", shortcut, "keyboard control");
 }
 
@@ -192,53 +195,41 @@ export async function openThreadBySearch(
 ): Promise<void> {
   const query = normalizeThreadSearchQuery(title);
   const selectedResultIndex = validateThreadSearchResultIndex(resultIndex);
-  await assertThreadSearchShortcutConfigured();
+  const binding = await requireCodexKeybinding(
+    THREAD_SEARCH_COMMAND,
+    "Switch chat",
+  );
   await runControlScript("thread", query, "host-aware task navigation", [
     String(selectedResultIndex),
     String(MAX_AGENT_SLOTS - 1),
+    binding,
   ]);
+}
+
+export function resolveCodexKeybinding(
+  bindings: unknown,
+  command: string,
+  platform = process.platform,
+): string | null {
+  if (!Array.isArray(bindings)) return null;
+  for (let index = bindings.length - 1; index >= 0; index -= 1) {
+    const binding: unknown = bindings[index];
+    if (!binding || typeof binding !== "object") continue;
+    const candidate = binding as Record<string, unknown>;
+    if (candidate.command !== command) continue;
+    return typeof candidate.key === "string"
+      ? normalizeCodexKeybinding(candidate.key, platform)
+      : null;
+  }
+  return null;
 }
 
 export function hasThreadSearchShortcut(
   bindings: unknown,
   platform = process.platform,
 ): boolean {
-  if (!Array.isArray(bindings)) return false;
-  return bindings.some((binding: unknown) => {
-    if (!binding || typeof binding !== "object") return false;
-    const { command, key } = binding as Record<string, unknown>;
-    if (command !== THREAD_SEARCH_COMMAND || typeof key !== "string") {
-      return false;
-    }
-
-    const parts = new Set(
-      key
-        .toLowerCase()
-        .split("+")
-        .map((part) => normalizeShortcutPart(part.trim())),
-    );
-    const primary =
-      parts.has("primary") ||
-      (platform === "darwin" && parts.has("command")) ||
-      (platform === "win32" && parts.has("control"));
-    return (
-      parts.size === 4 &&
-      primary &&
-      parts.has("alt") &&
-      parts.has("shift") &&
-      parts.has("s")
-    );
-  });
-}
-
-export function shortcutWasLoadedAtLaunch(
-  bindingModifiedAtMs: number,
-  appStartedAtMs: number,
-): boolean {
   return (
-    Number.isFinite(bindingModifiedAtMs) &&
-    Number.isFinite(appStartedAtMs) &&
-    bindingModifiedAtMs < appStartedAtMs
+    resolveCodexKeybinding(bindings, THREAD_SEARCH_COMMAND, platform) !== null
   );
 }
 
@@ -250,85 +241,106 @@ function normalizeShortcutPart(part: string): string {
   return part;
 }
 
-async function assertThreadSearchShortcutConfigured(): Promise<void> {
+function normalizeCodexKeybinding(
+  keybinding: string,
+  platform: string,
+): string | null {
+  if (platform !== "darwin" && platform !== "win32") return null;
+  const parts = keybinding
+    .toLowerCase()
+    .split("+")
+    .map((part) => normalizeShortcutPart(part.trim()));
+  if (parts.some((part) => part.length === 0)) return null;
+
+  const modifiers = new Set<string>();
+  let key: string | null = null;
+  for (const part of parts) {
+    const resolved =
+      part === "primary"
+        ? platform === "darwin"
+          ? "command"
+          : "control"
+        : part;
+    if (["command", "control", "alt", "shift"].includes(resolved)) {
+      if (platform === "win32" && resolved === "command") return null;
+      modifiers.add(resolved);
+      continue;
+    }
+    if (key !== null) return null;
+    const normalizedKey = normalizeKeyName(resolved);
+    if (normalizedKey === null) return null;
+    key = normalizedKey;
+  }
+  if (key === null) return null;
+
+  return ["command", "control", "alt", "shift"]
+    .filter((modifier) => modifiers.has(modifier))
+    .concat(key)
+    .join("+");
+}
+
+function normalizeKeyName(key: string): string | null {
+  const aliases: Record<string, string> = {
+    arrowdown: "down",
+    arrowleft: "left",
+    arrowright: "right",
+    arrowup: "up",
+    esc: "escape",
+    forwarddelete: "delete",
+    pagedown: "pagedown",
+    pageup: "pageup",
+    return: "enter",
+  };
+  const normalized = aliases[key] ?? key;
+  const namedKeys = new Set([
+    "backspace",
+    "delete",
+    "down",
+    "end",
+    "enter",
+    "escape",
+    "home",
+    "insert",
+    "left",
+    "pagedown",
+    "pageup",
+    "plus",
+    "right",
+    "space",
+    "tab",
+    "up",
+  ]);
+  if (namedKeys.has(normalized) || /^f(?:[1-9]|1[0-9]|20)$/u.test(normalized)) {
+    return normalized;
+  }
+  return normalized.length === 1 && /^[\x21-\x7e]$/u.test(normalized)
+    ? normalized
+    : null;
+}
+
+async function readCodexKeybindings(): Promise<unknown> {
   const codexHome = process.env.CODEX_HOME || join(homedir(), ".codex");
   const bindingsPath = join(codexHome, "keybindings.json");
-  let bindings: unknown;
-  let bindingModifiedAtMs = Number.NaN;
   try {
     const contents = await readFile(bindingsPath, "utf8");
-    const metadata = await stat(bindingsPath);
-    bindings = JSON.parse(contents) as unknown;
-    bindingModifiedAtMs = metadata.mtimeMs;
+    return JSON.parse(contents) as unknown;
   } catch {
-    bindings = null;
-  }
-  if (!hasThreadSearchShortcut(bindings)) {
-    throw new Error(
-      "Configure Codex Switch chat as Command+Option+Shift+S (macOS) or Ctrl+Alt+Shift+S (Windows)",
-    );
-  }
-
-  const appStartedAtMs = await chatGptStartedAtMs();
-  if (appStartedAtMs === null) {
-    throw new Error(
-      "Open ChatGPT after configuring the Switch chat shortcut, then try again",
-    );
-  }
-  if (!shortcutWasLoadedAtLaunch(bindingModifiedAtMs, appStartedAtMs)) {
-    throw new Error(
-      "Restart ChatGPT to load the Switch chat shortcut before using remote task keys",
-    );
+    return null;
   }
 }
 
-async function chatGptStartedAtMs(): Promise<number | null> {
-  if (process.platform === "darwin") {
-    try {
-      const pids = (
-        await runSubprocess("/usr/bin/pgrep", ["-x", "ChatGPT"], {
-          captureStdout: true,
-        })
-      )
-        .split(/\s+/u)
-        .filter(Boolean);
-      const startedAt = await Promise.all(
-        pids.map(async (pid) =>
-          Date.parse(
-            await runSubprocess("/bin/ps", ["-o", "lstart=", "-p", pid], {
-              captureStdout: true,
-            }),
-          ),
-        ),
-      );
-      const valid = startedAt.filter(Number.isFinite);
-      return valid.length > 0 ? Math.min(...valid) : null;
-    } catch {
-      return null;
-    }
+async function requireCodexKeybinding(
+  command: string,
+  label: string,
+): Promise<string> {
+  const bindings = await readCodexKeybindings();
+  const key = resolveCodexKeybinding(bindings, command);
+  if (key === null) {
+    throw new Error(
+      `Configure Codex ${label} in Settings → Keyboard Shortcuts`,
+    );
   }
-
-  if (process.platform === "win32") {
-    try {
-      const startedAt = Date.parse(
-        await runSubprocess(
-          "powershell.exe",
-          [
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "$p = Get-Process -Name ChatGPT -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1; if ($p) { $p.StartTime.ToUniversalTime().ToString('o') }",
-          ],
-          { captureStdout: true },
-        ),
-      );
-      return Number.isFinite(startedAt) ? startedAt : null;
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
+  return key;
 }
 
 export async function runReasoning(

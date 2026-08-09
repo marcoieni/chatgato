@@ -84,7 +84,7 @@
         renderDedicatedCommand("Settings", "Open Codex settings.");
         break;
       case "com.marco.chatgato.plan":
-        renderModeShortcut("Plan", "Toggle plan mode", "P", "#ffd600");
+        renderModeShortcut("Plan", "Toggle plan mode", "#ffd600");
         break;
       case "com.marco.chatgato.skills":
         renderDedicatedCommand("Skills", "Open Codex Skills.");
@@ -126,7 +126,7 @@
         renderTapToTalk();
         break;
       case "com.marco.chatgato.fast-mode":
-        renderModeShortcut("Fast Mode", "Toggle Fast mode", "F", "#ffd600");
+        renderModeShortcut("Fast Mode", "Toggle Fast mode", "#ffd600");
         break;
       case "com.marco.chatgato.decrease-reasoning":
         renderDedicatedCommand(
@@ -186,7 +186,7 @@
         ),
         "Seconds between local status reads.",
       );
-    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign <code>⌘⌥⇧S</code> on macOS or <code>Ctrl+Alt+Shift+S</code> on Windows. Restart ChatGPT after saving it. ${setupGuideLink()} ChatGato verifies the loaded binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
+    note.innerHTML = `<strong>Remote task setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>
       <span><i style="background:#ff6d00"></i>Approval</span><span><i style="background:#9e5bff"></i>Needs response</span>
       <span><i style="background:#ff0033"></i>Error</span>
@@ -298,10 +298,10 @@
       "The key turns yellow and changes to TAP TO STOP while active. On macOS, Stream Deck may need Accessibility permission.";
   }
 
-  function renderModeShortcut(label, commandName, letter, onColor) {
+  function renderModeShortcut(label, commandName, onColor) {
     subtitle.textContent = `Toggle Codex ${label.toLowerCase()}`;
-    form.innerHTML = `<p><strong>Required setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “${commandName}”, and assign <code>⌘⌥⇧${letter}</code> on macOS or <code>Ctrl+Alt+Shift+${letter}</code> on Windows. ${setupGuideLink()}</p>`;
-    note.innerHTML = `<strong>This action will not work until the shortcut is configured exactly.</strong> A warning means ChatGato could not send the shortcut to ChatGPT.<div class="legend">
+    form.innerHTML = `<p><strong>Required setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “${commandName}”, and assign any shortcut you prefer. ChatGato reads it from <code>.codex/keybindings.json</code>. ${setupGuideLink()}</p>`;
+    note.innerHTML = `<strong>This action will not work until the shortcut is configured.</strong> A warning means ChatGato could not read or send the shortcut to ChatGPT.<div class="legend">
       <span><i style="background:#303840"></i>Off</span><span><i style="background:${onColor}"></i>On</span>
     </div>`;
   }
