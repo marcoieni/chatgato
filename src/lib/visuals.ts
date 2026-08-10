@@ -99,29 +99,15 @@ function escapeXml(value: string): string {
 
 function projectName(cwd: string): string {
   const project = cwd.split(/[\\/]/u).filter(Boolean).at(-1)?.trim() || "Codex";
-  if (
-    estimatedEmWidth(project) * PROJECT_LABEL_FONT_SIZE <=
-    PROJECT_LABEL_WIDTH
-  ) {
-    return project;
-  }
+  const fittedProject = compactTextToWidth(
+    project,
+    PROJECT_LABEL_WIDTH,
+    PROJECT_LABEL_FONT_SIZE,
+  );
+  if (fittedProject === project) return project;
 
-  const characters = Array.from(project);
-
-  while (
-    characters.length > 1 &&
-    estimatedEmWidth(`${characters.join("").trimEnd()}…`) *
-      PROJECT_LABEL_FONT_SIZE >
-      PROJECT_LABEL_WIDTH
-  ) {
-    characters.pop();
-  }
-
-  const compact = characters
-    .join("")
-    .trimEnd()
-    .replace(/[-_.]+$/u, "");
-  return `${compact || characters[0]}…`;
+  const compact = fittedProject.slice(0, -1).replace(/[-_.]+$/u, "");
+  return `${compact || Array.from(project)[0]}…`;
 }
 
 function compactTextToWidth(
@@ -129,18 +115,27 @@ function compactTextToWidth(
   width: number,
   fontSize: number,
 ): string {
-  const normalized = value.trim().replace(/\s+/gu, " ");
-  if (estimatedEmWidth(normalized) * fontSize <= width) return normalized;
+  if (!value || estimatedEmWidth(value) * fontSize <= width) return value;
 
-  const characters = Array.from(normalized);
-  while (
-    characters.length > 1 &&
-    estimatedEmWidth(`${characters.join("").trimEnd()}…`) * fontSize > width
-  ) {
-    characters.pop();
+  const characters = Array.from(value);
+  const availableEmWidth = width / fontSize - estimatedCharacterEmWidth("…");
+  let compactEmWidth = 0;
+  let compactLength = 0;
+
+  while (compactLength < characters.length) {
+    const characterWidth = estimatedCharacterEmWidth(
+      characters[compactLength]!,
+    );
+    if (compactEmWidth + characterWidth > availableEmWidth) break;
+    compactEmWidth += characterWidth;
+    compactLength += 1;
   }
 
-  return `${characters.join("").trimEnd() || characters[0]}…`;
+  const compact = characters
+    .slice(0, Math.max(1, compactLength))
+    .join("")
+    .trimEnd();
+  return `${compact || characters[0]}…`;
 }
 
 function chatTitleLines(title: string): string[] {
@@ -180,15 +175,20 @@ function chatTitleLines(title: string): string[] {
   return lines;
 }
 
+function estimatedCharacterEmWidth(character: string): number {
+  if (character === " ") return 0.3;
+  if (/[MW@#%&]/u.test(character)) return 0.9;
+  if (/[fijlrtI1.,'!:|]/u.test(character)) return 0.34;
+  if (/[A-Z]/u.test(character)) return 0.68;
+  if (character.codePointAt(0)! > 0x7f) return 1;
+  return 0.56;
+}
+
 function estimatedEmWidth(value: string): number {
-  return Array.from(value).reduce((width, character) => {
-    if (character === " ") return width + 0.3;
-    if (/[MW@#%&]/u.test(character)) return width + 0.9;
-    if (/[fijlrtI1.,'!:|]/u.test(character)) return width + 0.34;
-    if (/[A-Z]/u.test(character)) return width + 0.68;
-    if (character.codePointAt(0)! > 0x7f) return width + 1;
-    return width + 0.56;
-  }, 0);
+  return Array.from(value).reduce(
+    (width, character) => width + estimatedCharacterEmWidth(character),
+    0,
+  );
 }
 
 function fittedTitleAttributes(line: string): string {

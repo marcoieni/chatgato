@@ -93,6 +93,17 @@ describe("Stream Deck visuals", () => {
     expect(svg).not.toContain("<unsafe>");
   });
 
+  it("truncates very long chat titles without blocking rendering", () => {
+    const startedAt = performance.now();
+    const svg = agentSvg(1, "working", {
+      title: "x".repeat(20_000),
+      cwd: "/tmp/project",
+    });
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    expect(svg).toMatch(/>x+…<\/text>/u);
+  });
+
   it("uses matching state symbols and compact status labels", () => {
     const expectedIcons = {
       off: "power",
