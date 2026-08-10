@@ -30,7 +30,7 @@ describe("Stream Deck visuals", () => {
     );
   });
 
-  it("renders a compact chat card led by the chat title", () => {
+  it("renders a compact chat card led by the project title", () => {
     const thread = {
       title: "Redesign the chats button",
       cwd: "/Users/marco/me/proj/chatgato",
@@ -41,23 +41,27 @@ describe("Stream Deck visuals", () => {
       '<rect width="144" height="144" rx="24" fill="#071018"/>',
     );
     expect(svg).toContain(
-      '<rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>',
+      '<rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>',
     );
     expect(svg).toContain('data-lucide-icon="loader-circle"');
     expect(svg).toContain(
-      'data-working-spinner="true" transform="rotate(0 28 30)"',
+      'data-working-spinner="true" transform="rotate(0 24 27)"',
     );
     expect(svg).toContain('stroke="#304FFE"');
-    expect(svg).toContain('font-weight="800" font-size="15">4</text>');
     expect(svg).toContain(
-      'fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">chatgato</text>',
+      'font-weight="800" font-size="13" text-anchor="end">4</text>',
     );
-    expect(svg).toContain('font-size="21"');
+    expect(svg).toContain(
+      'x="72" y="56" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="850" font-size="20" text-anchor="middle">chatgato</text>',
+    );
+    expect(svg).toContain('font-size="17"');
+    expect(svg).toContain('fill-opacity=".84"');
+    expect(svg).toContain(
+      'x="36" y="31" fill="#304FFE" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="11" letter-spacing=".3">WORKING</text>',
+    );
     expect(svg).toContain(">Redesign the</text>");
     expect(svg).toContain(">chats button</text>");
-    expect(svg).toContain('textLength="116" lengthAdjust="spacingAndGlyphs"');
     expect(svg).not.toContain(">#4</text>");
-    expect(svg).not.toContain(">WORKING</text>");
     expect(svg).not.toContain(
       '<rect x="28" y="14" width="88" height="80" rx="22"',
     );
@@ -70,9 +74,9 @@ describe("Stream Deck visuals", () => {
     });
 
     expect(svg).toContain(
-      '<text x="128" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">release-plz</text>',
+      '<text x="72" y="56" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="850" font-size="20" text-anchor="middle">release-plz</text>',
     );
-    expect(svg).not.toContain('textLength="72"');
+    expect(svg).not.toContain('textLength="112"');
   });
 
   it("truncates and XML-escapes chat metadata safely", () => {
@@ -81,7 +85,7 @@ describe("Stream Deck visuals", () => {
       cwd: "/tmp/a-project-name-that-is-too-long",
     });
 
-    expect(svg).toContain('font-size="15">12</text>');
+    expect(svg).toContain('font-size="13" text-anchor="end">12</text>');
     expect(svg).toContain(">a-project…</text>");
     expect(svg).toContain("&lt;unsafe&gt;");
     expect(svg).toContain("&amp;");
@@ -89,7 +93,18 @@ describe("Stream Deck visuals", () => {
     expect(svg).not.toContain("<unsafe>");
   });
 
-  it("uses colored state symbols instead of status labels", () => {
+  it("truncates very long chat titles without blocking rendering", () => {
+    const startedAt = performance.now();
+    const svg = agentSvg(1, "working", {
+      title: "x".repeat(20_000),
+      cwd: "/tmp/project",
+    });
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    expect(svg).toMatch(/>x+…<\/text>/u);
+  });
+
+  it("uses matching state symbols and compact status labels", () => {
     const expectedIcons = {
       off: "power",
       working: "loader-circle",
@@ -108,29 +123,33 @@ describe("Stream Deck visuals", () => {
 
     const doneSvg = agentSvg(1, "unread");
     expect(doneSvg).toContain(
-      '<circle data-agent-status-icon="done" cx="28" cy="30" r="8" fill="#00FF4C"/>',
+      '<circle data-agent-status-icon="done" cx="24" cy="27" r="6" fill="#00FF4C"/>',
     );
     expect(doneSvg).not.toContain('data-lucide-icon="circle"');
 
     const idleSvg = agentSvg(1, "idle");
     expect(idleSvg).not.toContain("data-agent-status-icon");
     expect(idleSvg).not.toContain("data-lucide-icon");
-    expect(idleSvg).toContain('<text x="20" y="35"');
+    expect(idleSvg).not.toContain('letter-spacing=".3"');
+    expect(idleSvg).not.toContain(">IDLE</text>");
+    expect(idleSvg).toContain(
+      '<text x="124" y="31" fill="#FFFFFF" fill-opacity=".72"',
+    );
 
-    const formerLabels = {
+    const labels = {
       off: "OFF",
       working: "WORKING",
       unread: "DONE",
-      idle: "IDLE",
-      "awaiting-approval": "APPROVE",
+      "awaiting-approval": "APPROVAL",
       "awaiting-response": "INPUT",
       error: "ERROR",
     } as const;
-    for (const [status, label] of Object.entries(formerLabels)) {
-      expect(agentSvg(1, status as keyof typeof formerLabels)).not.toContain(
-        `>${label}</text>`,
+    for (const [status, label] of Object.entries(labels)) {
+      expect(agentSvg(1, status as keyof typeof labels)).toContain(
+        `letter-spacing=".3">${label}</text>`,
       );
     }
+    expect(agentSvg(1, "off")).toContain('fill="#9AA6B2"');
   });
 
   it("renders distinct working-spinner rotation frames", () => {
@@ -138,7 +157,7 @@ describe("Stream Deck visuals", () => {
     const firstFrame = agentSvg(1, "working", thread, 0);
     const nextFrame = agentSvg(1, "working", thread, 45);
 
-    expect(nextFrame).toContain('transform="rotate(45 28 30)"');
+    expect(nextFrame).toContain('transform="rotate(45 24 27)"');
     expect(nextFrame).not.toBe(firstFrame);
     expect(agentImage(1, "working", thread, 45)).not.toBe(
       agentImage(1, "working", thread, 0),
@@ -270,7 +289,7 @@ describe("Stream Deck visuals", () => {
       status: "working",
     };
     expect(agentSvg(1, "working", thread)).toContain(
-      'font-size="13" text-anchor="end">work</text>',
+      'font-size="20" text-anchor="middle">work</text>',
     );
   });
 
