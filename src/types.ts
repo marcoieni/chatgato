@@ -17,6 +17,7 @@ export type CodexThread = {
   reasoningEffort: string | null;
   spawnStatus: string | null;
   status: AgentStatus;
+  subtaskStatuses?: AgentStatus[];
 };
 
 export type AgentSettings = {

@@ -164,6 +164,48 @@ describe("Stream Deck visuals", () => {
     );
   });
 
+  it("renders one thin progress segment per subtask inside the existing header", () => {
+    const svg = agentSvg(1, "working", {
+      title: "Coordinate the implementation",
+      cwd: "/tmp/project",
+      subtaskStatuses: ["working", "awaiting-response", "unread", "error"],
+    });
+
+    expect(svg).toContain('data-subtask-progress="true"');
+    expect(svg.match(/data-subtask-status=/gu)).toHaveLength(4);
+    expect(svg).toContain(
+      'data-subtask-status="unread" x="18.00" y="14" width="25.88" height="4" fill="#00FF4C" opacity="1"',
+    );
+    expect(svg).toContain(
+      'data-subtask-status="working" x="45.38" y="14" width="25.88" height="4" fill="#304FFE" opacity="1"',
+    );
+    expect(svg).toContain('fill="#9E5BFF" opacity="0.3"');
+    expect(svg).toContain('fill="#FF0033" opacity="1"');
+    expect(svg).toContain(
+      '<rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>',
+    );
+  });
+
+  it("fills completed subtask progress from left to right", () => {
+    const svg = agentSvg(1, "working", {
+      title: "Coordinate the implementation",
+      cwd: "/tmp/project",
+      subtaskStatuses: ["working", "unread", "idle", "unread"],
+    });
+
+    expect(
+      [...svg.matchAll(/data-subtask-status="([^"]+)"/gu)].map(
+        ([, status]) => status,
+      ),
+    ).toEqual(["unread", "unread", "working", "idle"]);
+  });
+
+  it("does not reserve progress-bar space for chats without subtasks", () => {
+    expect(
+      agentSvg(1, "idle", { title: "Regular chat", cwd: "/tmp/project" }),
+    ).not.toContain('data-subtask-progress="true"');
+  });
+
   it("highlights the fast-mode shape without changing its background", () => {
     expect(FAST_MODE_COLORS).toEqual({ off: "#303840", on: "#FFD600" });
     expect(fastModeSvg(false)).toContain(

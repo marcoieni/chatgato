@@ -366,7 +366,7 @@ describe("CodexStore", () => {
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "rollout-4.jsonl"));
   });
 
-  it("excludes subagents from recent chat slots", async () => {
+  it("excludes subagents from chat slots and reports them on their parent", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
     temporaryDirectories.push(home);
     const db = createThreadDatabase(home);
@@ -390,16 +390,21 @@ describe("CodexStore", () => {
     db.close();
 
     const readRolloutTail = vi.fn(
-      async (_path: string): Promise<RolloutRecord[]> => [],
+      async (path: string): Promise<RolloutRecord[]> =>
+        path.endsWith("subagent.jsonl")
+          ? [{ type: "event_msg", payload: { type: "task_complete" } }]
+          : [],
     );
     const store = new CodexStore(home, readRolloutTail);
 
     await expect(store.threadAtSlot(1)).resolves.toMatchObject({
       id: "parent-thread",
+      subtaskStatuses: ["unread"],
     });
     await expect(store.threadAtSlot(2)).resolves.toBeNull();
-    expect(readRolloutTail).toHaveBeenCalledOnce();
+    expect(readRolloutTail).toHaveBeenCalledTimes(2);
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "parent.jsonl"));
+    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "subagent.jsonl"));
   });
 
   it("merges cached SSH chats with local chats by recency", async () => {
@@ -536,7 +541,7 @@ describe("CodexStore", () => {
     });
   });
 
-  it("uses one database cursor when a workspace filter has no matches", async () => {
+  it("uses one thread cursor when a workspace filter has no matches", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
     temporaryDirectories.push(home);
     const db = createThreadDatabase(home);
@@ -556,7 +561,7 @@ describe("CodexStore", () => {
     const store = new CodexStore(home);
 
     await expect(store.threadAtSlot(1, "/tmp/project")).resolves.toBeNull();
-    expect(iterate).toHaveBeenCalledOnce();
+    expect(iterate).toHaveBeenCalledTimes(2);
     expect(all).not.toHaveBeenCalled();
   });
 

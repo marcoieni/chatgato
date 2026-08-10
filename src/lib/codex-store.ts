@@ -32,6 +32,17 @@ type LocalThreadRow = {
   recency_at_ms: number;
 };
 
+type LocalSubtaskRow = {
+  parent_thread_id: string;
+  rollout_path: string;
+  status: string;
+};
+
+type LocalSubtaskDescriptor = {
+  rolloutPath: string;
+  spawnStatus: string;
+};
+
 type ThreadDescriptorBase = {
   id: string;
   title: string;
@@ -45,6 +56,7 @@ type LocalThreadDescriptor = ThreadDescriptorBase & {
   reasoningEffort: string | null;
   rolloutPath: string;
   spawnStatus: string | null;
+  subtasks: LocalSubtaskDescriptor[];
 };
 
 type RemoteThreadDescriptor = ThreadDescriptorBase & {
@@ -53,6 +65,7 @@ type RemoteThreadDescriptor = ThreadDescriptorBase & {
   remotePlatform: RemotePlatform;
   rolloutPath: string | null;
   status: CodexThread["status"];
+  subtaskStatuses?: CodexThread["subtaskStatuses"];
 };
 
 type ThreadDescriptor = LocalThreadDescriptor | RemoteThreadDescriptor;
@@ -207,7 +220,7 @@ export class CodexStore {
   }
 
   private async loadThreadDescriptors(): Promise<ThreadDescriptor[]> {
-    const localRows = this.withDatabase((db) => {
+    const { localRows, localSubtaskRows } = this.withDatabase((db) => {
       const statement = db.prepare(
         `SELECT t.id, t.title, t.cwd, t.rollout_path,
                 COALESCE(t.updated_at_ms, t.updated_at * 1000) AS updated_at_ms,
@@ -223,15 +236,40 @@ export class CodexStore {
                 )
        ORDER BY t.recency_at_ms DESC, t.id DESC`,
       );
-      return [...(statement.iterate() as unknown as Iterable<LocalThreadRow>)];
+      const subtaskStatement = db.prepare(
+        `SELECT e.parent_thread_id, t.rollout_path, e.status
+           FROM thread_spawn_edges e
+           JOIN threads t ON t.id = e.child_thread_id
+       ORDER BY e.parent_thread_id, e.child_thread_id`,
+      );
+      return {
+        localRows: [
+          ...(statement.iterate() as unknown as Iterable<LocalThreadRow>),
+        ],
+        localSubtaskRows: [
+          ...(subtaskStatement.iterate() as unknown as Iterable<LocalSubtaskRow>),
+        ],
+      };
     });
 
     const remoteRows = await this.readRemoteThreads(this.codexHome).catch(
       () => [],
     );
     const descriptorsById = new Map<string, ThreadDescriptor>();
+    const localSubtasksByParent = new Map<string, LocalSubtaskDescriptor[]>();
+    for (const row of localSubtaskRows) {
+      const subtasks = localSubtasksByParent.get(row.parent_thread_id) ?? [];
+      subtasks.push({
+        rolloutPath: row.rollout_path,
+        spawnStatus: row.status,
+      });
+      localSubtasksByParent.set(row.parent_thread_id, subtasks);
+    }
     for (const row of localRows) {
-      const descriptor = localThreadDescriptor(row);
+      const descriptor = localThreadDescriptor(
+        row,
+        localSubtasksByParent.get(row.id) ?? [],
+      );
       descriptorsById.set(descriptor.id, descriptor);
     }
     for (const row of remoteRows) {
@@ -257,9 +295,21 @@ export class CodexStore {
         reasoningEffort: null,
         spawnStatus: null,
         status: descriptor.status,
+        subtaskStatuses: descriptor.subtaskStatuses,
       };
     }
 
+    const [records, subtaskStatuses] = await Promise.all([
+      this.readRolloutTail(descriptor.rolloutPath),
+      Promise.all(
+        descriptor.subtasks.map(async (subtask) =>
+          inferRolloutStatus(
+            await this.readRolloutTail(subtask.rolloutPath),
+            subtask.spawnStatus,
+          ),
+        ),
+      ),
+    ]);
     return {
       id: descriptor.id,
       title: descriptor.title || "Untitled chat",
@@ -268,10 +318,8 @@ export class CodexStore {
       updatedAtMs: Number(descriptor.updatedAtMs) || 0,
       reasoningEffort: descriptor.reasoningEffort,
       spawnStatus: descriptor.spawnStatus,
-      status: inferRolloutStatus(
-        await this.readRolloutTail(descriptor.rolloutPath),
-        descriptor.spawnStatus,
-      ),
+      status: inferRolloutStatus(records, descriptor.spawnStatus),
+      subtaskStatuses,
     };
   }
 
@@ -412,7 +460,10 @@ export class CodexStore {
   }
 }
 
-function localThreadDescriptor(row: LocalThreadRow): LocalThreadDescriptor {
+function localThreadDescriptor(
+  row: LocalThreadRow,
+  subtasks: LocalSubtaskDescriptor[],
+): LocalThreadDescriptor {
   return {
     cwd: row.cwd,
     id: row.id,
@@ -421,6 +472,7 @@ function localThreadDescriptor(row: LocalThreadRow): LocalThreadDescriptor {
     recencyAtMs: row.recency_at_ms,
     rolloutPath: row.rollout_path,
     spawnStatus: row.spawn_status,
+    subtasks,
     title: row.title,
     updatedAtMs: row.updated_at_ms,
   };
