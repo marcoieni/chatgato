@@ -18,6 +18,16 @@ export const STATUS_COLORS: Record<AgentStatus, string> = {
   error: "#FF0033",
 };
 
+const STATUS_LABELS: Record<AgentStatus, string> = {
+  off: "OFF",
+  working: "WORKING",
+  unread: "DONE",
+  idle: "",
+  "awaiting-approval": "APPROVAL",
+  "awaiting-response": "INPUT",
+  error: "ERROR",
+};
+
 export const FAST_MODE_COLORS = {
   off: "#303840",
   on: "#FFD600",
@@ -35,8 +45,11 @@ export const PUSH_TO_TALK_COLORS = {
 
 const KEY_BACKGROUND = "#071018";
 const KEY_GLYPH_CENTER = [72, 54] as const;
-const PROJECT_LABEL_FONT_SIZE = 13;
-const PROJECT_LABEL_WIDTH = 72;
+const PROJECT_LABEL_FONT_SIZE = 20;
+const PROJECT_LABEL_WIDTH = 112;
+const CHAT_TITLE_FONT_SIZE = 17;
+const CHAT_TITLE_WIDTH = 116;
+const CHAT_TITLE_WRAP_WIDTH = 130;
 
 function keyShell(): string {
   return `<rect width="144" height="144" rx="24" fill="${KEY_BACKGROUND}"/>
@@ -84,13 +97,6 @@ function escapeXml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-function compactText(value: string, maxLength: number): string {
-  const normalized = value.trim().replace(/\s+/gu, " ");
-  return normalized.length > maxLength
-    ? `${normalized.slice(0, maxLength - 1).trimEnd()}…`
-    : normalized;
-}
-
 function projectName(cwd: string): string {
   const project = cwd.split(/[\\/]/u).filter(Boolean).at(-1)?.trim() || "Codex";
   if (
@@ -118,26 +124,57 @@ function projectName(cwd: string): string {
   return `${compact || characters[0]}…`;
 }
 
-function chatTitleLines(title: string, maxLength = 13): string[] {
-  let remaining = title.trim().replace(/\s+/gu, " ") || "Untitled chat";
+function compactTextToWidth(
+  value: string,
+  width: number,
+  fontSize: number,
+): string {
+  const normalized = value.trim().replace(/\s+/gu, " ");
+  if (estimatedEmWidth(normalized) * fontSize <= width) return normalized;
+
+  const characters = Array.from(normalized);
+  while (
+    characters.length > 1 &&
+    estimatedEmWidth(`${characters.join("").trimEnd()}…`) * fontSize > width
+  ) {
+    characters.pop();
+  }
+
+  return `${characters.join("").trimEnd() || characters[0]}…`;
+}
+
+function chatTitleLines(title: string): string[] {
+  const normalized = title.trim().replace(/\s+/gu, " ") || "Untitled chat";
+  const words = normalized.split(" ");
   const lines: string[] = [];
 
-  while (remaining && lines.length < 3) {
-    if (remaining.length <= maxLength) {
-      lines.push(remaining);
-      break;
-    }
-
+  while (words.length > 0 && lines.length < 3) {
     if (lines.length === 2) {
-      lines.push(compactText(remaining, maxLength));
+      lines.push(
+        compactTextToWidth(
+          words.join(" "),
+          CHAT_TITLE_WRAP_WIDTH,
+          CHAT_TITLE_FONT_SIZE,
+        ),
+      );
       break;
     }
 
-    const lastSpace = remaining.lastIndexOf(" ", maxLength);
-    const splitAt =
-      lastSpace >= Math.ceil(maxLength / 2) ? lastSpace : maxLength;
-    lines.push(remaining.slice(0, splitAt).trim());
-    remaining = remaining.slice(splitAt).trim();
+    let line = words.shift()!;
+    while (words.length > 0) {
+      const candidate = `${line} ${words[0]}`;
+      if (
+        estimatedEmWidth(candidate) * CHAT_TITLE_FONT_SIZE >
+        CHAT_TITLE_WRAP_WIDTH
+      ) {
+        break;
+      }
+      line = candidate;
+      words.shift();
+    }
+    lines.push(
+      compactTextToWidth(line, CHAT_TITLE_WRAP_WIDTH, CHAT_TITLE_FONT_SIZE),
+    );
   }
 
   return lines;
@@ -155,8 +192,8 @@ function estimatedEmWidth(value: string): number {
 }
 
 function fittedTitleAttributes(line: string): string {
-  return estimatedEmWidth(line) * 21 > 116
-    ? ' textLength="116" lengthAdjust="spacingAndGlyphs"'
+  return estimatedEmWidth(line) * CHAT_TITLE_FONT_SIZE > CHAT_TITLE_WIDTH
+    ? ` textLength="${CHAT_TITLE_WIDTH}" lengthAdjust="spacingAndGlyphs"`
     : "";
 }
 
@@ -167,46 +204,50 @@ export function agentSvg(
   spinnerRotation = 0,
 ): string {
   const color = STATUS_COLORS[status];
+  const statusLabel = STATUS_LABELS[status];
+  const statusLabelColor = status === "off" ? "#9AA6B2" : color;
+  const statusLabelRow = statusLabel
+    ? `<text x="36" y="31" fill="${statusLabelColor}" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="11" letter-spacing=".3">${statusLabel}</text>`
+    : "";
   const project = thread ? projectName(thread.cwd) : "CODEX";
   const title =
     thread?.title || (status === "error" ? "Codex offline" : "Empty slot");
   const titleLines = chatTitleLines(title);
   const firstTitleY =
-    titleLines.length === 1 ? 91 : titleLines.length === 2 ? 80 : 68;
+    titleLines.length === 1 ? 102 : titleLines.length === 2 ? 92 : 82;
   const titleRows = titleLines
     .map(
       (line, index) =>
-        `<text x="72" y="${firstTitleY + index * 23}" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="750" font-size="21"${fittedTitleAttributes(line)} text-anchor="middle">${escapeXml(line)}</text>`,
+        `<text x="72" y="${firstTitleY + index * 20}" fill="#FFFFFF" fill-opacity=".84" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="700" font-size="${CHAT_TITLE_FONT_SIZE}"${fittedTitleAttributes(line)} text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("\n      ");
   const statusIconSource = AGENT_STATUS_ICON_SOURCES[status];
   const statusGlyph =
     status === "unread"
-      ? `<circle data-agent-status-icon="done" cx="28" cy="30" r="8" fill="${color}"/>`
+      ? `<circle data-agent-status-icon="done" cx="24" cy="27" r="6" fill="${color}"/>`
       : statusIconSource
         ? lucideGlyph(statusIconSource, {
-            center: [28, 30],
+            center: [24, 27],
             color,
-            size: 20,
+            size: 16,
             strokeWidth: 2.5,
           })
         : "";
   const normalizedRotation = ((spinnerRotation % 360) + 360) % 360;
   const statusSymbol =
     status === "working"
-      ? `<g data-working-spinner="true" transform="rotate(${normalizedRotation} 28 30)">
+      ? `<g data-working-spinner="true" transform="rotate(${normalizedRotation} 24 27)">
       ${statusGlyph}
     </g>`
       : statusGlyph;
-  const slotX = status === "idle" ? 20 : 42;
-
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${LUCIDE_LICENSE}
     ${keyShell()}
-    <rect x="12" y="12" width="120" height="36" rx="12" fill="#FFFFFF" opacity=".07"/>
+    <rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>
     ${statusSymbol}
-    <text x="${slotX}" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="15">${slot}</text>
-    <text x="128" y="35" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="${PROJECT_LABEL_FONT_SIZE}" text-anchor="end">${escapeXml(project)}</text>
+    ${statusLabelRow}
+    <text x="124" y="31" fill="#FFFFFF" fill-opacity=".72" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">${slot}</text>
+    <text x="72" y="56" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="850" font-size="${PROJECT_LABEL_FONT_SIZE}" text-anchor="middle">${escapeXml(project)}</text>
     ${titleRows}
   </svg>`;
 }

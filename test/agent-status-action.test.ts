@@ -165,7 +165,7 @@ describe("AgentStatusAction navigation", () => {
 
       expect(action.setImage).toHaveBeenCalledOnce();
       expect(decodedSvg(action.setImage.mock.calls[0]![0])).toContain(
-        'transform="rotate(0 28 30)"',
+        'transform="rotate(0 24 27)"',
       );
 
       await vi.advanceTimersByTimeAsync(149);
@@ -174,7 +174,7 @@ describe("AgentStatusAction navigation", () => {
       await vi.advanceTimersByTimeAsync(1);
       expect(action.setImage).toHaveBeenCalledTimes(2);
       expect(decodedSvg(action.setImage.mock.calls[1]![0])).toContain(
-        'transform="rotate(22.5 28 30)"',
+        'transform="rotate(22.5 24 27)"',
       );
 
       agentStatus.onWillDisappear({ action } as never);
