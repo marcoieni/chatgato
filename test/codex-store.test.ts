@@ -83,6 +83,59 @@ afterEach(async () => {
 });
 
 describe("CodexStore", () => {
+  it("recovers approval permissions that fall outside the rollout tail", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-approval-context-"));
+    temporaryDirectories.push(home);
+    const rolloutPath = join(home, "large-rollout.jsonl");
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      id: "large-rollout",
+      rolloutPath,
+      title: "Large rollout",
+    });
+    db.close();
+
+    const records: RolloutRecord[] = [
+      {
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: `## Approved command prefixes\n- ["git", "push"]`,
+            },
+          ],
+        },
+      },
+      {
+        type: "event_msg",
+        payload: { type: "token_count", padding: "x".repeat(600 * 1024) },
+      },
+      {
+        type: "response_item",
+        payload: {
+          type: "custom_tool_call",
+          name: "exec",
+          call_id: "approved-push",
+          input:
+            'const result = await tools.exec_command({"cmd":"git push","sandbox_permissions":"require_escalated"});',
+        },
+      },
+    ];
+    await writeFile(
+      rolloutPath,
+      `${records.map((record) => JSON.stringify(record)).join("\n")}\n`,
+    );
+
+    const store = new CodexStore(home);
+    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+      id: "large-rollout",
+      status: "working",
+    });
+  });
+
   it("finds a duplicate title's position in Codex chat search", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-search-rank-"));
     temporaryDirectories.push(home);

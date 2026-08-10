@@ -96,6 +96,79 @@ describe("Codex rollout status", () => {
     ).toBe("working");
   });
 
+  it("does not request approval for an already authorized command prefix", () => {
+    const permissions = {
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: `<permissions instructions>
+## Approved command prefixes
+The following prefix rules have already been approved: - ["git", "add"]
+- ["git", "push"]
+The writable roots are elsewhere.
+</permissions instructions>`,
+          },
+        ],
+      },
+    };
+    const escalatedCall = (command: string) => ({
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        call_id: `call-${command}`,
+        input: `const result = await tools.exec_command(${JSON.stringify({
+          cmd: command,
+          sandbox_permissions: "require_escalated",
+          justification: "Allow command?",
+        })});`,
+      },
+    });
+
+    expect(inferRolloutStatus([permissions, escalatedCall("git push")])).toBe(
+      "working",
+    );
+    expect(
+      inferRolloutStatus([permissions, escalatedCall("git push origin main")]),
+    ).toBe("working");
+    expect(inferRolloutStatus([permissions, escalatedCall("git commit")])).toBe(
+      "awaiting-approval",
+    );
+  });
+
+  it("keeps compound escalated commands approval-bound", () => {
+    const permissions = {
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: `## Approved command prefixes\n- ["git", "push"]`,
+          },
+        ],
+      },
+    };
+    const approvalCall = {
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        input:
+          'const result = await tools.exec_command({"cmd":"git push && npm publish","sandbox_permissions":"require_escalated"});',
+      },
+    };
+
+    expect(inferRolloutStatus([permissions, approvalCall])).toBe(
+      "awaiting-approval",
+    );
+  });
+
   it("does not mistake a normal apply_patch call for an approval wait", () => {
     expect(
       inferRolloutStatus([
