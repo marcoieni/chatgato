@@ -55,6 +55,7 @@ export type RemoteThreadRow = {
   remotePlatform: RemotePlatform;
   rolloutPath: string | null;
   status: AgentStatus;
+  subtaskStatuses?: AgentStatus[];
   title: string;
   updatedAtMs: number;
 };
@@ -454,17 +455,29 @@ export async function readThreadsFromHost(
     }
   }
 
-  return selectedThreads
-    .map((thread) =>
-      remoteThreadRow(
+  const rowsById = new Map(
+    selectedThreads.flatMap((thread) => {
+      const row = remoteThreadRow(
         connection.hostId,
         thread,
         turns.get(String(thread.id)),
         typeof thread.path === "string" ? rollouts.get(thread.path) : undefined,
         remotePlatform,
-      ),
-    )
-    .filter((row): row is RemoteThreadRow => row !== null);
+      );
+      return row ? [[row.id, row] as const] : [];
+    }),
+  );
+
+  return selectedThreads.flatMap((thread) => {
+    if (isSubagentThread(thread)) return [];
+    const row = rowsById.get(String(thread.id));
+    if (!row) return [];
+    const subtaskStatuses = selectedThreads
+      .filter((candidate) => subagentParentId(candidate) === row.id)
+      .map((candidate) => rowsById.get(String(candidate.id))?.status)
+      .filter((status): status is AgentStatus => status !== undefined);
+    return [subtaskStatuses.length > 0 ? { ...row, subtaskStatuses } : row];
+  });
 }
 
 async function readAppServerThreads(
@@ -491,7 +504,6 @@ async function readAppServerThreads(
       if (
         typeof thread.id === "string" &&
         typeof thread.cwd === "string" &&
-        !isSubagentThread(thread) &&
         projectPaths.some((path) =>
           isWithinRemotePath(thread.cwd as string, path, platform),
         )
@@ -510,14 +522,42 @@ async function readAppServerThreads(
     if (cursor) seenCursors.add(cursor);
   } while (cursor);
 
-  retainRecentThreads(threads, MAX_AGENT_SLOTS);
+  retainRecentThreadTrees(threads, MAX_AGENT_SLOTS);
   return threads;
 }
 
 function isSubagentThread(thread: AppServerThread): boolean {
-  if (typeof thread.parentThreadId === "string") return true;
+  if (subagentParentId(thread)) return true;
   const source = asObject(thread.source);
   return source !== null && source.subAgent !== undefined;
+}
+
+function subagentParentId(thread: AppServerThread): string | null {
+  if (typeof thread.parentThreadId === "string") return thread.parentThreadId;
+  const source = asObject(thread.source);
+  const subAgent = asObject(source?.subAgent);
+  const threadSpawn = asObject(subAgent?.thread_spawn ?? subAgent?.threadSpawn);
+  const parentId = threadSpawn?.parent_thread_id ?? threadSpawn?.parentThreadId;
+  return typeof parentId === "string" ? parentId : null;
+}
+
+function retainRecentThreadTrees(
+  threads: Map<string, AppServerThread>,
+  rootLimit: number,
+): void {
+  const roots = new Map(
+    [...threads].filter(([, thread]) => !isSubagentThread(thread)),
+  );
+  retainRecentThreads(roots, rootLimit);
+  const rootIds = new Set(roots.keys());
+
+  for (const [threadId, thread] of threads) {
+    const parentId = subagentParentId(thread);
+    if (parentId && rootIds.has(parentId)) roots.set(threadId, thread);
+  }
+
+  threads.clear();
+  for (const [threadId, thread] of roots) threads.set(threadId, thread);
 }
 
 async function readAppServerTurns(

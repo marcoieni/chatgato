@@ -270,7 +270,7 @@ describe("remote Codex chat discovery", () => {
     }
   });
 
-  it("paginates all threads, excludes subagents, and derives persisted status", async () => {
+  it("paginates all threads, groups subagents, and derives persisted status", async () => {
     const directory = await mkdtemp(join(tmpdir(), "chatgato-fake-ssh-"));
     temporaryDirectories.push(directory);
     const fakeSsh = join(directory, "fake-ssh.mjs");
@@ -372,6 +372,7 @@ lines.on("line", (line) => {
         remotePlatform: "posix",
         rolloutPath: "/home/user/.codex/rollout.jsonl",
         status: "awaiting-approval",
+        subtaskStatuses: ["working"],
         title: "Remote chat",
         updatedAtMs: 12_000,
       },

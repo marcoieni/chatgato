@@ -50,6 +50,12 @@ const PROJECT_LABEL_WIDTH = 112;
 const CHAT_TITLE_FONT_SIZE = 17;
 const CHAT_TITLE_WIDTH = 116;
 const CHAT_TITLE_WRAP_WIDTH = 130;
+const SUBTASK_BAR_COLOR = "#9E5BFF";
+const SUBTASK_BAR_ERROR_COLOR = "#FF0033";
+const SUBTASK_BAR_HEIGHT = 4;
+const SUBTASK_BAR_WIDTH = 108;
+const SUBTASK_BAR_X = 18;
+const SUBTASK_BAR_Y = 14;
 
 function keyShell(): string {
   return `<rect width="144" height="144" rx="24" fill="${KEY_BACKGROUND}"/>
@@ -86,7 +92,33 @@ export function effectiveStatus(
   return thread.status;
 }
 
-type AgentVisualThread = Pick<CodexThread, "title" | "cwd">;
+type AgentVisualThread = Pick<CodexThread, "title" | "cwd"> & {
+  subtaskStatuses?: readonly AgentStatus[];
+};
+
+function subtaskProgressBar(
+  statuses: readonly AgentStatus[] | undefined,
+): string {
+  if (!statuses?.length) return "";
+
+  const gap = Math.min(1.5, SUBTASK_BAR_WIDTH / (statuses.length * 3));
+  const segmentWidth =
+    (SUBTASK_BAR_WIDTH - gap * (statuses.length - 1)) / statuses.length;
+  const segments = statuses
+    .map((status, index) => {
+      const x = SUBTASK_BAR_X + index * (segmentWidth + gap);
+      const completed = status === "unread";
+      const failed = status === "error";
+      const opacity =
+        completed || failed ? 1 : status === "working" ? 0.55 : 0.3;
+      return `<rect data-subtask-status="${status}" x="${x.toFixed(2)}" y="${SUBTASK_BAR_Y}" width="${segmentWidth.toFixed(2)}" height="${SUBTASK_BAR_HEIGHT}" fill="${failed ? SUBTASK_BAR_ERROR_COLOR : SUBTASK_BAR_COLOR}" opacity="${opacity}"/>`;
+    })
+    .join("\n        ");
+
+  return `<g data-subtask-progress="true" clip-path="url(#subtask-progress-clip)">
+        ${segments}
+      </g>`;
+}
 
 function escapeXml(value: string): string {
   return value
@@ -240,10 +272,13 @@ export function agentSvg(
       ${statusGlyph}
     </g>`
       : statusGlyph;
+  const subtaskBar = subtaskProgressBar(thread?.subtaskStatuses);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${LUCIDE_LICENSE}
+    <defs><clipPath id="subtask-progress-clip"><rect x="${SUBTASK_BAR_X}" y="${SUBTASK_BAR_Y}" width="${SUBTASK_BAR_WIDTH}" height="${SUBTASK_BAR_HEIGHT}" rx="${SUBTASK_BAR_HEIGHT / 2}"/></clipPath></defs>
     ${keyShell()}
     <rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>
+    ${subtaskBar}
     ${statusSymbol}
     ${statusLabelRow}
     <text x="124" y="31" fill="#FFFFFF" fill-opacity=".72" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">${slot}</text>
