@@ -11,7 +11,9 @@ import {
   type RemoteThreadRow,
 } from "./remote-codex-store.js";
 import {
+  hasPendingEscalatedToolCall,
   inferRolloutStatus,
+  latestApprovalContext,
   parseRolloutLines,
   planModeFromRollout,
 } from "./rollout-status.js";
@@ -103,6 +105,14 @@ export type ReasoningSnapshot = {
 };
 
 const TAIL_BYTES = 512 * 1024;
+const APPROVAL_CONTEXT_CACHE_LIMIT = 100;
+
+type ApprovalContextCacheEntry = {
+  fileSize: number;
+  record: RolloutRecord;
+};
+
+const approvalContextCache = new Map<string, ApprovalContextCacheEntry>();
 
 type RolloutTailReader = (path: string) => Promise<RolloutRecord[]>;
 type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
@@ -622,17 +632,70 @@ async function readRolloutTailFromFile(path: string): Promise<RolloutRecord[]> {
   try {
     const info = await stat(path);
     const length = Math.min(info.size, TAIL_BYTES);
-    const start = Math.max(0, info.size - length);
     const handle = await open(path, "r");
     try {
-      const buffer = Buffer.alloc(length);
-      const { bytesRead } = await handle.read(buffer, 0, length, start);
-      return parseRolloutLines(buffer.subarray(0, bytesRead).toString("utf8"));
+      const records = await readRolloutWindow(handle, info.size, length);
+      const visibleContext = latestApprovalContext(records);
+      if (visibleContext) {
+        rememberApprovalContext(path, info.size, visibleContext);
+        return records;
+      }
+
+      const cached = approvalContextCache.get(path);
+      if (cached && info.size < cached.fileSize)
+        approvalContextCache.delete(path);
+      const retainedContext = approvalContextCache.get(path)?.record;
+      if (!hasPendingEscalatedToolCall(records)) return records;
+      if (retainedContext) {
+        rememberApprovalContext(path, info.size, retainedContext);
+        return [retainedContext, ...records];
+      }
+
+      let contextWindowLength = length;
+      while (contextWindowLength < info.size) {
+        contextWindowLength = Math.min(info.size, contextWindowLength * 2);
+        const contextRecords = await readRolloutWindow(
+          handle,
+          info.size,
+          contextWindowLength,
+        );
+        const recoveredContext = latestApprovalContext(contextRecords);
+        if (recoveredContext) {
+          rememberApprovalContext(path, info.size, recoveredContext);
+          return [recoveredContext, ...records];
+        }
+      }
+      return records;
     } finally {
       await handle.close();
     }
   } catch {
     return [];
+  }
+}
+
+async function readRolloutWindow(
+  handle: Awaited<ReturnType<typeof open>>,
+  fileSize: number,
+  length: number,
+): Promise<RolloutRecord[]> {
+  const start = Math.max(0, fileSize - length);
+  const buffer = Buffer.alloc(length);
+  const { bytesRead } = await handle.read(buffer, 0, length, start);
+  return parseRolloutLines(buffer.subarray(0, bytesRead).toString("utf8"));
+}
+
+function rememberApprovalContext(
+  path: string,
+  fileSize: number,
+  record: RolloutRecord,
+): void {
+  approvalContextCache.delete(path);
+  approvalContextCache.set(path, { fileSize, record });
+  while (approvalContextCache.size > APPROVAL_CONTEXT_CACHE_LIMIT) {
+    const oldestPath = approvalContextCache.keys().next().value;
+    if (typeof oldestPath !== "string") break;
+    approvalContextCache.delete(oldestPath);
   }
 }
 

@@ -94,6 +94,42 @@ function approvedPrefixesFromRecord(record: RolloutRecord): string[][] | null {
   return null;
 }
 
+export function latestApprovalContext(
+  records: readonly RolloutRecord[],
+): RolloutRecord | null {
+  let context: RolloutRecord | null = null;
+  for (const record of records) {
+    if (approvedPrefixesFromRecord(record) !== null) context = record;
+  }
+  return context;
+}
+
+export function hasPendingEscalatedToolCall(
+  records: readonly RolloutRecord[],
+): boolean {
+  const pendingCallIds = new Set<string>();
+  let hasAnonymousPendingCall = false;
+
+  for (const record of records) {
+    if (record.type !== "response_item") continue;
+    const payloadType = record.payload?.type ?? "";
+    if (payloadType === "function_call" || payloadType === "custom_tool_call") {
+      const input = record.payload?.input ?? record.payload?.arguments;
+      if (typeof input === "string" && ESCALATED_SANDBOX_PROPERTY.test(input)) {
+        const callId = record.payload?.call_id;
+        if (typeof callId === "string") pendingCallIds.add(callId);
+        else hasAnonymousPendingCall = true;
+      }
+    } else if (payloadType.endsWith("_output")) {
+      const callId = record.payload?.call_id;
+      if (typeof callId === "string") pendingCallIds.delete(callId);
+      else hasAnonymousPendingCall = false;
+    }
+  }
+
+  return pendingCallIds.size > 0 || hasAnonymousPendingCall;
+}
+
 function commandFromToolInput(input: string): string | null {
   const encoded = COMMAND_PROPERTY.exec(input)?.[1];
   if (!encoded) return null;
