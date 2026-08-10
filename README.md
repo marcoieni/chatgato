@@ -9,7 +9,7 @@ No API key required.
 
 ## Features
 
-- Keep track of up to 20 **Agent Status** keys, showing the chat's project, status (working, done, require approval, etc). On press, they open the chat.
+- Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents are excluded. On press, the keys open the chat.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex chat data.
 - **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:

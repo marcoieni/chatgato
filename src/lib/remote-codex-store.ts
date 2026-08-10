@@ -33,9 +33,11 @@ type AppServerThread = {
   cwd?: unknown;
   id?: unknown;
   name?: unknown;
+  parentThreadId?: unknown;
   path?: unknown;
   preview?: unknown;
   recencyAt?: unknown;
+  source?: unknown;
   status?: AppServerThreadStatus;
   updatedAt?: unknown;
 };
@@ -489,6 +491,7 @@ async function readAppServerThreads(
       if (
         typeof thread.id === "string" &&
         typeof thread.cwd === "string" &&
+        !isSubagentThread(thread) &&
         projectPaths.some((path) =>
           isWithinRemotePath(thread.cwd as string, path, platform),
         )
@@ -509,6 +512,12 @@ async function readAppServerThreads(
 
   retainRecentThreads(threads, MAX_AGENT_SLOTS);
   return threads;
+}
+
+function isSubagentThread(thread: AppServerThread): boolean {
+  if (typeof thread.parentThreadId === "string") return true;
+  const source = asObject(thread.source);
+  return source !== null && source.subAgent !== undefined;
 }
 
 async function readAppServerTurns(
