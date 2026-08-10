@@ -50,8 +50,7 @@ const PROJECT_LABEL_WIDTH = 112;
 const CHAT_TITLE_FONT_SIZE = 17;
 const CHAT_TITLE_WIDTH = 116;
 const CHAT_TITLE_WRAP_WIDTH = 130;
-const SUBTASK_BAR_COLOR = "#9E5BFF";
-const SUBTASK_BAR_ERROR_COLOR = "#FF0033";
+const SUBTASK_BAR_PENDING_COLOR = "#9E5BFF";
 const SUBTASK_BAR_HEIGHT = 4;
 const SUBTASK_BAR_WIDTH = 108;
 const SUBTASK_BAR_X = 18;
@@ -101,17 +100,27 @@ function subtaskProgressBar(
 ): string {
   if (!statuses?.length) return "";
 
+  const orderedStatuses = [...statuses].sort(
+    (left, right) => Number(right === "unread") - Number(left === "unread"),
+  );
   const gap = Math.min(1.5, SUBTASK_BAR_WIDTH / (statuses.length * 3));
   const segmentWidth =
     (SUBTASK_BAR_WIDTH - gap * (statuses.length - 1)) / statuses.length;
-  const segments = statuses
+  const segments = orderedStatuses
     .map((status, index) => {
       const x = SUBTASK_BAR_X + index * (segmentWidth + gap);
       const completed = status === "unread";
       const failed = status === "error";
-      const opacity =
-        completed || failed ? 1 : status === "working" ? 0.55 : 0.3;
-      return `<rect data-subtask-status="${status}" x="${x.toFixed(2)}" y="${SUBTASK_BAR_Y}" width="${segmentWidth.toFixed(2)}" height="${SUBTASK_BAR_HEIGHT}" fill="${failed ? SUBTASK_BAR_ERROR_COLOR : SUBTASK_BAR_COLOR}" opacity="${opacity}"/>`;
+      const working = status === "working";
+      const color = completed
+        ? STATUS_COLORS.unread
+        : working
+          ? STATUS_COLORS.working
+          : failed
+            ? STATUS_COLORS.error
+            : SUBTASK_BAR_PENDING_COLOR;
+      const opacity = completed || working || failed ? 1 : 0.3;
+      return `<rect data-subtask-status="${status}" x="${x.toFixed(2)}" y="${SUBTASK_BAR_Y}" width="${segmentWidth.toFixed(2)}" height="${SUBTASK_BAR_HEIGHT}" fill="${color}" opacity="${opacity}"/>`;
     })
     .join("\n        ");
 

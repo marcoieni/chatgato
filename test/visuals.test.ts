@@ -168,17 +168,36 @@ describe("Stream Deck visuals", () => {
     const svg = agentSvg(1, "working", {
       title: "Coordinate the implementation",
       cwd: "/tmp/project",
-      subtaskStatuses: ["unread", "working", "awaiting-response", "error"],
+      subtaskStatuses: ["working", "awaiting-response", "unread", "error"],
     });
 
     expect(svg).toContain('data-subtask-progress="true"');
     expect(svg.match(/data-subtask-status=/gu)).toHaveLength(4);
-    expect(svg).toContain('data-subtask-status="unread" x="18.00" y="14"');
-    expect(svg).toContain('height="4" fill="#9E5BFF" opacity="1"');
+    expect(svg).toContain(
+      'data-subtask-status="unread" x="18.00" y="14" width="25.88" height="4" fill="#00FF4C" opacity="1"',
+    );
+    expect(svg).toContain(
+      'data-subtask-status="working" x="45.38" y="14" width="25.88" height="4" fill="#304FFE" opacity="1"',
+    );
+    expect(svg).toContain('fill="#9E5BFF" opacity="0.3"');
     expect(svg).toContain('fill="#FF0033" opacity="1"');
     expect(svg).toContain(
       '<rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>',
     );
+  });
+
+  it("fills completed subtask progress from left to right", () => {
+    const svg = agentSvg(1, "working", {
+      title: "Coordinate the implementation",
+      cwd: "/tmp/project",
+      subtaskStatuses: ["working", "unread", "idle", "unread"],
+    });
+
+    expect(
+      [...svg.matchAll(/data-subtask-status="([^"]+)"/gu)].map(
+        ([, status]) => status,
+      ),
+    ).toEqual(["unread", "unread", "working", "idle"]);
   });
 
   it("does not reserve progress-bar space for chats without subtasks", () => {
