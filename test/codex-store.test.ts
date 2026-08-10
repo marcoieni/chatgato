@@ -366,6 +366,42 @@ describe("CodexStore", () => {
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "rollout-4.jsonl"));
   });
 
+  it("excludes subagents from recent chat slots", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
+    temporaryDirectories.push(home);
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      id: "parent-thread",
+      recencyAtMs: 1_000,
+      rolloutPath: join(home, "parent.jsonl"),
+      title: "Parent chat",
+    });
+    insertThread(db, {
+      id: "subagent-thread",
+      recencyAtMs: 2_000,
+      rolloutPath: join(home, "subagent.jsonl"),
+      title: "Research subagent",
+    });
+    db.prepare(
+      `INSERT INTO thread_spawn_edges
+       (parent_thread_id, child_thread_id, status)
+       VALUES (?, ?, ?)`,
+    ).run("parent-thread", "subagent-thread", "running");
+    db.close();
+
+    const readRolloutTail = vi.fn(
+      async (_path: string): Promise<RolloutRecord[]> => [],
+    );
+    const store = new CodexStore(home, readRolloutTail);
+
+    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+      id: "parent-thread",
+    });
+    await expect(store.threadAtSlot(2)).resolves.toBeNull();
+    expect(readRolloutTail).toHaveBeenCalledOnce();
+    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "parent.jsonl"));
+  });
+
   it("merges cached SSH chats with local chats by recency", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
     temporaryDirectories.push(home);

@@ -213,10 +213,14 @@ export class CodexStore {
                 COALESCE(t.updated_at_ms, t.updated_at * 1000) AS updated_at_ms,
                 t.recency_at_ms,
                 t.reasoning_effort,
-                e.status AS spawn_status
+                NULL AS spawn_status
            FROM threads t
-      LEFT JOIN thread_spawn_edges e ON e.child_thread_id = t.id
           WHERE t.archived = 0 AND t.preview <> ''
+            AND NOT EXISTS (
+                  SELECT 1
+                    FROM thread_spawn_edges e
+                   WHERE e.child_thread_id = t.id
+                )
        ORDER BY t.recency_at_ms DESC, t.id DESC`,
       );
       return [...(statement.iterate() as unknown as Iterable<LocalThreadRow>)];

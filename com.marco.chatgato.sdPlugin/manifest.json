@@ -13,7 +13,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Show and open one of the 20 most recent Codex chats with live status color. SSH-hosted chats require the Search Chats shortcut shown in the property inspector.",
+      "Tooltip": "Show and open one of the 20 most recent top-level Codex chats with live status color. Subagents are excluded. SSH-hosted chats require the Search Chats shortcut shown in the property inspector.",
       "UUID": "com.marco.chatgato.agent-status"
     },
     {

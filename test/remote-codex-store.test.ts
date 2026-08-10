@@ -270,7 +270,7 @@ describe("remote Codex chat discovery", () => {
     }
   });
 
-  it("paginates all threads and derives status from the persisted rollout", async () => {
+  it("paginates all threads, excludes subagents, and derives persisted status", async () => {
     const directory = await mkdtemp(join(tmpdir(), "chatgato-fake-ssh-"));
     temporaryDirectories.push(directory);
     const fakeSsh = join(directory, "fake-ssh.mjs");
@@ -316,6 +316,23 @@ lines.on("line", (line) => {
       return;
     }
     send({ id: message.id, result: { data: [
+      {
+        id: "remote-subagent",
+        name: "Remote subagent",
+        cwd: "/srv/work/project",
+        parentThreadId: "remote-thread",
+        source: { subAgent: { thread_spawn: {
+          parent_thread_id: "remote-thread",
+          depth: 1,
+          agent_path: null,
+          agent_nickname: "researcher",
+          agent_role: null
+        } } },
+        path: "/home/user/.codex/subagent.jsonl",
+        updatedAt: 14,
+        recencyAt: 14,
+        status: { type: "active" }
+      },
       {
         id: "remote-thread",
         name: "Remote chat",
