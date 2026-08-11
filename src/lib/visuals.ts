@@ -425,7 +425,7 @@ export function usageSvg(
   const rows = windows
     .slice(0, 2)
     .map((window, index) => {
-      const remaining = remainingPercent(window);
+      const remaining = remainingPercent(window, Date.now());
       const color = usageColor(remaining);
       const y = windows.length === 1 ? 72 : 48 + index * 54;
       const width = Math.round((108 * remaining) / 100);
