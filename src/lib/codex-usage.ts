@@ -19,7 +19,10 @@ function parseWindow(
   if (usedPercent === null || windowMinutes === null || windowMinutes <= 0)
     return null;
 
-  const resetsAtSeconds = finiteNumber(window.resets_at);
+  const resetsAtSeconds =
+    window.resets_at === null || window.resets_at === undefined
+      ? null
+      : finiteNumber(window.resets_at);
   return {
     usedPercent: Math.min(100, Math.max(0, usedPercent)),
     windowMinutes,
@@ -78,7 +81,21 @@ export function usageFromRollout(
   return latest;
 }
 
-export function remainingPercent(window: CodexUsageWindow): number {
+export function remainingPercent(
+  window: CodexUsageWindow,
+  nowMs?: number,
+): number {
+  // Codex only writes a fresh usage snapshot when a task reports token usage.
+  // Between tasks, the last snapshot can therefore outlive its rate-limit
+  // window. Once that window has reset, its old consumption no longer applies.
+  if (
+    nowMs !== undefined &&
+    window.resetsAtMs !== null &&
+    nowMs >= window.resetsAtMs
+  ) {
+    return 100;
+  }
+
   return Math.round(Math.min(100, Math.max(0, 100 - window.usedPercent)));
 }
 

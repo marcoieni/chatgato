@@ -101,6 +101,40 @@ describe("Codex usage", () => {
     expect(usageWindowLabel(10_080)).toBe("1W");
   });
 
+  it("restores remaining usage when a stale snapshot's window has reset", () => {
+    const window = {
+      usedPercent: 4,
+      windowMinutes: 10_080,
+      resetsAtMs: Date.parse("2026-08-11T08:00:00.000Z"),
+    };
+
+    expect(
+      remainingPercent(window, Date.parse("2026-08-11T07:59:59.999Z")),
+    ).toBe(96);
+    expect(
+      remainingPercent(window, Date.parse("2026-08-11T08:00:00.000Z")),
+    ).toBe(100);
+  });
+
+  it("does not infer a reset when Codex omits the reset time", () => {
+    const usage = usageFromRollout([
+      {
+        payload: {
+          rate_limits: {
+            primary: {
+              used_percent: 4,
+              window_minutes: 10_080,
+              resets_at: null,
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(usage!.primary!.resetsAtMs).toBeNull();
+    expect(remainingPercent(usage!.primary!, Date.now())).toBe(96);
+  });
+
   it("ignores records without account usage", () => {
     expect(usageFromRollout([{ payload: { type: "token_count" } }])).toBeNull();
   });
