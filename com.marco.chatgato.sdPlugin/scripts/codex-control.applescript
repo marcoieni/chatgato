@@ -20,8 +20,7 @@ on run argv
 		return
 	end if
 
-	tell application "ChatGPT" to activate
-	delay 0.18
+	my activateCodex()
 
 	repeat with attempt from 1 to 3
 		try
@@ -32,11 +31,24 @@ on run argv
 			if attempt is 3 then error errorMessage number errorNumber
 			-- ChatGPT can still be finishing activation when System Events sends
 			-- the first keystroke. Reactivate it and retry this transient failure.
-			tell application "ChatGPT" to activate
-			delay 0.35
+			my activateCodex()
 		end try
 	end repeat
 end run
+
+on activateCodex()
+	tell application "ChatGPT" to activate
+	repeat 40 times
+		tell application "ChatGPT" to set codexIsFrontmost to frontmost
+		if codexIsFrontmost then
+			-- Give the renderer a moment to accept keyboard input after activation.
+			delay 0.12
+			return
+		end if
+		delay 0.05
+	end repeat
+	error "Codex did not become active"
+end activateCodex
 
 on sendControl(controlMode, payload, resultIndex, maxResultIndex, shortcutBinding)
 	tell application "System Events"
