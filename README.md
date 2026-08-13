@@ -10,7 +10,7 @@ No API key required.
 ## Features
 
 - Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents are excluded. On press, the keys open the chat.
-- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from local Codex chat data.
+- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
 - **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
   - **Allow** / **Decline**
@@ -113,12 +113,27 @@ polled every two seconds by default.
 
 Completion is shown as green/unread. Pressing that Agent key acknowledges the completion and opens the chat, changing the key to idle white until the chat updates again.
 
-The Usage Limits key reads the latest account-wide Codex rate-limit snapshot that Codex writes to local chat rollouts. It displays remaining allowance rather than consumed allowance; for example, a Codex `used_percent` value of 18 is shown as 82% left. Press the key to refresh immediately. The snapshot advances when Codex reports usage during a chat, so it can remain unchanged while Codex is idle.
+The Usage Limits key launches the locally installed `codex app-server` and uses
+its documented `account/rateLimits/read` method on every refresh. It selects the
+canonical `codex` bucket rather than model-specific meters, so scheduled resets,
+resets triggered by earned credits, and account-side window changes appear even
+while chats are idle. It displays remaining allowance rather than consumed allowance; for
+example, a Codex `usedPercent` value of 18 is shown as 82% left. Press the key to
+refresh immediately.
+
+App-server startup and requests are time-bounded, concurrent refreshes share one
+in-flight read, and the child process is terminated after every result. Local
+rollout snapshots remain a compatibility fallback when the live method is not
+available. Before the first successful live read, the latest rollout value can
+be shown; after a successful live read, an older rollout is never allowed to
+replace it. If the live read later fails and no newer fallback exists, the key
+shows `OFFLINE` instead of a stale percentage. An expired fallback window keeps
+the existing behavior of showing 100% remaining after its scheduled reset.
 
 ## Notes and limitations
 
 - Agent status is inferred from local or SSH-hosted Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
-- Usage limits are also read locally from Codex rollout events; no account credentials or usage data are transmitted by the plugin.
+- Usage limits use the public local [Codex app-server protocol](https://learn.chatgpt.com/docs/app-server), with local rollout events as fallback. ChatGato does not read account credentials or call a private remote HTTP endpoint.
 
 ## Why this name?
 
