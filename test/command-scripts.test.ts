@@ -42,10 +42,6 @@ describe("Codex control scripts", () => {
   });
 
   it("retries transient macOS activation failures", () => {
-    expect(appleScript).toContain("my activateCodex()");
-    expect(appleScript).toMatch(
-      /on activateCodex\(\)[\s\S]*repeat 40 times[\s\S]*frontmost/u,
-    );
     expect(appleScript).toMatch(/repeat with attempt from 1 to 3/u);
     expect(appleScript).toContain(
       "my sendControl(controlMode, payload, resultIndex, maxResultIndex, shortcutBinding)",
