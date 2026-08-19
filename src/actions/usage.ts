@@ -7,7 +7,9 @@ import {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
+import { CodexAppServerUsageClient } from "../lib/codex-app-server.js";
 import { CodexStore } from "../lib/codex-store.js";
+import { CodexUsageService } from "../lib/codex-usage-service.js";
 import { usageImage } from "../lib/visuals.js";
 import type { UsageSettings } from "../types.js";
 
@@ -16,6 +18,10 @@ type VisibleAction = WillAppearEvent<UsageSettings>["action"];
 @action({ UUID: "com.marco.chatgato.usage" })
 export class UsageAction extends SingletonAction<UsageSettings> {
   private readonly store = new CodexStore();
+  private readonly liveUsage = new CodexAppServerUsageClient();
+  private readonly usage = new CodexUsageService(this.liveUsage.readUsage, () =>
+    this.store.latestUsage(),
+  );
   private readonly poller = new ActionPoller();
 
   override async onWillAppear(
@@ -51,7 +57,7 @@ export class UsageAction extends SingletonAction<UsageSettings> {
 
   private async refresh(actionInstance: VisibleAction): Promise<void> {
     try {
-      const usage = await this.store.latestUsage();
+      const usage = await this.usage.latestUsage();
       await Promise.all([
         actionInstance.setImage(usageImage(usage)),
         actionInstance.setTitle(""),

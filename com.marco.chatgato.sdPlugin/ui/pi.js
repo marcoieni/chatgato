@@ -335,7 +335,7 @@
       "Seconds between local usage reads.",
     );
     note.textContent =
-      "The key shows the percentage left in each rate-limit window (for example, 5H and 1W). Press it to refresh immediately. Data updates locally whenever Codex reports usage for a chat.";
+      "The key shows the live percentage left in each rate-limit window (for example, 5H and 1W). Press it to refresh immediately. Local rollout data is used only when Codex's app-server is unavailable.";
   }
 
   function bind() {

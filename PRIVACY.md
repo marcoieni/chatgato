@@ -13,9 +13,10 @@ ChatGato may process the following data on your computer:
 - **Codex chat data:** chat identifiers, titles or previews, workspace paths,
   timestamps, reasoning settings, chat status, plan mode, and Codex usage-limit
   information. ChatGato reads this data from Codex's local database,
-  configuration, cache, and rollout files. Rollout data can contain prompts,
+  configuration, cache, and rollout files, and reads live usage limits through
+  the documented local Codex app-server. Rollout data can contain prompts,
   responses, tool calls, and chat settings; ChatGato reads recent rollout data
-  locally to derive status, mode, and usage information.
+  locally to derive status and mode, and as a usage compatibility fallback.
 - **ChatGato settings:** the selected chat slot, workspace filter, polling
   interval, completion acknowledgement, starter prompt, workspace path,
   auto-submit preference, and related action settings. The Stream Deck software
@@ -44,6 +45,11 @@ When you use a prompt or workspace action, ChatGato passes the configured values
 locally to the installed ChatGPT app at your request. ChatGPT and Codex handle
 that data under their own terms and privacy policies. ChatGato does not control
 any subsequent processing by those products.
+
+For usage refreshes, ChatGato launches the installed Codex binary and asks its
+local app-server for account rate limits. Codex performs its normal authenticated
+service request; ChatGato does not read the credentials or call that remote
+service directly.
 
 If you use remote projects, chat metadata travels only between your computer and
 the SSH host you configured, through your system SSH client. ChatGato does not
