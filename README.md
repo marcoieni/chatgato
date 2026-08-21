@@ -12,7 +12,7 @@ No API key required.
 - Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents are excluded. On press, the keys open the chat.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
 - **Prompt** starts a chat with any custom prompt
-- Buttons to run shortcuts in Codex, such as:
+- Buttons and controls for Codex, such as:
   - **Allow** / **Decline**
   - **Push to Talk** / **Tap to Talk**
   - **Fast Mode** (shows if active)
@@ -38,21 +38,20 @@ Optionally set an absolute workspace path to filter the keys to one project.
 - Stream Deck 7.1 or newer
 - macOS 13+ or Windows 10+
 - A Stream Deck device; Stream Deck+ is optional for dial control
-- The Search Chats, Fast, and Plan keyboard shortcuts configured in ChatGPT as described below
+- The Search Chats and Plan keyboard shortcuts configured in ChatGPT as described below
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
 
 ### Required keyboard shortcut setup
 
-ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign them by default. Configure them once; ChatGato reads your chosen bindings from `.codex/keybindings.json` whenever an action runs:
+ChatGPT exposes app-scoped Search Chats and Plan commands, but does not assign them by default. Configure them once; ChatGato reads your chosen bindings from `.codex/keybindings.json` whenever an action runs:
 
 1. Open ChatGPT desktop.
 2. Open **Settings → Keyboard Shortcuts**.
 3. Search for **“Switch chat”** and assign any shortcut you prefer.
-4. Search for **“Toggle Fast mode”** and assign any shortcut you prefer.
-5. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
+4. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
 
-**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted chats; local chats use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote chat title, so shortcut changes take effect immediately.
+**Remote Agent Status navigation and the ChatGato Plan button will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted chats; local chats use exact Codex links. Fast Mode is persisted directly through Codex's local app-server and does not require a keyboard shortcut. ChatGato reads and validates the current Search Chats binding before sending a remote chat title, so shortcut changes take effect immediately.
 
 ## Build and install for development
 

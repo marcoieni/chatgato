@@ -30,7 +30,6 @@ export const COMMANDS: Record<string, ControllerCommand> = {
   settings: { kind: "url", value: "codex://settings" },
   scheduled: { kind: "url", value: "codex://automations" },
   skills: { kind: "url", value: "codex://skills" },
-  toggleFast: { kind: "shortcut", value: "toggleFastMode" },
   togglePlan: { kind: "shortcut", value: "togglePlanMode" },
   navigateBack: { kind: "shortcut", value: "navigateBack" },
   navigateForward: { kind: "shortcut", value: "navigateForward" },
@@ -46,10 +45,6 @@ const CUSTOM_SHORTCUT_COMMANDS: Record<
   string,
   { command: string; label: string }
 > = {
-  toggleFastMode: {
-    command: "composer.toggleFastMode",
-    label: "Toggle Fast mode",
-  },
   togglePlanMode: {
     command: "composer.togglePlanMode",
     label: "Toggle plan mode",
