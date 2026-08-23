@@ -28,28 +28,34 @@ async function fakeSshScript(source: string): Promise<string> {
   return path;
 }
 
+function remoteSelectionState(projectId: string) {
+  return {
+    "codex-managed-remote-connections": [
+      { hostId: "selected-host", alias: "devbox" },
+    ],
+    "remote-projects": [
+      {
+        id: "selected-project-id",
+        hostId: "selected-host",
+        remotePath: "/srv/work",
+      },
+      {
+        id: "other-project-id",
+        hostId: "selected-host",
+        remotePath: "/srv/other",
+      },
+    ],
+    "selected-project": { type: "remote", projectId },
+  };
+}
+
 describe("remote Codex chat discovery", () => {
   it("reads and refreshes Fast mode for the selected remote project", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
     temporaryDirectories.push(home);
     await writeFile(
       join(home, ".codex-global-state.json"),
-      JSON.stringify({
-        "codex-managed-remote-connections": [
-          { hostId: "selected-host", alias: "devbox" },
-        ],
-        "remote-projects": [
-          {
-            id: "selected-project-id",
-            hostId: "selected-host",
-            remotePath: "/srv/work",
-          },
-        ],
-        "selected-project": {
-          type: "remote",
-          projectId: "selected-project-id",
-        },
-      }),
+      JSON.stringify(remoteSelectionState("selected-project-id")),
     );
     const readFastMode = vi
       .fn()
@@ -57,11 +63,24 @@ describe("remote Codex chat discovery", () => {
       .mockResolvedValue(true);
     const store = new RemoteCodexStore(async () => [], readFastMode);
 
-    await expect(store.readFastModeEnabled(home)).resolves.toBe(false);
-    await expect(store.readFastModeEnabled(home)).resolves.toBe(false);
+    const initial = await store.readFastModeState(home);
+    expect(initial).toMatchObject({ enabled: false });
+    await expect(store.readFastModeState(home)).resolves.toEqual(initial);
     expect(readFastMode).toHaveBeenCalledOnce();
 
-    await expect(store.readFastModeEnabled(home, true)).resolves.toBe(true);
+    await writeFile(
+      join(home, ".codex-global-state.json"),
+      JSON.stringify(remoteSelectionState("other-project-id")),
+    );
+    const otherProject = await store.readFastModeState(home);
+    expect(otherProject).toMatchObject({ enabled: false });
+    expect(otherProject?.selectionId).not.toBe(initial?.selectionId);
+    expect(readFastMode).toHaveBeenCalledOnce();
+
+    await expect(store.readFastModeState(home, true)).resolves.toEqual({
+      enabled: true,
+      selectionId: otherProject?.selectionId,
+    });
     expect(readFastMode).toHaveBeenCalledTimes(2);
     expect(readFastMode).toHaveBeenLastCalledWith(
       expect.objectContaining({

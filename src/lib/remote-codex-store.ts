@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, posix, win32 } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { MAX_AGENT_SLOTS } from "./agent-slots.js";
+import { fastModeEnabledFromConfig } from "./fast-mode-config.js";
 import { inferRolloutStatus, parseRolloutLines } from "./rollout-status.js";
 import type { AgentStatus, RolloutRecord } from "../types.js";
 
@@ -69,6 +70,11 @@ export type RemoteHostThreadReader = (
 export type RemoteHostFastModeReader = (
   connection: RemoteConnection,
 ) => Promise<boolean>;
+
+export type RemoteFastModeState = {
+  enabled: boolean;
+  selectionId: string;
+};
 
 export type RemoteHostFailure = {
   atMs: number;
@@ -324,10 +330,10 @@ export class RemoteCodexStore {
   ) {}
 
   /** Reads Fast mode from the host backing the desktop app's selected project. */
-  readonly readFastModeEnabled = async (
+  readonly readFastModeState = async (
     codexHome: string,
     forceRefresh = false,
-  ): Promise<boolean | null> => {
+  ): Promise<RemoteFastModeState | null> => {
     const state = await readGlobalState(codexHome);
     const selected = selectedRemoteConnection(state);
     if (!selected.isRemote) return null;
@@ -338,7 +344,7 @@ export class RemoteCodexStore {
       );
     }
 
-    const { connection } = selected;
+    const { connection, selectionId } = selected;
     const key = remoteHostCacheKey(codexHome, connection.hostId);
     const signature = JSON.stringify(connection);
     let entry = this.fastModeCache.get(key);
@@ -346,13 +352,15 @@ export class RemoteCodexStore {
       entry = { expiresAtMs: 0, signature };
       this.fastModeCache.set(key, entry);
     }
-    if (entry.refresh) return entry.refresh;
+    if (entry.refresh) {
+      return { enabled: await entry.refresh, selectionId };
+    }
     if (
       !forceRefresh &&
       entry.value !== undefined &&
       entry.expiresAtMs > Date.now()
     ) {
-      return entry.value;
+      return { enabled: entry.value, selectionId };
     }
 
     const refresh = this.readHostFastMode(connection);
@@ -363,7 +371,7 @@ export class RemoteCodexStore {
         entry.value = value;
         entry.expiresAtMs = Date.now() + REMOTE_FAST_MODE_CACHE_MS;
       }
-      return value;
+      return { enabled: value, selectionId };
     } finally {
       if (this.fastModeCache.get(key) === entry) entry.refresh = undefined;
     }
@@ -462,11 +470,9 @@ export async function readFastModeFromHost(
         `Invalid config/read config from ${connection.hostId}`,
       );
     }
-    const features = asObject(config.features);
-    const serviceTier = config.service_tier;
-    return (
-      (serviceTier === "fast" || serviceTier === "priority") &&
-      features?.fast_mode !== false
+    return fastModeEnabledFromConfig(
+      config.service_tier,
+      asObject(config.features)?.fast_mode,
     );
   } finally {
     session.close();
@@ -787,10 +793,12 @@ async function readGlobalState(codexHome: string): Promise<unknown | null> {
   }
 }
 
-function selectedRemoteConnection(
-  state: unknown,
-):
-  | { connection: RemoteConnection | null; isRemote: true }
+function selectedRemoteConnection(state: unknown):
+  | {
+      connection: RemoteConnection | null;
+      isRemote: true;
+      selectionId: string;
+    }
   | { isRemote: false } {
   const root = asObject(state);
   const selectedProject = asObject(root?.["selected-project"]);
@@ -807,15 +815,16 @@ function selectedRemoteConnection(
       : typeof root?.["selected-remote-host-id"] === "string"
         ? root["selected-remote-host-id"]
         : null;
+  const selectionId = JSON.stringify(["remote", hostId, projectId]);
   const rawConnections = root?.["codex-managed-remote-connections"];
   if (!hostId || !Array.isArray(rawConnections)) {
-    return { connection: null, isRemote: true };
+    return { connection: null, isRemote: true, selectionId };
   }
 
   const connection = rawConnections
     .map(parseRemoteConnection)
     .find((candidate) => candidate?.hostId === hostId);
-  return { connection: connection ?? null, isRemote: true };
+  return { connection: connection ?? null, isRemote: true, selectionId };
 }
 
 function remoteProjectGroups(state: unknown): Map<string, RemoteProjectGroup> {

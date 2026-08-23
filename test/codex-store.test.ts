@@ -355,7 +355,10 @@ describe("CodexStore", () => {
   it("reads fast mode from the desktop app's selected remote host", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-fast-mode-"));
     temporaryDirectories.push(home);
-    const readRemoteFastMode = vi.fn(async () => true);
+    const readRemoteFastMode = vi.fn(async () => ({
+      enabled: true,
+      selectionId: "remote:selected-project",
+    }));
     const store = new CodexStore(
       home,
       async () => [],
@@ -386,6 +389,7 @@ describe("CodexStore", () => {
     await expect(store.fastModeStates()).resolves.toEqual({
       localEnabled: true,
       remoteEnabled: null,
+      selectionId: "local",
     });
   });
 

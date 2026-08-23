@@ -57,7 +57,7 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     this.toggling = true;
 
     try {
-      const previous = await this.store.fastModeStates();
+      const previous = await this.store.fastModeStates(true);
       this.lastStates = previous;
       await executeCommand("toggleFast");
       const change = await this.waitForState(previous);
@@ -92,7 +92,9 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     const states = await this.store.fastModeStates();
     if (this.lastStates) {
       this.activeScope =
-        changedScope(this.lastStates, states) ?? this.activeScope;
+        this.lastStates.selectionId !== states.selectionId
+          ? selectedScope(states)
+          : (changedScope(this.lastStates, states) ?? this.activeScope);
     }
     this.lastStates = states;
     await this.render(
@@ -151,4 +153,8 @@ function enabledForScope(
     return states.localEnabled;
   }
   return states.remoteEnabled;
+}
+
+function selectedScope(states: FastModeStates): FastModeScope {
+  return states.remoteEnabled === null ? "local" : "remote";
 }

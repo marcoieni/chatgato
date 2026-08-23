@@ -4,9 +4,11 @@ import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { usageFromRollout } from "./codex-usage.js";
+import { fastModeEnabledFromConfig } from "./fast-mode-config.js";
 import {
   isWithinRemotePath,
   RemoteCodexStore,
+  type RemoteFastModeState,
   type RemotePlatform,
   type RemoteThreadRow,
 } from "./remote-codex-store.js";
@@ -107,6 +109,7 @@ export type ReasoningSnapshot = {
 export type FastModeStates = {
   localEnabled: boolean;
   remoteEnabled: boolean | null;
+  selectionId: string;
 };
 
 const TAIL_BYTES = 512 * 1024;
@@ -124,7 +127,7 @@ type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
 type RemoteFastModeReader = (
   codexHome: string,
   forceRefresh?: boolean,
-) => Promise<boolean | null>;
+) => Promise<RemoteFastModeState | null>;
 
 const THREAD_DESCRIPTORS_CACHE_MS = 1_000;
 const defaultRemoteCodexStore = new RemoteCodexStore();
@@ -137,7 +140,7 @@ export class CodexStore {
     codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
     private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
     private readonly readRemoteThreads: RemoteThreadReader = defaultRemoteCodexStore.readThreadRows,
-    private readonly readRemoteFastMode: RemoteFastModeReader = defaultRemoteCodexStore.readFastModeEnabled,
+    private readonly readRemoteFastMode: RemoteFastModeReader = defaultRemoteCodexStore.readFastModeState,
   ) {
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
@@ -375,13 +378,17 @@ export class CodexStore {
   }
 
   async fastModeStates(forceRemoteRefresh = false): Promise<FastModeStates> {
-    const [localEnabled, remoteEnabled] = await Promise.all([
+    const [localEnabled, remoteState] = await Promise.all([
       this.localFastModeEnabled(),
       this.readRemoteFastMode(this.codexHome, forceRemoteRefresh).catch(
         () => null,
       ),
     ]);
-    return { localEnabled, remoteEnabled };
+    return {
+      localEnabled,
+      remoteEnabled: remoteState?.enabled ?? null,
+      selectionId: remoteState?.selectionId ?? "local",
+    };
   }
 
   private async localFastModeEnabled(): Promise<boolean> {
@@ -397,10 +404,7 @@ export class CodexStore {
     const featureEnabled = readTomlBoolean(config, "features", "fast_mode");
     // Codex CLI documents "fast"; the desktop app currently persists the same mode as
     // "priority". Accept both representations so the Stream Deck state follows either surface.
-    return (
-      (serviceTier === "fast" || serviceTier === "priority") &&
-      featureEnabled !== false
-    );
+    return fastModeEnabledFromConfig(serviceTier, featureEnabled);
   }
 
   async planModeEnabled(): Promise<boolean> {
