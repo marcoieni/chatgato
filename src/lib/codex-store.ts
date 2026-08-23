@@ -104,6 +104,11 @@ export type ReasoningSnapshot = {
   threadId: string;
 };
 
+export type FastModeStates = {
+  localEnabled: boolean;
+  remoteEnabled: boolean | null;
+};
+
 const TAIL_BYTES = 512 * 1024;
 const APPROVAL_CONTEXT_CACHE_LIMIT = 100;
 
@@ -116,8 +121,13 @@ const approvalContextCache = new Map<string, ApprovalContextCacheEntry>();
 
 type RolloutTailReader = (path: string) => Promise<RolloutRecord[]>;
 type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
+type RemoteFastModeReader = (
+  codexHome: string,
+  forceRefresh?: boolean,
+) => Promise<boolean | null>;
 
 const THREAD_DESCRIPTORS_CACHE_MS = 1_000;
+const defaultRemoteCodexStore = new RemoteCodexStore();
 
 export class CodexStore {
   readonly codexHome: string;
@@ -126,8 +136,8 @@ export class CodexStore {
   constructor(
     codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
     private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
-    private readonly readRemoteThreads: RemoteThreadReader = new RemoteCodexStore()
-      .readThreadRows,
+    private readonly readRemoteThreads: RemoteThreadReader = defaultRemoteCodexStore.readThreadRows,
+    private readonly readRemoteFastMode: RemoteFastModeReader = defaultRemoteCodexStore.readFastModeEnabled,
   ) {
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
@@ -359,7 +369,22 @@ export class CodexStore {
     );
   }
 
-  async fastModeEnabled(): Promise<boolean> {
+  async fastModeEnabled(forceRemoteRefresh = false): Promise<boolean> {
+    const states = await this.fastModeStates(forceRemoteRefresh);
+    return states.remoteEnabled ?? states.localEnabled;
+  }
+
+  async fastModeStates(forceRemoteRefresh = false): Promise<FastModeStates> {
+    const [localEnabled, remoteEnabled] = await Promise.all([
+      this.localFastModeEnabled(),
+      this.readRemoteFastMode(this.codexHome, forceRemoteRefresh).catch(
+        () => null,
+      ),
+    ]);
+    return { localEnabled, remoteEnabled };
+  }
+
+  private async localFastModeEnabled(): Promise<boolean> {
     let config: string;
     try {
       config = await readFile(join(this.codexHome, "config.toml"), "utf8");

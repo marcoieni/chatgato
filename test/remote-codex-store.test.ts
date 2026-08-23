@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   RemoteCodexStore,
+  readFastModeFromHost,
   readThreadsFromHost,
   remoteAgentStatus,
   type RemoteRolloutTailReader,
@@ -28,6 +29,73 @@ async function fakeSshScript(source: string): Promise<string> {
 }
 
 describe("remote Codex chat discovery", () => {
+  it("reads and refreshes Fast mode for the selected remote project", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
+    temporaryDirectories.push(home);
+    await writeFile(
+      join(home, ".codex-global-state.json"),
+      JSON.stringify({
+        "codex-managed-remote-connections": [
+          { hostId: "selected-host", alias: "devbox" },
+        ],
+        "remote-projects": [
+          {
+            id: "selected-project-id",
+            hostId: "selected-host",
+            remotePath: "/srv/work",
+          },
+        ],
+        "selected-project": {
+          type: "remote",
+          projectId: "selected-project-id",
+        },
+      }),
+    );
+    const readFastMode = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true);
+    const store = new RemoteCodexStore(async () => [], readFastMode);
+
+    await expect(store.readFastModeEnabled(home)).resolves.toBe(false);
+    await expect(store.readFastModeEnabled(home)).resolves.toBe(false);
+    expect(readFastMode).toHaveBeenCalledOnce();
+
+    await expect(store.readFastModeEnabled(home, true)).resolves.toBe(true);
+    expect(readFastMode).toHaveBeenCalledTimes(2);
+    expect(readFastMode).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        destination: "devbox",
+        hostId: "selected-host",
+      }),
+    );
+  });
+
+  it("reads Fast mode through the remote Codex app server", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "config/read") {
+    send({ id: message.id, result: {
+      config: { service_tier: "priority", features: { fast_mode: true } }
+    } });
+  }
+});
+`);
+
+    await expect(
+      readFastModeFromHost(
+        { destination: "devbox", hostId: "selected-host" },
+        fakeSsh,
+      ),
+    ).resolves.toBe(true);
+  });
+
   it("reads each configured SSH project's chats", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-remote-state-"));
     temporaryDirectories.push(home);

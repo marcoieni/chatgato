@@ -9,6 +9,7 @@ import type { AgentStatus, RolloutRecord } from "../types.js";
 const APP_SERVER_TIMEOUT_MS = 8_000;
 const INITIAL_HOST_WAIT_MS = 500;
 const INITIAL_HOST_SETTLE_MS = 25;
+const REMOTE_FAST_MODE_CACHE_MS = 2_000;
 const REMOTE_HOST_CACHE_MS = 1_000;
 const REMOTE_ROLLOUT_TAIL_BYTES = 512 * 1024;
 const THREADS_PER_PAGE = 100;
@@ -17,7 +18,7 @@ type JsonObject = Record<string, unknown>;
 
 export type RemotePlatform = "posix" | "windows";
 
-type RemoteConnection = {
+export type RemoteConnection = {
   destination: string;
   hostId: string;
   identity?: string;
@@ -65,6 +66,10 @@ export type RemoteHostThreadReader = (
   projectPaths: readonly string[],
 ) => Promise<RemoteThreadRow[]>;
 
+export type RemoteHostFastModeReader = (
+  connection: RemoteConnection,
+) => Promise<boolean>;
+
 export type RemoteHostFailure = {
   atMs: number;
   hostId: string;
@@ -84,6 +89,13 @@ type RemoteHostCacheEntry = {
   refresh?: Promise<void>;
   rows: RemoteThreadRow[];
   signature: string;
+};
+
+type RemoteFastModeCacheEntry = {
+  expiresAtMs: number;
+  refresh?: Promise<boolean>;
+  signature: string;
+  value?: boolean;
 };
 
 export type RemoteRolloutTailReader = (
@@ -303,11 +315,59 @@ class AppServerSession {
 }
 
 export class RemoteCodexStore {
+  private readonly fastModeCache = new Map<string, RemoteFastModeCacheEntry>();
   private readonly hostCache = new Map<string, RemoteHostCacheEntry>();
 
   constructor(
     private readonly readHostThreads: RemoteHostThreadReader = readThreadsFromHost,
+    private readonly readHostFastMode: RemoteHostFastModeReader = readFastModeFromHost,
   ) {}
+
+  /** Reads Fast mode from the host backing the desktop app's selected project. */
+  readonly readFastModeEnabled = async (
+    codexHome: string,
+    forceRefresh = false,
+  ): Promise<boolean | null> => {
+    const state = await readGlobalState(codexHome);
+    const selected = selectedRemoteConnection(state);
+    if (!selected.isRemote) return null;
+    if (!selected.connection) {
+      throw new RemoteReadError(
+        "transport",
+        "The selected Codex remote project has no configured SSH connection",
+      );
+    }
+
+    const { connection } = selected;
+    const key = remoteHostCacheKey(codexHome, connection.hostId);
+    const signature = JSON.stringify(connection);
+    let entry = this.fastModeCache.get(key);
+    if (!entry || entry.signature !== signature) {
+      entry = { expiresAtMs: 0, signature };
+      this.fastModeCache.set(key, entry);
+    }
+    if (entry.refresh) return entry.refresh;
+    if (
+      !forceRefresh &&
+      entry.value !== undefined &&
+      entry.expiresAtMs > Date.now()
+    ) {
+      return entry.value;
+    }
+
+    const refresh = this.readHostFastMode(connection);
+    entry.refresh = refresh;
+    try {
+      const value = await refresh;
+      if (this.fastModeCache.get(key) === entry) {
+        entry.value = value;
+        entry.expiresAtMs = Date.now() + REMOTE_FAST_MODE_CACHE_MS;
+      }
+      return value;
+    } finally {
+      if (this.fastModeCache.get(key) === entry) entry.refresh = undefined;
+    }
+  };
 
   /**
    * Reads SSH projects saved by the desktop app and asks each host's Codex app
@@ -317,14 +377,8 @@ export class RemoteCodexStore {
   readonly readThreadRows = async (
     codexHome: string,
   ): Promise<RemoteThreadRow[]> => {
-    let state: unknown;
-    try {
-      state = JSON.parse(
-        await readFile(join(codexHome, ".codex-global-state.json"), "utf8"),
-      ) as unknown;
-    } catch {
-      return [];
-    }
+    const state = await readGlobalState(codexHome);
+    if (state === null) return [];
 
     const groups = remoteProjectGroups(state);
     const activeKeys = new Set<string>();
@@ -386,6 +440,39 @@ export class RemoteCodexStore {
   }
 }
 
+export async function readFastModeFromHost(
+  connection: RemoteConnection,
+  sshCommand = "ssh",
+): Promise<boolean> {
+  const session = new AppServerSession(connection, sshCommand);
+  try {
+    await initializeAppServer(session, connection.hostId);
+    const message = await session.request("config/read", {
+      includeLayers: false,
+    });
+    const result = decodeResultObject(
+      connection.hostId,
+      "config/read",
+      message,
+    );
+    const config = asObject(result.config);
+    if (!config) {
+      throw new RemoteReadError(
+        "protocol",
+        `Invalid config/read config from ${connection.hostId}`,
+      );
+    }
+    const features = asObject(config.features);
+    const serviceTier = config.service_tier;
+    return (
+      (serviceTier === "fast" || serviceTier === "priority") &&
+      features?.fast_mode !== false
+    );
+  } finally {
+    session.close();
+  }
+}
+
 export async function readThreadsFromHost(
   connection: RemoteConnection,
   projectPaths: readonly string[],
@@ -399,21 +486,11 @@ export async function readThreadsFromHost(
   let threads: Map<string, AppServerThread>;
   let turns: Map<string, AppServerTurn>;
   try {
-    const initializeMessage = await session.request("initialize", {
-      capabilities: { experimentalApi: true },
-      clientInfo: {
-        name: "chatgato",
-        title: "ChatGato",
-        version: "0.1.0",
-      },
-    });
-    const initializeResult = decodeResultObject(
+    const initializeResult = await initializeAppServer(
+      session,
       connection.hostId,
-      "initialize",
-      initializeMessage,
     );
     remotePlatform = detectRemotePlatform(initializeResult, projectPaths);
-    session.notify("initialized", {});
 
     const normalizedProjectPaths = normalizeRemotePaths(
       projectPaths,
@@ -478,6 +555,23 @@ export async function readThreadsFromHost(
       .filter((status): status is AgentStatus => status !== undefined);
     return [subtaskStatuses.length > 0 ? { ...row, subtaskStatuses } : row];
   });
+}
+
+async function initializeAppServer(
+  session: AppServerSession,
+  hostId: string,
+): Promise<JsonObject> {
+  const message = await session.request("initialize", {
+    capabilities: { experimentalApi: true },
+    clientInfo: {
+      name: "chatgato",
+      title: "ChatGato",
+      version: "0.1.0",
+    },
+  });
+  const result = decodeResultObject(hostId, "initialize", message);
+  session.notify("initialized", {});
+  return result;
 }
 
 async function readAppServerThreads(
@@ -681,6 +775,47 @@ function remoteThreadRow(
     title,
     updatedAtMs,
   };
+}
+
+async function readGlobalState(codexHome: string): Promise<unknown | null> {
+  try {
+    return JSON.parse(
+      await readFile(join(codexHome, ".codex-global-state.json"), "utf8"),
+    ) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function selectedRemoteConnection(
+  state: unknown,
+):
+  | { connection: RemoteConnection | null; isRemote: true }
+  | { isRemote: false } {
+  const root = asObject(state);
+  const selectedProject = asObject(root?.["selected-project"]);
+  if (selectedProject?.type !== "remote") return { isRemote: false };
+
+  const projectId = selectedProject.projectId;
+  const remoteProjects = root?.["remote-projects"];
+  const selectedProjectRecord = Array.isArray(remoteProjects)
+    ? remoteProjects.map(asObject).find((project) => project?.id === projectId)
+    : null;
+  const hostId =
+    typeof selectedProjectRecord?.hostId === "string"
+      ? selectedProjectRecord.hostId
+      : typeof root?.["selected-remote-host-id"] === "string"
+        ? root["selected-remote-host-id"]
+        : null;
+  const rawConnections = root?.["codex-managed-remote-connections"];
+  if (!hostId || !Array.isArray(rawConnections)) {
+    return { connection: null, isRemote: true };
+  }
+
+  const connection = rawConnections
+    .map(parseRemoteConnection)
+    .find((candidate) => candidate?.hostId === hostId);
+  return { connection: connection ?? null, isRemote: true };
 }
 
 function remoteProjectGroups(state: unknown): Map<string, RemoteProjectGroup> {

@@ -10,7 +10,7 @@ import streamDeck from "@elgato/streamdeck";
 import { setTimeout as delay } from "node:timers/promises";
 import { executeCommand } from "../lib/codex-controller.js";
 import { ActionPoller } from "../lib/action-poller.js";
-import { CodexStore } from "../lib/codex-store.js";
+import { CodexStore, type FastModeStates } from "../lib/codex-store.js";
 import { fastModeImage } from "../lib/visuals.js";
 import type { FastModeSettings } from "../types.js";
 
@@ -20,11 +20,20 @@ const CONFIRM_TIMEOUT_MS = 2_000;
 const CONFIRM_INTERVAL_MS = 100;
 
 type VisibleAction = WillAppearEvent<FastModeSettings>["action"];
+type FastModeScope = "local" | "remote";
+
+type FastModeChange = {
+  enabled: boolean;
+  scope: FastModeScope;
+  states: FastModeStates;
+};
 
 @action({ UUID: "com.marco.chatgato.fast-mode" })
 export class FastModeAction extends SingletonAction<FastModeSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private activeScope: FastModeScope | null = null;
+  private lastStates: FastModeStates | null = null;
   private toggling = false;
 
   override async onWillAppear(
@@ -48,15 +57,17 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     this.toggling = true;
 
     try {
-      const previous = await this.store.fastModeEnabled();
-      const expected = !previous;
+      const previous = await this.store.fastModeStates();
+      this.lastStates = previous;
       await executeCommand("toggleFast");
-      const enabled = await this.waitForState(expected);
-      await this.render(ev.action, enabled);
-      if (enabled !== expected) {
+      const change = await this.waitForState(previous);
+      if (!change) {
         throw new Error("Codex did not change its persisted fast-mode state");
       }
-      logger.info(`${enabled ? "Enabled" : "Disabled"} fast mode`);
+      this.activeScope = change.scope;
+      this.lastStates = change.states;
+      await this.render(ev.action, change.enabled);
+      logger.info(`${change.enabled ? "Enabled" : "Disabled"} fast mode`);
     } catch (error) {
       logger.error("Failed to toggle fast mode", error);
       await this.refresh(ev.action).catch(() => undefined);
@@ -78,17 +89,32 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
   }
 
   private async refresh(actionInstance: VisibleAction): Promise<void> {
-    await this.render(actionInstance, await this.store.fastModeEnabled());
+    const states = await this.store.fastModeStates();
+    if (this.lastStates) {
+      this.activeScope =
+        changedScope(this.lastStates, states) ?? this.activeScope;
+    }
+    this.lastStates = states;
+    await this.render(
+      actionInstance,
+      enabledForScope(states, this.activeScope),
+    );
   }
 
-  private async waitForState(expected: boolean): Promise<boolean> {
+  private async waitForState(
+    previous: FastModeStates,
+  ): Promise<FastModeChange | null> {
     const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
-    let enabled = await this.store.fastModeEnabled();
-    while (enabled !== expected && Date.now() < deadline) {
+    let states = await this.store.fastModeStates(true);
+    let scope = changedScope(previous, states);
+    while (!scope && Date.now() < deadline) {
       await delay(CONFIRM_INTERVAL_MS);
-      enabled = await this.store.fastModeEnabled();
+      states = await this.store.fastModeStates(true);
+      scope = changedScope(previous, states);
     }
-    return enabled;
+    return scope
+      ? { enabled: enabledForScope(states, scope), scope, states }
+      : null;
   }
 
   private async render(
@@ -100,4 +126,29 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
       actionInstance.setTitle(enabled ? "FAST\nON" : "FAST\nOFF"),
     ]);
   }
+}
+
+function changedScope(
+  previous: FastModeStates,
+  current: FastModeStates,
+): FastModeScope | null {
+  if (current.localEnabled !== previous.localEnabled) return "local";
+  if (
+    previous.remoteEnabled !== null &&
+    current.remoteEnabled !== null &&
+    current.remoteEnabled !== previous.remoteEnabled
+  ) {
+    return "remote";
+  }
+  return null;
+}
+
+function enabledForScope(
+  states: FastModeStates,
+  scope: FastModeScope | null,
+): boolean {
+  if (scope === "local" || states.remoteEnabled === null) {
+    return states.localEnabled;
+  }
+  return states.remoteEnabled;
 }

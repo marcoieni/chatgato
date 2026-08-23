@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { FastModeStates } from "../src/lib/codex-store.js";
 import type { FastModeSettings } from "../src/types.js";
 
 const mocks = vi.hoisted(() => ({
-  fastModeEnabled: vi.fn<() => Promise<boolean>>(),
+  fastModeStates: vi.fn<() => Promise<FastModeStates>>(),
   executeCommand: vi.fn<(command: string) => Promise<void>>(),
 }));
 
@@ -12,7 +13,7 @@ vi.mock("../src/lib/codex-controller.js", () => ({
 
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
-    fastModeEnabled = mocks.fastModeEnabled;
+    fastModeStates = mocks.fastModeStates;
   },
 }));
 
@@ -36,14 +37,19 @@ function actionHarness(initial: FastModeSettings = {}) {
 describe("FastModeAction", () => {
   beforeEach(() => {
     vi.useRealTimers();
-    mocks.fastModeEnabled.mockReset();
-    mocks.fastModeEnabled.mockResolvedValue(false);
+    mocks.fastModeStates.mockReset();
+    mocks.fastModeStates.mockResolvedValue({
+      localEnabled: false,
+      remoteEnabled: null,
+    });
     mocks.executeCommand.mockReset();
     mocks.executeCommand.mockResolvedValue();
   });
 
   it("routes through the Fast keyboard shortcut and confirms the on state", async () => {
-    mocks.fastModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
+    mocks.fastModeStates
+      .mockResolvedValueOnce({ localEnabled: false, remoteEnabled: null })
+      .mockResolvedValue({ localEnabled: true, remoteEnabled: null });
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
@@ -53,6 +59,7 @@ describe("FastModeAction", () => {
     } as never);
 
     expect(mocks.executeCommand).toHaveBeenCalledWith("toggleFast");
+    expect(mocks.fastModeStates).toHaveBeenLastCalledWith(true);
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     expect(harness.action.setImage).toHaveBeenLastCalledWith(
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
@@ -65,7 +72,9 @@ describe("FastModeAction", () => {
   });
 
   it("changes back to off on the next press", async () => {
-    mocks.fastModeEnabled.mockResolvedValueOnce(true).mockResolvedValue(false);
+    mocks.fastModeStates
+      .mockResolvedValueOnce({ localEnabled: true, remoteEnabled: null })
+      .mockResolvedValue({ localEnabled: false, remoteEnabled: null });
     const harness = actionHarness({ enabled: true });
     const fastMode = new FastModeAction();
 
@@ -99,7 +108,6 @@ describe("FastModeAction", () => {
 
   it("keeps the off state and alerts when persisted state does not change", async () => {
     vi.useFakeTimers();
-    mocks.fastModeEnabled.mockResolvedValue(false);
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
@@ -115,7 +123,6 @@ describe("FastModeAction", () => {
   });
 
   it("renders Codex's persisted state instead of a stale Stream Deck setting", async () => {
-    mocks.fastModeEnabled.mockResolvedValue(false);
     const harness = actionHarness({ enabled: true });
     const fastMode = new FastModeAction();
 
@@ -131,7 +138,9 @@ describe("FastModeAction", () => {
 
   it("polls Codex so changes made in the app update the key", async () => {
     vi.useFakeTimers();
-    mocks.fastModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
+    mocks.fastModeStates
+      .mockResolvedValueOnce({ localEnabled: false, remoteEnabled: null })
+      .mockResolvedValue({ localEnabled: true, remoteEnabled: null });
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
@@ -145,5 +154,44 @@ describe("FastModeAction", () => {
 
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
     fastMode.onWillDisappear({ action: harness.action } as never);
+  });
+
+  it("detects a local toggle when the desktop still reports a remote project", async () => {
+    mocks.fastModeStates
+      .mockResolvedValueOnce({ localEnabled: false, remoteEnabled: false })
+      .mockResolvedValue({ localEnabled: true, remoteEnabled: false });
+    const harness = actionHarness();
+    const fastMode = new FastModeAction();
+
+    await fastMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
+    expect(harness.action.showAlert).not.toHaveBeenCalled();
+
+    await fastMode.onWillAppear({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
+    fastMode.onWillDisappear({ action: harness.action } as never);
+  });
+
+  it("detects a remote toggle independently from the local config", async () => {
+    mocks.fastModeStates
+      .mockResolvedValueOnce({ localEnabled: false, remoteEnabled: false })
+      .mockResolvedValue({ localEnabled: false, remoteEnabled: true });
+    const harness = actionHarness();
+    const fastMode = new FastModeAction();
+
+    await fastMode.onKeyDown({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
+    expect(harness.action.showAlert).not.toHaveBeenCalled();
   });
 });
