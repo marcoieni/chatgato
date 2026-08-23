@@ -8,8 +8,8 @@ import {
 } from "@elgato/streamdeck";
 import streamDeck from "@elgato/streamdeck";
 import { setTimeout as delay } from "node:timers/promises";
+import { executeCommand } from "../lib/codex-controller.js";
 import { ActionPoller } from "../lib/action-poller.js";
-import { CodexAppServerConfigClient } from "../lib/codex-app-server.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { fastModeImage } from "../lib/visuals.js";
 import type { FastModeSettings } from "../types.js";
@@ -23,7 +23,6 @@ type VisibleAction = WillAppearEvent<FastModeSettings>["action"];
 
 @action({ UUID: "com.marco.chatgato.fast-mode" })
 export class FastModeAction extends SingletonAction<FastModeSettings> {
-  private readonly config = new CodexAppServerConfigClient();
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
   private toggling = false;
@@ -51,7 +50,7 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     try {
       const previous = await this.store.fastModeEnabled();
       const expected = !previous;
-      await this.config.setFastMode(expected);
+      await executeCommand("toggleFast");
       const enabled = await this.waitForState(expected);
       await this.render(ev.action, enabled);
       if (enabled !== expected) {

@@ -37,7 +37,10 @@ export type NewChatSettings = {
 
 export type PushToTalkSettings = Record<string, never>;
 
-export type FastModeSettings = Record<string, never>;
+export type FastModeSettings = {
+  /** @deprecated Fast mode is read from Codex's config instead of Stream Deck settings. */
+  enabled?: boolean;
+};
 
 export type PlanModeSettings = Record<string, never>;
 

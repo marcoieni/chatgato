@@ -20,7 +20,11 @@ describe("Codex controller", () => {
     expect(COMMANDS.openReview).toEqual({ kind: "slash", value: "/review" });
   });
 
-  it("routes Plan through its app-scoped keyboard shortcut", () => {
+  it("routes Fast and Plan through app-scoped keyboard shortcuts", () => {
+    expect(COMMANDS.toggleFast).toEqual({
+      kind: "shortcut",
+      value: "toggleFastMode",
+    });
     expect(COMMANDS.togglePlan).toEqual({
       kind: "shortcut",
       value: "togglePlanMode",

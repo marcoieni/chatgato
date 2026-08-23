@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  CodexAppServerConfigClient,
   CodexAppServerUsageClient,
   usageFromAppServerResult,
 } from "../src/lib/codex-app-server.js";
@@ -289,58 +288,6 @@ lines.on("line", (line) => {
     expect(remainingPercent(afterReset.primary!)).toBe(100);
     expect(afterReset.primary!.resetsAtMs).toBe(1_784_018_000_000);
   });
-});
-
-describe("Codex app-server config", () => {
-  it.each([
-    [true, "priority"],
-    [false, "default"],
-  ])(
-    "persists Fast mode %s as service tier %s",
-    async (enabled, serviceTier) => {
-      const directory = await mkdtemp(
-        join(tmpdir(), "chatgato-config-server-"),
-      );
-      temporaryDirectories.push(directory);
-      const marker = join(directory, "request.json");
-      const executable = await fakeAppServer(`
-import { writeFileSync } from "node:fs";
-import { createInterface } from "node:readline";
-const lines = createInterface({ input: process.stdin });
-const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
-let initialized = false;
-lines.on("line", (line) => {
-  const message = JSON.parse(line);
-  if (message.method === "initialize") {
-    send({ id: message.id, result: {} });
-  } else if (message.method === "initialized") {
-    initialized = true;
-  } else if (message.method === "config/batchWrite") {
-    writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ initialized, params: message.params }));
-    send({ id: message.id, result: {} });
-  }
-});
-`);
-      const client = new CodexAppServerConfigClient({ executable });
-
-      await expect(client.setFastMode(enabled)).resolves.toBeUndefined();
-      await expect(readFile(marker, "utf8").then(JSON.parse)).resolves.toEqual({
-        initialized: true,
-        params: {
-          edits: [
-            {
-              keyPath: "service_tier",
-              mergeStrategy: "upsert",
-              value: serviceTier,
-            },
-          ],
-          expectedVersion: null,
-          filePath: null,
-          reloadUserConfig: true,
-        },
-      });
-    },
-  );
 });
 
 function shellQuote(value: string): string {

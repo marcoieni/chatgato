@@ -3,13 +3,11 @@ import type { FastModeSettings } from "../src/types.js";
 
 const mocks = vi.hoisted(() => ({
   fastModeEnabled: vi.fn<() => Promise<boolean>>(),
-  setFastMode: vi.fn<(enabled: boolean) => Promise<void>>(),
+  executeCommand: vi.fn<(command: string) => Promise<void>>(),
 }));
 
-vi.mock("../src/lib/codex-app-server.js", () => ({
-  CodexAppServerConfigClient: class {
-    setFastMode = mocks.setFastMode;
-  },
+vi.mock("../src/lib/codex-controller.js", () => ({
+  executeCommand: mocks.executeCommand,
 }));
 
 vi.mock("../src/lib/codex-store.js", () => ({
@@ -40,11 +38,11 @@ describe("FastModeAction", () => {
     vi.useRealTimers();
     mocks.fastModeEnabled.mockReset();
     mocks.fastModeEnabled.mockResolvedValue(false);
-    mocks.setFastMode.mockReset();
-    mocks.setFastMode.mockResolvedValue();
+    mocks.executeCommand.mockReset();
+    mocks.executeCommand.mockResolvedValue();
   });
 
-  it("persists Fast through Codex's app-server and confirms the on state", async () => {
+  it("routes through the Fast keyboard shortcut and confirms the on state", async () => {
     mocks.fastModeEnabled.mockResolvedValueOnce(false).mockResolvedValue(true);
     const harness = actionHarness();
     const fastMode = new FastModeAction();
@@ -54,7 +52,7 @@ describe("FastModeAction", () => {
       payload: { settings: {} },
     } as never);
 
-    expect(mocks.setFastMode).toHaveBeenCalledWith(true);
+    expect(mocks.executeCommand).toHaveBeenCalledWith("toggleFast");
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     expect(harness.action.setImage).toHaveBeenLastCalledWith(
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
@@ -68,15 +66,14 @@ describe("FastModeAction", () => {
 
   it("changes back to off on the next press", async () => {
     mocks.fastModeEnabled.mockResolvedValueOnce(true).mockResolvedValue(false);
-    const harness = actionHarness();
+    const harness = actionHarness({ enabled: true });
     const fastMode = new FastModeAction();
 
     await fastMode.onKeyDown({
       action: harness.action,
-      payload: { settings: {} },
+      payload: { settings: { enabled: true } },
     } as never);
 
-    expect(mocks.setFastMode).toHaveBeenCalledWith(false);
     expect(harness.action.setSettings).not.toHaveBeenCalled();
     const offImage = harness.action.setImage.mock.calls.at(-1)![0];
     expect(Buffer.from(offImage.split(",")[1]!, "base64").toString()).toContain(
@@ -86,7 +83,7 @@ describe("FastModeAction", () => {
   });
 
   it("keeps the previous state and alerts when Codex cannot toggle", async () => {
-    mocks.setFastMode.mockRejectedValueOnce(new Error("Codex unavailable"));
+    mocks.executeCommand.mockRejectedValueOnce(new Error("Codex unavailable"));
     const harness = actionHarness();
     const fastMode = new FastModeAction();
 
@@ -117,14 +114,14 @@ describe("FastModeAction", () => {
     expect(harness.action.showAlert).toHaveBeenCalledOnce();
   });
 
-  it("renders Codex's persisted state on appear", async () => {
+  it("renders Codex's persisted state instead of a stale Stream Deck setting", async () => {
     mocks.fastModeEnabled.mockResolvedValue(false);
-    const harness = actionHarness();
+    const harness = actionHarness({ enabled: true });
     const fastMode = new FastModeAction();
 
     await fastMode.onWillAppear({
       action: harness.action,
-      payload: { settings: {} },
+      payload: { settings: { enabled: true } },
     } as never);
 
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nOFF");

@@ -126,10 +126,7 @@
         renderTapToTalk();
         break;
       case "com.marco.chatgato.fast-mode":
-        renderDedicatedCommand(
-          "Fast Mode",
-          "Toggle the persisted Codex response-speed tier.",
-        );
+        renderModeShortcut("Fast Mode", "Toggle Fast mode", "#ffd600");
         break;
       case "com.marco.chatgato.decrease-reasoning":
         renderDedicatedCommand(

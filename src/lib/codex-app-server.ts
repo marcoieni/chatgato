@@ -18,7 +18,7 @@ type PendingRequest = {
   timeout: NodeJS.Timeout;
 };
 
-export type CodexAppServerClientOptions = {
+export type CodexAppServerUsageClientOptions = {
   args?: readonly string[];
   executable?: string;
   now?: () => number;
@@ -218,7 +218,7 @@ export class CodexAppServerUsageClient {
   private readonly startupTimeoutMs: number;
   private inFlight: Promise<CodexUsageSnapshot> | null = null;
 
-  constructor(options: CodexAppServerClientOptions = {}) {
+  constructor(options: CodexAppServerUsageClientOptions = {}) {
     this.args = options.args ?? ["app-server"];
     this.executable = options.executable ?? defaultCodexExecutable();
     this.now = options.now ?? Date.now;
@@ -268,66 +268,6 @@ export class CodexAppServerUsageClient {
         throw new Error("Invalid account/rateLimits/read result from Codex");
       }
       return usage;
-    } finally {
-      await session.close();
-    }
-  }
-}
-
-/** Writes persisted Codex settings through the supported app-server protocol. */
-export class CodexAppServerConfigClient {
-  private readonly args: readonly string[];
-  private readonly executable: string;
-  private readonly requestTimeoutMs: number;
-  private readonly startupTimeoutMs: number;
-
-  constructor(options: CodexAppServerClientOptions = {}) {
-    this.args = options.args ?? ["app-server"];
-    this.executable = options.executable ?? defaultCodexExecutable();
-    this.requestTimeoutMs = positiveTimeout(
-      options.requestTimeoutMs,
-      DEFAULT_REQUEST_TIMEOUT_MS,
-    );
-    this.startupTimeoutMs = positiveTimeout(
-      options.startupTimeoutMs,
-      DEFAULT_STARTUP_TIMEOUT_MS,
-    );
-  }
-
-  async setFastMode(enabled: boolean): Promise<void> {
-    const session = new LocalAppServerSession(this.executable, this.args);
-    try {
-      const initialize = await session.request(
-        "initialize",
-        this.startupTimeoutMs,
-        {
-          clientInfo: {
-            name: "chatgato",
-            title: "ChatGato",
-            version: "0.1.0",
-          },
-        },
-      );
-      requireResultObject("initialize", initialize);
-      session.notify("initialized", {});
-
-      const response = await session.request(
-        "config/batchWrite",
-        this.requestTimeoutMs,
-        {
-          edits: [
-            {
-              keyPath: "service_tier",
-              mergeStrategy: "upsert",
-              value: enabled ? "priority" : "default",
-            },
-          ],
-          expectedVersion: null,
-          filePath: null,
-          reloadUserConfig: true,
-        },
-      );
-      requireResultObject("config/batchWrite", response);
     } finally {
       await session.close();
     }
