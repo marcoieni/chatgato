@@ -352,6 +352,47 @@ describe("CodexStore", () => {
     await expect(store.fastModeEnabled()).resolves.toBe(false);
   });
 
+  it("reads fast mode from the desktop app's selected remote host", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-fast-mode-"));
+    temporaryDirectories.push(home);
+    const readRemoteFastMode = vi.fn(async () => ({
+      enabled: true,
+      selectionId: "remote:selected-project",
+    }));
+    const store = new CodexStore(
+      home,
+      async () => [],
+      async () => [],
+      readRemoteFastMode,
+    );
+
+    await expect(store.fastModeEnabled()).resolves.toBe(true);
+    expect(readRemoteFastMode).toHaveBeenLastCalledWith(home, false);
+
+    await expect(store.fastModeEnabled(true)).resolves.toBe(true);
+    expect(readRemoteFastMode).toHaveBeenLastCalledWith(home, true);
+  });
+
+  it("keeps local fast mode available when stale remote state cannot be read", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-fast-mode-"));
+    temporaryDirectories.push(home);
+    await writeFile(join(home, "config.toml"), 'service_tier = "fast"\n');
+    const store = new CodexStore(
+      home,
+      async () => [],
+      async () => [],
+      async () => {
+        throw new Error("stale remote is offline");
+      },
+    );
+
+    await expect(store.fastModeStates()).resolves.toEqual({
+      localEnabled: true,
+      remoteEnabled: null,
+      selectionId: "local",
+    });
+  });
+
   it("reads plan mode from the latest visible chat's rollout", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-plan-mode-"));
     temporaryDirectories.push(home);
