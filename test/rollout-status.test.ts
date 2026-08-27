@@ -122,6 +122,49 @@ await chooser.setFiles(["/tmp/invoice.pdf"]);\`});`,
     ).toBe("working");
   });
 
+  it("keeps later browser uploads working after session authorization", () => {
+    const uploadCall = (callId: string) => ({
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        call_id: callId,
+        input: String.raw`const r = await tools.mcp__node_repl__js({code: \`await chooser.setFiles(["/tmp/invoice.pdf"]);\`});`,
+      },
+    });
+
+    expect(
+      inferRolloutStatus([
+        uploadCall("failed-upload"),
+        {
+          type: "response_item",
+          payload: {
+            type: "custom_tool_call_output",
+            call_id: "failed-upload",
+            output:
+              "node_repl kernel unhandled rejection: Timed out waiting for file chooser.",
+          },
+        },
+        uploadCall("still-needs-approval"),
+      ]),
+    ).toBe("awaiting-approval");
+
+    expect(
+      inferRolloutStatus([
+        uploadCall("authorized-upload"),
+        {
+          type: "response_item",
+          payload: {
+            type: "custom_tool_call_output",
+            call_id: "authorized-upload",
+            output: "Script running with cell ID 20",
+          },
+        },
+        uploadCall("session-authorized-upload"),
+      ]),
+    ).toBe("working");
+  });
+
   it("does not request approval for an already authorized command prefix", () => {
     const permissions = {
       type: "response_item",
