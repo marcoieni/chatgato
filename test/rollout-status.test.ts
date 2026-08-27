@@ -96,6 +96,32 @@ describe("Codex rollout status", () => {
     ).toBe("working");
   });
 
+  it("recognizes a pending browser file upload as an approval wait", () => {
+    const callId = "call-upload-needs-approval";
+    const uploadCall = {
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        call_id: callId,
+        status: "completed",
+        input: String.raw`const r = await tools.mcp__node_repl__js({code: \`const chooser = await chooserPromise;
+await chooser.setFiles(["/tmp/invoice.pdf"]);\`});`,
+      },
+    };
+
+    expect(inferRolloutStatus([uploadCall])).toBe("awaiting-approval");
+    expect(
+      inferRolloutStatus([
+        uploadCall,
+        {
+          type: "response_item",
+          payload: { type: "custom_tool_call_output", call_id: callId },
+        },
+      ]),
+    ).toBe("working");
+  });
+
   it("does not request approval for an already authorized command prefix", () => {
     const permissions = {
       type: "response_item",
