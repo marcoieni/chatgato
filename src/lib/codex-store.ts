@@ -14,10 +14,13 @@ import {
 } from "./remote-codex-store.js";
 import {
   hasPendingEscalatedToolCall,
+  hasPendingBrowserFileUpload,
   inferRolloutStatus,
   latestApprovalContext,
+  latestBrowserUploadAuthorization,
   parseRolloutLines,
   planModeFromRollout,
+  type BrowserUploadAuthorizationContext,
 } from "./rollout-status.js";
 import type {
   CodexThread,
@@ -120,7 +123,16 @@ type ApprovalContextCacheEntry = {
   record: RolloutRecord;
 };
 
+type BrowserUploadAuthorizationCacheEntry = {
+  context: BrowserUploadAuthorizationContext | null;
+  fileSize: number;
+};
+
 const approvalContextCache = new Map<string, ApprovalContextCacheEntry>();
+const browserUploadAuthorizationCache = new Map<
+  string,
+  BrowserUploadAuthorizationCacheEntry
+>();
 
 type RolloutTailReader = (path: string) => Promise<RolloutRecord[]>;
 type RemoteThreadReader = (codexHome: string) => Promise<RemoteThreadRow[]>;
@@ -667,34 +679,87 @@ async function readRolloutTailFromFile(path: string): Promise<RolloutRecord[]> {
       const visibleContext = latestApprovalContext(records);
       if (visibleContext) {
         rememberApprovalContext(path, info.size, visibleContext);
-        return records;
+      }
+      const visibleBrowserAuthorization =
+        latestBrowserUploadAuthorization(records);
+      if (visibleBrowserAuthorization) {
+        rememberBrowserUploadAuthorization(
+          path,
+          info.size,
+          visibleBrowserAuthorization,
+        );
       }
 
       const cached = approvalContextCache.get(path);
       if (cached && info.size < cached.fileSize)
         approvalContextCache.delete(path);
-      const retainedContext = approvalContextCache.get(path)?.record;
-      if (!hasPendingEscalatedToolCall(records)) return records;
-      if (retainedContext) {
-        rememberApprovalContext(path, info.size, retainedContext);
-        return [retainedContext, ...records];
+      const cachedBrowserAuthorization =
+        browserUploadAuthorizationCache.get(path);
+      if (
+        cachedBrowserAuthorization &&
+        info.size < cachedBrowserAuthorization.fileSize
+      ) {
+        browserUploadAuthorizationCache.delete(path);
       }
 
+      let retainedContext = approvalContextCache.get(path)?.record ?? null;
+      let retainedBrowserAuthorization =
+        browserUploadAuthorizationCache.get(path)?.context ?? null;
+      const needsApprovalContext = hasPendingEscalatedToolCall(records);
+      const needsBrowserAuthorization = hasPendingBrowserFileUpload(records);
+      const cachedBrowserScan = browserUploadAuthorizationCache.get(path);
+      let shouldScanForBrowserAuthorization =
+        needsBrowserAuthorization &&
+        !visibleBrowserAuthorization &&
+        !retainedBrowserAuthorization &&
+        cachedBrowserScan?.fileSize !== info.size;
+
+      if (!needsApprovalContext && !needsBrowserAuthorization) return records;
+
       let contextWindowLength = length;
-      while (contextWindowLength < info.size) {
+      while (
+        contextWindowLength < info.size &&
+        ((needsApprovalContext && !visibleContext && !retainedContext) ||
+          shouldScanForBrowserAuthorization)
+      ) {
         contextWindowLength = Math.min(info.size, contextWindowLength * 2);
         const contextRecords = await readRolloutWindow(
           handle,
           info.size,
           contextWindowLength,
         );
-        const recoveredContext = latestApprovalContext(contextRecords);
-        if (recoveredContext) {
-          rememberApprovalContext(path, info.size, recoveredContext);
-          return [recoveredContext, ...records];
+        if (needsApprovalContext && !visibleContext && !retainedContext) {
+          retainedContext = latestApprovalContext(contextRecords);
+          if (retainedContext) {
+            rememberApprovalContext(path, info.size, retainedContext);
+          }
+        }
+        if (shouldScanForBrowserAuthorization) {
+          retainedBrowserAuthorization =
+            latestBrowserUploadAuthorization(contextRecords);
+          if (retainedBrowserAuthorization) {
+            rememberBrowserUploadAuthorization(
+              path,
+              info.size,
+              retainedBrowserAuthorization,
+            );
+            shouldScanForBrowserAuthorization = false;
+          }
         }
       }
-      return records;
+      if (shouldScanForBrowserAuthorization) {
+        rememberBrowserUploadAuthorization(path, info.size, null);
+      }
+
+      const recoveredRecords: RolloutRecord[] = [];
+      if (!visibleContext && retainedContext)
+        recoveredRecords.push(retainedContext);
+      if (!visibleBrowserAuthorization && retainedBrowserAuthorization) {
+        recoveredRecords.push(...retainedBrowserAuthorization);
+      }
+      return recoveredRecords.length > 0
+        ? [...recoveredRecords, ...records]
+        : records;
     } finally {
       await handle.close();
     }
@@ -725,6 +790,20 @@ function rememberApprovalContext(
     const oldestPath = approvalContextCache.keys().next().value;
     if (typeof oldestPath !== "string") break;
     approvalContextCache.delete(oldestPath);
+  }
+}
+
+function rememberBrowserUploadAuthorization(
+  path: string,
+  fileSize: number,
+  context: BrowserUploadAuthorizationContext | null,
+): void {
+  browserUploadAuthorizationCache.delete(path);
+  browserUploadAuthorizationCache.set(path, { context, fileSize });
+  while (browserUploadAuthorizationCache.size > APPROVAL_CONTEXT_CACHE_LIMIT) {
+    const oldestPath = browserUploadAuthorizationCache.keys().next().value;
+    if (typeof oldestPath !== "string") break;
+    browserUploadAuthorizationCache.delete(oldestPath);
   }
 }
 

@@ -136,6 +136,55 @@ describe("CodexStore", () => {
     });
   });
 
+  it("recovers browser upload authorization outside the rollout tail", async () => {
+    const home = await mkdtemp(join(tmpdir(), "chatgato-upload-context-"));
+    temporaryDirectories.push(home);
+    const rolloutPath = join(home, "large-upload-rollout.jsonl");
+    const db = createThreadDatabase(home);
+    insertThread(db, {
+      id: "large-upload-rollout",
+      rolloutPath,
+      title: "Large upload rollout",
+    });
+    db.close();
+
+    const uploadCall = (callId: string): RolloutRecord => ({
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        call_id: callId,
+        input: String.raw`const r = await tools.mcp__node_repl__js({code: \`await chooser.setFiles(["/tmp/invoice.pdf"]);\`});`,
+      },
+    });
+    const records: RolloutRecord[] = [
+      uploadCall("authorized-upload"),
+      {
+        type: "response_item",
+        payload: {
+          type: "custom_tool_call_output",
+          call_id: "authorized-upload",
+          output: "Script completed: { ok: true }",
+        },
+      },
+      {
+        type: "event_msg",
+        payload: { type: "token_count", padding: "x".repeat(600 * 1024) },
+      },
+      uploadCall("session-authorized-upload"),
+    ];
+    await writeFile(
+      rolloutPath,
+      `${records.map((record) => JSON.stringify(record)).join("\n")}\n`,
+    );
+
+    const store = new CodexStore(home);
+    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+      id: "large-upload-rollout",
+      status: "working",
+    });
+  });
+
   it("finds a duplicate title's position in Codex chat search", async () => {
     const home = await mkdtemp(join(tmpdir(), "chatgato-search-rank-"));
     temporaryDirectories.push(home);

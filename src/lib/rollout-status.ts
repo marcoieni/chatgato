@@ -30,9 +30,16 @@ const ESCALATED_SANDBOX_PROPERTY =
   /(?:^|[{,]\s*)["']?sandbox_permissions["']?\s*:\s*["']require_escalated["'](?=\s*[,}])/u;
 const BROWSER_FILE_UPLOAD_CALL =
   /\btools\.mcp__node_repl__js\s*\(\s*\{[\s\S]*?\.setFiles\s*\(/u;
+const BROWSER_FILE_UPLOAD_FAILED_OUTPUT =
+  /(?:\bok\s*:\s*false\b|timed out[^\r\n]*waiting for file chooser|unhandled rejection|(?:approval|upload|file)[^\r\n]{0,80}\b(?:denied|declined|rejected|cancelled|canceled)\b|\b(?:denied|declined|rejected|cancelled|canceled)\b[^\r\n]{0,80}(?:approval|upload|file))/iu;
 const COMMAND_PROPERTY =
   /(?:^|[{,]\s*)["']?cmd["']?\s*:\s*("(?:[^"\\]|\\.)*")/u;
 export const STALE_WORKING_TIMEOUT_MS = 10 * 60 * 1000;
+
+export type BrowserUploadAuthorizationContext = readonly [
+  RolloutRecord,
+  RolloutRecord,
+];
 
 export function planModeFromRollout(
   records: readonly RolloutRecord[],
@@ -132,6 +139,112 @@ export function hasPendingEscalatedToolCall(
   return pendingCallIds.size > 0 || hasAnonymousPendingCall;
 }
 
+function isBrowserFileUploadCall(record: RolloutRecord): boolean {
+  if (record.type !== "response_item") return false;
+  if (
+    record.payload?.type !== "function_call" &&
+    record.payload?.type !== "custom_tool_call"
+  ) {
+    return false;
+  }
+
+  const input = record.payload.input ?? record.payload.arguments;
+  return typeof input === "string" && BROWSER_FILE_UPLOAD_CALL.test(input);
+}
+
+function outputText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(outputText).join("\n");
+  if (!value || typeof value !== "object") return "";
+
+  const item = value as Record<string, unknown>;
+  return [item.text, item.message, item.error]
+    .map(outputText)
+    .filter(Boolean)
+    .join("\n");
+}
+
+function browserUploadOutputAuthorizes(record: RolloutRecord): boolean {
+  const status = record.payload?.status?.toLowerCase();
+  if (
+    status === "failed" ||
+    status === "error" ||
+    status === "cancelled" ||
+    status === "canceled"
+  ) {
+    return false;
+  }
+
+  return !BROWSER_FILE_UPLOAD_FAILED_OUTPUT.test(
+    outputText(record.payload?.output),
+  );
+}
+
+export function hasPendingBrowserFileUpload(
+  records: readonly RolloutRecord[],
+): boolean {
+  const pendingCallIds = new Set<string>();
+  let hasAnonymousPendingCall = false;
+
+  for (const record of records) {
+    if (isBrowserFileUploadCall(record)) {
+      const callId = record.payload?.call_id;
+      if (typeof callId === "string") pendingCallIds.add(callId);
+      else hasAnonymousPendingCall = true;
+      continue;
+    }
+
+    if (
+      record.type !== "response_item" ||
+      !record.payload?.type?.endsWith("_output")
+    ) {
+      continue;
+    }
+    const callId = record.payload.call_id;
+    if (typeof callId === "string") pendingCallIds.delete(callId);
+    else hasAnonymousPendingCall = false;
+  }
+
+  return pendingCallIds.size > 0 || hasAnonymousPendingCall;
+}
+
+export function latestBrowserUploadAuthorization(
+  records: readonly RolloutRecord[],
+): BrowserUploadAuthorizationContext | null {
+  const pendingCalls = new Map<string, RolloutRecord>();
+  let anonymousPendingCall: RolloutRecord | null = null;
+  let latest: BrowserUploadAuthorizationContext | null = null;
+
+  for (const record of records) {
+    if (isBrowserFileUploadCall(record)) {
+      const callId = record.payload?.call_id;
+      if (typeof callId === "string") pendingCalls.set(callId, record);
+      else anonymousPendingCall = record;
+      continue;
+    }
+
+    if (
+      record.type !== "response_item" ||
+      !record.payload?.type?.endsWith("_output")
+    ) {
+      continue;
+    }
+
+    const callId = record.payload.call_id;
+    const call =
+      typeof callId === "string"
+        ? pendingCalls.get(callId)
+        : anonymousPendingCall;
+    if (call && browserUploadOutputAuthorizes(record)) {
+      latest = [call, record];
+    }
+    if (typeof callId === "string") pendingCalls.delete(callId);
+    else anonymousPendingCall = null;
+  }
+
+  return latest;
+}
+
 function commandFromToolInput(input: string): string | null {
   const encoded = COMMAND_PROPERTY.exec(input)?.[1];
   if (!encoded) return null;
@@ -205,6 +318,7 @@ function isCoveredByApprovedPrefix(
 function isApprovalToolCall(
   record: RolloutRecord,
   approvedPrefixes: readonly (readonly string[])[],
+  browserUploadAuthorized: boolean,
 ): boolean {
   if (record.type !== "response_item") return false;
   if (
@@ -222,7 +336,7 @@ function isApprovalToolCall(
   // command as approval-bound when the turn's permissions do not authorize it.
   return (
     typeof input === "string" &&
-    (BROWSER_FILE_UPLOAD_CALL.test(input) ||
+    ((BROWSER_FILE_UPLOAD_CALL.test(input) && !browserUploadAuthorized) ||
       (ESCALATED_SANDBOX_PROPERTY.test(input) &&
         !isCoveredByApprovedPrefix(input, approvedPrefixes)))
   );
@@ -266,6 +380,9 @@ export function inferRolloutStatus(
   const pendingToolCallIds = new Set<string>();
   let hasAnonymousPendingToolCall = false;
   let approvedPrefixes: string[][] = [];
+  let browserUploadAuthorized = false;
+  const browserUploadCallIds = new Set<string>();
+  let hasAnonymousBrowserUploadCall = false;
 
   for (const record of records) {
     const recordedPrefixes = approvedPrefixesFromRecord(record);
@@ -315,7 +432,17 @@ export function inferRolloutStatus(
         payloadType === "function_call" ||
         payloadType === "custom_tool_call"
       ) {
-        status = isApprovalToolCall(record, approvedPrefixes)
+        const isBrowserUpload = isBrowserFileUploadCall(record);
+        if (isBrowserUpload) {
+          const callId = record.payload?.call_id;
+          if (typeof callId === "string") browserUploadCallIds.add(callId);
+          else hasAnonymousBrowserUploadCall = true;
+        }
+        status = isApprovalToolCall(
+          record,
+          approvedPrefixes,
+          browserUploadAuthorized,
+        )
           ? "awaiting-approval"
           : WAITING_RESPONSE.has(name)
             ? "awaiting-response"
@@ -330,6 +457,14 @@ export function inferRolloutStatus(
         status = "working";
         lastWorkingAtMs = recordAtMs ?? lastWorkingAtMs;
         const callId = record.payload?.call_id;
+        const completesBrowserUpload =
+          typeof callId === "string"
+            ? browserUploadCallIds.delete(callId)
+            : hasAnonymousBrowserUploadCall;
+        if (typeof callId !== "string") hasAnonymousBrowserUploadCall = false;
+        if (completesBrowserUpload && browserUploadOutputAuthorizes(record)) {
+          browserUploadAuthorized = true;
+        }
         if (typeof callId === "string") pendingToolCallIds.delete(callId);
         else hasAnonymousPendingToolCall = false;
       }
