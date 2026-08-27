@@ -28,6 +28,8 @@ const APPROVED_PREFIXES_HEADING = "## Approved command prefixes";
 const APPROVED_PREFIX_ARRAY = /\[(?:\s*"(?:[^"\\]|\\.)*"\s*,?\s*)+\]/gu;
 const ESCALATED_SANDBOX_PROPERTY =
   /(?:^|[{,]\s*)["']?sandbox_permissions["']?\s*:\s*["']require_escalated["'](?=\s*[,}])/u;
+const BROWSER_FILE_UPLOAD_CALL =
+  /\btools\.mcp__node_repl__js\s*\(\s*\{[\s\S]*?\.setFiles\s*\(/u;
 const COMMAND_PROPERTY =
   /(?:^|[{,]\s*)["']?cmd["']?\s*:\s*("(?:[^"\\]|\\.)*")/u;
 export const STALE_WORKING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -213,13 +215,16 @@ function isApprovalToolCall(
   }
 
   const input = record.payload.input ?? record.payload.arguments;
-  // A normal apply_patch has the same pending call shape as a gated one, so
-  // only treat an escalated call as approval-bound when the turn's permissions
-  // do not already authorize its command prefix.
+  // Browser uploads pause for an in-app data-transmission approval before the
+  // tool produces its matching output. The rollout persists only the pending
+  // setFiles call, so recognize that boundary explicitly. A normal apply_patch
+  // has the same pending call shape as a gated one, so only treat an escalated
+  // command as approval-bound when the turn's permissions do not authorize it.
   return (
     typeof input === "string" &&
-    ESCALATED_SANDBOX_PROPERTY.test(input) &&
-    !isCoveredByApprovedPrefix(input, approvedPrefixes)
+    (BROWSER_FILE_UPLOAD_CALL.test(input) ||
+      (ESCALATED_SANDBOX_PROPERTY.test(input) &&
+        !isCoveredByApprovedPrefix(input, approvedPrefixes)))
   );
 }
 
