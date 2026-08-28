@@ -151,7 +151,7 @@ describe("AgentStatusAction navigation", () => {
     );
   });
 
-  it("rotates the working spinner until the key disappears", async () => {
+  it("keeps the working icon static between status polls", async () => {
     vi.useFakeTimers();
     mocks.threadAtSlot.mockResolvedValue(thread({ status: "working" }));
     const action = actionHarness();
@@ -164,23 +164,13 @@ describe("AgentStatusAction navigation", () => {
       } as never);
 
       expect(action.setImage).toHaveBeenCalledOnce();
-      expect(decodedSvg(action.setImage.mock.calls[0]![0])).toContain(
-        'transform="rotate(0 24 27)"',
-      );
+      const svg = decodedSvg(action.setImage.mock.calls[0]![0]);
+      expect(svg).toContain('data-lucide-icon="circle-dashed"');
+      expect(svg).not.toContain("data-working-spinner");
+      expect(svg).not.toContain('transform="rotate(');
 
-      await vi.advanceTimersByTimeAsync(149);
-      expect(action.setImage).toHaveBeenCalledOnce();
-
-      await vi.advanceTimersByTimeAsync(1);
-      expect(action.setImage).toHaveBeenCalledTimes(2);
-      expect(decodedSvg(action.setImage.mock.calls[1]![0])).toContain(
-        'transform="rotate(22.5 24 27)"',
-      );
-
-      agentStatus.onWillDisappear({ action } as never);
-      const stoppedAt = action.setImage.mock.calls.length;
       await vi.advanceTimersByTimeAsync(300);
-      expect(action.setImage).toHaveBeenCalledTimes(stoppedAt);
+      expect(action.setImage).toHaveBeenCalledOnce();
     } finally {
       agentStatus.onWillDisappear({ action } as never);
       vi.useRealTimers();
