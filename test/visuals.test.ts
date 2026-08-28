@@ -43,10 +43,9 @@ describe("Stream Deck visuals", () => {
     expect(svg).toContain(
       '<rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>',
     );
-    expect(svg).toContain('data-lucide-icon="loader-circle"');
-    expect(svg).toContain(
-      'data-working-spinner="true" transform="rotate(0 24 27)"',
-    );
+    expect(svg).toContain('data-lucide-icon="circle-dashed"');
+    expect(svg).not.toContain("data-working-spinner");
+    expect(svg).not.toContain('transform="rotate(');
     expect(svg).toContain('stroke="#304FFE"');
     expect(svg).toContain(
       'font-weight="800" font-size="13" text-anchor="end">4</text>',
@@ -107,7 +106,7 @@ describe("Stream Deck visuals", () => {
   it("uses matching state symbols and compact status labels", () => {
     const expectedIcons = {
       off: "power",
-      working: "loader-circle",
+      working: "circle-dashed",
       "awaiting-approval": "shield-check",
       "awaiting-response": "message-circle-question-mark",
       error: "x",
@@ -150,18 +149,6 @@ describe("Stream Deck visuals", () => {
       );
     }
     expect(agentSvg(1, "off")).toContain('fill="#9AA6B2"');
-  });
-
-  it("renders distinct working-spinner rotation frames", () => {
-    const thread = { title: "Chat", cwd: "/tmp/project" };
-    const firstFrame = agentSvg(1, "working", thread, 0);
-    const nextFrame = agentSvg(1, "working", thread, 45);
-
-    expect(nextFrame).toContain('transform="rotate(45 24 27)"');
-    expect(nextFrame).not.toBe(firstFrame);
-    expect(agentImage(1, "working", thread, 45)).not.toBe(
-      agentImage(1, "working", thread, 0),
-    );
   });
 
   it("renders one thin progress segment per subtask inside the existing header", () => {

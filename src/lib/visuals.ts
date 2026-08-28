@@ -242,7 +242,6 @@ export function agentSvg(
   slot: number,
   status: AgentStatus,
   thread?: AgentVisualThread,
-  spinnerRotation = 0,
 ): string {
   const color = STATUS_COLORS[status];
   const statusLabel = STATUS_LABELS[status];
@@ -274,13 +273,6 @@ export function agentSvg(
             strokeWidth: 2.5,
           })
         : "";
-  const normalizedRotation = ((spinnerRotation % 360) + 360) % 360;
-  const statusSymbol =
-    status === "working"
-      ? `<g data-working-spinner="true" transform="rotate(${normalizedRotation} 24 27)">
-      ${statusGlyph}
-    </g>`
-      : statusGlyph;
   const subtaskBar = subtaskProgressBar(thread?.subtaskStatuses);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
     ${LUCIDE_LICENSE}
@@ -288,7 +280,7 @@ export function agentSvg(
     ${keyShell()}
     <rect x="12" y="12" width="120" height="52" rx="12" fill="#FFFFFF" opacity=".08"/>
     ${subtaskBar}
-    ${statusSymbol}
+    ${statusGlyph}
     ${statusLabelRow}
     <text x="124" y="31" fill="#FFFFFF" fill-opacity=".72" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="13" text-anchor="end">${slot}</text>
     <text x="72" y="56" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="850" font-size="${PROJECT_LABEL_FONT_SIZE}" text-anchor="middle">${escapeXml(project)}</text>
@@ -304,9 +296,8 @@ export function agentImage(
   slot: number,
   status: AgentStatus,
   thread?: AgentVisualThread,
-  spinnerRotation = 0,
 ): string {
-  return svgDataUri(agentSvg(slot, status, thread, spinnerRotation));
+  return svgDataUri(agentSvg(slot, status, thread));
 }
 
 export function reasoningSvg(
