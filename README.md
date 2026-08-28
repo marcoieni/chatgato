@@ -9,7 +9,7 @@ No API key required.
 
 ## Features
 
-- Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents are excluded. On press, the keys open the chat.
+- Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents progress is shown as well. On press, the keys open the chat.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
 - **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
@@ -111,24 +111,10 @@ titles, paths, prompts, or status to a cloud service or third party; remote chat
 metadata only crosses the user-configured SSH connection. Status changes are
 polled every two seconds by default.
 
-Completion is shown as green/unread. Pressing that Agent key acknowledges the completion and opens the chat, changing the key to idle white until the chat updates again.
-
 The Usage Limits key launches the locally installed `codex app-server` and uses
 its documented `account/rateLimits/read` method on every refresh. It selects the
-canonical `codex` bucket rather than model-specific meters, so scheduled resets,
-resets triggered by earned credits, and account-side window changes appear even
-while chats are idle. It displays remaining allowance rather than consumed allowance; for
-example, a Codex `usedPercent` value of 18 is shown as 82% left. Press the key to
-refresh immediately.
-
-App-server startup and requests are time-bounded, concurrent refreshes share one
-in-flight read, and the child process is terminated after every result. Local
-rollout snapshots remain a compatibility fallback when the live method is not
-available. Before the first successful live read, the latest rollout value can
-be shown; after a successful live read, an older rollout is never allowed to
-replace it. If the live read later fails and no newer fallback exists, the key
-shows `OFFLINE` instead of a stale percentage. An expired fallback window keeps
-the existing behavior of showing 100% remaining after its scheduled reset.
+canonical `codex` bucket rather than model-specific meters.
+Press the usage key to refresh.
 
 ## Notes and limitations
 
