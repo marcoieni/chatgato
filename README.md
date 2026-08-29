@@ -1,11 +1,11 @@
+<img src="assets/15keys-sd.png" alt="Example 15-key layout" width="720" align="left">
+
 # ChatGato
 
 **A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).**<br>
 No API key or login required.
 
-<p align="left">
-  <img src="assets/15keys-sd.png" alt="Example 15-key layout" width="720">
-</p>
+<br clear="left">
 
 ## Features
 
