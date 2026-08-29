@@ -77,7 +77,7 @@ describe("Stream Deck manifest", () => {
         expect(svg).not.toContain("Icons: Lucide");
         expect(svg).not.toContain("data-lucide-icon");
       } else {
-        expect(svg).toContain("Icons: Lucide v1.27.0, ISC license.");
+        expect(svg).toContain("Icons: Lucide v1.37.0, ISC license.");
         expect(svg).toMatch(/data-lucide-icon="[a-z0-9-]+"/);
       }
       expect(svg).not.toMatch(

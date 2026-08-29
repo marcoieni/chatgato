@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-  <!-- Icons: Lucide v1.27.0, ISC license. See LICENSES/Lucide.txt. -->
+  <!-- Icons: Lucide v1.37.0, ISC license. See LICENSES/Lucide.txt. -->
   <g data-lucide-icon="calendar-clock">
       <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 14v2.2l1.6 1" />
-  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 2v4" />
-  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" />
-  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 10h5" />
-  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 2v4" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 2v3" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 9h5.859" />
+  <path transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 2v3" />
   <circle transform="matrix(0.75 0 0 0.75 1 1)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" cx="16" cy="16" r="6" />
     </g>
 </svg>
