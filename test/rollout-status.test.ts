@@ -122,6 +122,46 @@ await chooser.setFiles(["/tmp/invoice.pdf"]);\`});`,
     ).toBe("working");
   });
 
+  it("recognizes a pending destructive shell command as an approval wait", () => {
+    const callId = "call-remove-needs-approval";
+    const removeCall = {
+      type: "response_item",
+      payload: {
+        type: "custom_tool_call",
+        name: "exec",
+        call_id: callId,
+        status: "completed",
+        input: String.raw`const r = await tools.exec_command({"cmd":"rm -rf /project/_cacache /project/_update-notifier-last-checked && git status --short","workdir":"/project"});`,
+      },
+    };
+
+    expect(inferRolloutStatus([removeCall])).toBe("awaiting-approval");
+    expect(
+      inferRolloutStatus([
+        removeCall,
+        {
+          type: "response_item",
+          payload: { type: "custom_tool_call_output", call_id: callId },
+        },
+      ]),
+    ).toBe("working");
+  });
+
+  it("does not mistake quoted remove text for a destructive command", () => {
+    expect(
+      inferRolloutStatus([
+        {
+          type: "response_item",
+          payload: {
+            type: "custom_tool_call",
+            name: "exec",
+            input: String.raw`const r = await tools.exec_command({"cmd":"rg 'rm -rf' src test"});`,
+          },
+        },
+      ]),
+    ).toBe("working");
+  });
+
   it("does not request approval for an already authorized command prefix", () => {
     const permissions = {
       type: "response_item",

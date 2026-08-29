@@ -30,6 +30,7 @@ const ESCALATED_SANDBOX_PROPERTY =
   /(?:^|[{,]\s*)["']?sandbox_permissions["']?\s*:\s*["']require_escalated["'](?=\s*[,}])/u;
 const BROWSER_FILE_UPLOAD_CALL =
   /\btools\.mcp__node_repl__js\s*\(\s*\{[\s\S]*?\.setFiles\s*\(/u;
+const EXEC_COMMAND_CALL = /\btools\.exec_command\s*\(/u;
 const COMMAND_PROPERTY =
   /(?:^|[{,]\s*)["']?cmd["']?\s*:\s*("(?:[^"\\]|\\.)*")/u;
 export const STALE_WORKING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -143,6 +144,45 @@ function commandFromToolInput(input: string): string | null {
   }
 }
 
+function shellCommandSegments(command: string): string[] {
+  const segments: string[] = [];
+  let segment = "";
+  let quote: "'" | '"' | null = null;
+  let escaping = false;
+
+  for (const character of command) {
+    if (escaping) {
+      segment += character;
+      escaping = false;
+      continue;
+    }
+    if (character === "\\" && quote !== "'") {
+      segment += character;
+      escaping = true;
+      continue;
+    }
+    if (quote) {
+      segment += character;
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      segment += character;
+      continue;
+    }
+    if (/[\n;&|()]/u.test(character)) {
+      if (segment.trim()) segments.push(segment);
+      segment = "";
+      continue;
+    }
+    segment += character;
+  }
+
+  if (segment.trim()) segments.push(segment);
+  return segments;
+}
+
 function simpleCommandTokens(command: string): string[] | null {
   const tokens: string[] = [];
   let token = "";
@@ -202,6 +242,23 @@ function isCoveredByApprovedPrefix(
   );
 }
 
+function isDestructiveShellCall(input: string): boolean {
+  if (!EXEC_COMMAND_CALL.test(input)) return false;
+  const command = commandFromToolInput(input);
+  if (command === null) return false;
+
+  return shellCommandSegments(command).some((segment) => {
+    const tokens = simpleCommandTokens(segment);
+    if (!tokens) return false;
+    let executableIndex = 0;
+    while (/^[A-Za-z_][A-Za-z0-9_]*=/u.test(tokens[executableIndex] ?? "")) {
+      executableIndex += 1;
+    }
+    if (tokens[executableIndex] === "command") executableIndex += 1;
+    return tokens[executableIndex]?.split("/").at(-1) === "rm";
+  });
+}
+
 function isApprovalToolCall(
   record: RolloutRecord,
   approvedPrefixes: readonly (readonly string[])[],
@@ -215,14 +272,16 @@ function isApprovalToolCall(
   }
 
   const input = record.payload.input ?? record.payload.arguments;
-  // Browser uploads pause for an in-app data-transmission approval before the
-  // tool produces its matching output. The rollout persists only the pending
-  // setFiles call, so recognize that boundary explicitly. A normal apply_patch
-  // has the same pending call shape as a gated one, so only treat an escalated
-  // command as approval-bound when the turn's permissions do not authorize it.
+  // Browser uploads and destructive shell commands pause for approval before
+  // the tool produces its matching output. Their rollouts persist only the
+  // pending call, so recognize those boundaries explicitly. A normal
+  // apply_patch has the same pending call shape as a gated one, so only treat an
+  // escalated command as approval-bound when the turn's permissions do not
+  // authorize it.
   return (
     typeof input === "string" &&
     (BROWSER_FILE_UPLOAD_CALL.test(input) ||
+      isDestructiveShellCall(input) ||
       (ESCALATED_SANDBOX_PROPERTY.test(input) &&
         !isCoveredByApprovedPrefix(input, approvedPrefixes)))
   );
