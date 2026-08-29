@@ -22,22 +22,26 @@
     "link": "npm run build && streamdeck link com.marco.chatgato.sdPlugin && npm run restart"
   },
   "dependencies": {
-    "@elgato/streamdeck": "2.1.0"
+    "@elgato/streamdeck": "2.1.2"
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
     "@babel/eslint-parser": "^8.0.1",
     "@babel/plugin-proposal-decorators": "^8.0.2",
-    "@elgato/cli": "1.7.4",
+    "@elgato/cli": "1.9.0",
     "@eslint/js": "^10.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
-    "@types/node": "^26.1.1",
-    "esbuild": "^0.28.1",
-    "eslint": "^10.7.0",
-    "globals": "^17.7.0",
-    "lucide-static": "1.27.0",
-    "prettier": "^3.9.5",
+    "@types/node": "^26.4.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
+    "lucide-static": "1.37.0",
+    "prettier": "^3.9.6",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
   }
 }

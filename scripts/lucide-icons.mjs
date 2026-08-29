@@ -23,7 +23,7 @@ import X from "lucide-static/dist/esm/icons/x.mjs";
 import Zap from "lucide-static/dist/esm/icons/zap.mjs";
 
 export const LUCIDE_LICENSE =
-  "<!-- Icons: Lucide v1.27.0, ISC license. See LICENSES/Lucide.txt. -->";
+  "<!-- Icons: Lucide v1.37.0, ISC license. See LICENSES/Lucide.txt. -->";
 
 export const actionIconSources = {
   agent: Bot,
