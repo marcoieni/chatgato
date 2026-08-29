@@ -1,14 +1,15 @@
-<img src="assets/logo.png" alt="ChatGato logo" width="180" align="right">
-
 # ChatGato
 
-A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).
-
+**A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).**<br>
 No API key or login required.
 
-<br clear="right">
+<p align="center">
+  <img src="assets/15keys-sd.png" alt="Example 15-key layout">
+</p>
 
 ## Features
+
+<img src="assets/logo.png" alt="ChatGato logo" width="140" align="right">
 
 - Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents progress is shown as well. On press, the keys open the chat.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
@@ -25,9 +26,7 @@ No API key or login required.
   - **Review**
 - Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
 
-<p align="center">
-  <img src="assets/15keys-sd.png" alt="Example 15-key layout">
-</p>
+<br clear="right">
 
 ## Requirements
 
