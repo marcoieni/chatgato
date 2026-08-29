@@ -5,7 +5,7 @@
 </p>
 
 A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).
-No API key required.
+No API key or login required.
 
 ## Features
 
@@ -24,14 +24,9 @@ No API key required.
   - **Review**
 - Navigation: **Review tab**, **Terminal**, **Scheduled**, **Settings**, **Skills**, **Go Back**, **Go Forward**, and **Toggle Sidebar**.
 
-## Layout example
-
 <p align="center">
-  <img src="assets/15keys.png" alt="Example 15-key layout">
+  <img src="assets/15keys-sd.png" alt="Example 15-key layout">
 </p>
-
-For each Agent Status key, choose a different slot from 1–20.
-Optionally set an absolute workspace path to filter the keys to one project.
 
 ## Requirements
 
@@ -42,7 +37,13 @@ Optionally set an absolute workspace path to filter the keys to one project.
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
 
-### Required keyboard shortcut setup
+## Setup
+
+Install the plugin and assign the keys you want.
+For each Agent Status key, choose a different slot from 1–20.
+Optionally set an absolute workspace path to filter the keys to one project.
+
+### Keyboard shortcuts
 
 ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign them by default. Configure them once; ChatGato reads your chosen bindings from `.codex/keybindings.json` whenever an action runs:
 
