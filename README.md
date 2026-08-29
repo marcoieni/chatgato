@@ -9,7 +9,7 @@ No API key or login required.
 
 ## Features
 
-<img src="assets/logo.png" alt="ChatGato logo" width="220" align="right">
+<img src="assets/logo.png" alt="ChatGato logo" width="240" align="right">
 
 - Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents progress is shown as well. On press, the keys open the chat.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
