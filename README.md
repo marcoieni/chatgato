@@ -1,11 +1,15 @@
-# ChatGato
-
-<p align="center">
-  <img src="assets/logo.png" alt="ChatGato logo" width="240">
-</p>
-
-A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).
-No API key or login required.
+<table>
+  <tr>
+    <td>
+      <h1>ChatGato</h1>
+      <p>A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).</p>
+      <p>No API key or login required.</p>
+    </td>
+    <td width="180" align="right">
+      <img src="assets/logo.png" alt="ChatGato logo">
+    </td>
+  </tr>
+</table>
 
 ## Features
 
