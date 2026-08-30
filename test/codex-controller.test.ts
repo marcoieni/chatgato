@@ -20,7 +20,11 @@ describe("Codex controller", () => {
     expect(COMMANDS.openReview).toEqual({ kind: "slash", value: "/review" });
   });
 
-  it("routes Fast and Plan through app-scoped keyboard shortcuts", () => {
+  it("routes Fork, Fast, and Plan through app-scoped keyboard shortcuts", () => {
+    expect(COMMANDS.forkThread).toEqual({
+      kind: "shortcut",
+      value: "forkThread",
+    });
     expect(COMMANDS.toggleFast).toEqual({
       kind: "shortcut",
       value: "toggleFastMode",
@@ -33,14 +37,13 @@ describe("Codex controller", () => {
 
   it("normalizes supported slash commands", () => {
     expect(normalizeSlashCommand("  /review  ")).toBe("/review");
-    expect(normalizeSlashCommand("/fork")).toBe("/fork");
   });
 
   it("rejects slash-command arguments and injected input", () => {
     expect(() => normalizeSlashCommand("/review now")).toThrow(
       "Invalid Codex slash command",
     );
-    expect(() => normalizeSlashCommand("/fork\n/review")).toThrow(
+    expect(() => normalizeSlashCommand("/review\n/review")).toThrow(
       "Invalid Codex slash command",
     );
   });
@@ -69,6 +72,13 @@ describe("Codex controller", () => {
   });
 
   it("resolves custom app-scoped keybindings for the current platform", () => {
+    expect(
+      resolveCodexKeybinding(
+        [{ command: "forkThread", key: "Command+Shift+F" }],
+        "forkThread",
+        "darwin",
+      ),
+    ).toBe("command+shift+f");
     expect(
       resolveCodexKeybinding(
         [{ command: "composer.toggleFastMode", key: "Command+K" }],

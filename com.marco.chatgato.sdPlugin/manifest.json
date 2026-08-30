@@ -123,7 +123,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Copy the current Codex chat into a new local chat.",
+      "Tooltip": "Fork the current Codex chat using the shortcut configured in ChatGPT.",
       "UUID": "com.marco.chatgato.fork"
     },
     {
@@ -443,7 +443,7 @@
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
-  "Description": "A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex). ChatGato shows live status for up to 20 local or SSH-hosted chats, displays remaining Codex usage limits, and provides keys for approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, Review, and more. No API key is required; chat data is read from local Codex files or through your configured SSH connection, and usage is read through the local Codex app-server with rollout files as fallback. Requires Stream Deck 7.1 or later, ChatGPT desktop with Codex, and macOS 13+ or Windows 10+. After installation, add ChatGato actions to your profile and assign a unique slot (1–20) to each Agent Status key. For remote chat navigation and the Fast and Plan buttons, configure any shortcuts you prefer for ChatGPT's Switch chat, Toggle Fast mode, and Toggle plan mode commands; ChatGato reads them from Codex's keybindings file. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven actions such as Submit and Fork.",
+  "Description": "A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex). ChatGato shows live status for up to 20 local or SSH-hosted chats, displays remaining Codex usage limits, and provides keys for approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, Review, and more. No API key is required; chat data is read from local Codex files or through your configured SSH connection, and usage is read through the local Codex app-server with rollout files as fallback. Requires Stream Deck 7.1 or later, ChatGPT desktop with Codex, and macOS 13+ or Windows 10+. After installation, add ChatGato actions to your profile and assign a unique slot (1–20) to each Agent Status key. For remote chat navigation and the Fork, Fast, and Plan buttons, configure any shortcuts you prefer for ChatGPT's Switch chat, Fork chat, Toggle Fast mode, and Toggle plan mode commands; ChatGato reads them from Codex's keybindings file. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven actions such as Submit and Fork.",
   "Icon": "imgs/plugin",
   "Name": "ChatGato",
   "Nodejs": {

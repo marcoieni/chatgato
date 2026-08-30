@@ -22,7 +22,7 @@ export type ControllerCommand = {
 export const COMMANDS: Record<string, ControllerCommand> = {
   approve: { kind: "shortcut", value: "approve" },
   decline: { kind: "shortcut", value: "decline" },
-  forkThread: { kind: "slash", value: "/fork" },
+  forkThread: { kind: "shortcut", value: "forkThread" },
   submit: { kind: "shortcut", value: "submit" },
   terminal: { kind: "shortcut", value: "terminal" },
   review: { kind: "shortcut", value: "review" },
@@ -46,6 +46,10 @@ const CUSTOM_SHORTCUT_COMMANDS: Record<
   string,
   { command: string; label: string }
 > = {
+  forkThread: {
+    command: "forkThread",
+    label: "Fork chat",
+  },
   toggleFastMode: {
     command: "composer.toggleFastMode",
     label: "Toggle Fast mode",

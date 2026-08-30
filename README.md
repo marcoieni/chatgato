@@ -33,7 +33,7 @@ No API key or login required.
 - Stream Deck 7.1 or newer
 - macOS 13+ or Windows 10+
 - A Stream Deck device; Stream Deck+ is optional for dial control
-- The Search Chats, Fast, and Plan keyboard shortcuts configured in ChatGPT as described below
+- The Switch chat, Fork chat, Toggle Fast mode, and Toggle plan mode keyboard shortcuts configured in ChatGPT as described below
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
 
@@ -45,15 +45,16 @@ Optionally set an absolute workspace path to filter the keys to one project.
 
 ### Keyboard shortcuts
 
-ChatGPT exposes app-scoped Search Chats, Fast, and Plan commands, but does not assign them by default. Configure them once; ChatGato reads your chosen bindings from `.codex/keybindings.json` whenever an action runs:
+ChatGPT exposes app-scoped Switch chat, Fork chat, Toggle Fast mode, and Toggle plan mode commands, but does not assign them by default. Configure them once; ChatGato reads your chosen bindings from `.codex/keybindings.json` whenever an action runs:
 
 1. Open ChatGPT desktop.
 2. Open **Settings → Keyboard Shortcuts**.
 3. Search for **“Switch chat”** and assign any shortcut you prefer.
-4. Search for **“Toggle Fast mode”** and assign any shortcut you prefer.
-5. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
+4. Search for **“Fork chat”** and assign any shortcut you prefer.
+5. Search for **“Toggle Fast mode”** and assign any shortcut you prefer.
+6. Search for **“Toggle plan mode”** and assign any shortcut you prefer.
 
-**Remote Agent Status navigation and the ChatGato Fast and Plan buttons will not work until their shortcuts are configured.** Search Chats is only needed for SSH-hosted chats; local chats use exact Codex links. ChatGato reads and validates the current Search Chats binding before sending a remote chat title, so shortcut changes take effect immediately.
+**Remote Agent Status navigation and the ChatGato Fork, Fast, and Plan buttons will not work until their shortcuts are configured.** Switch chat is only needed for SSH-hosted chats; local chats use exact Codex links. ChatGato reads and validates the relevant binding immediately before sending it, so shortcut changes take effect without rebuilding or restarting the plugin.
 
 ## Build and install for development
 
