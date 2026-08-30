@@ -7,6 +7,7 @@ import {
   CodexAppServerClient,
   usageFromAppServerResult,
 } from "../src/lib/codex-app-server.js";
+import { parseAppServerThread } from "../src/lib/codex-app-server-protocol.js";
 import { remainingPercent } from "../src/lib/codex-usage.js";
 
 const temporaryDirectories: string[] = [];
@@ -15,6 +16,40 @@ afterEach(async () => {
   await Promise.all(
     temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })),
   );
+});
+
+describe("Codex app-server status", () => {
+  const appServerThread = {
+    cwd: "/tmp/project",
+    id: "current",
+    path: "/tmp/current.jsonl",
+    preview: "Current task",
+    recencyAt: 2,
+    status: { type: "notLoaded" },
+    updatedAt: 1,
+  };
+
+  it("defers an interrupted turn without a completion time to the rollout", () => {
+    expect(
+      parseAppServerThread(appServerThread, {
+        completedAt: null,
+        items: [],
+        startedAt: 1,
+        status: "interrupted",
+      }),
+    ).toMatchObject({ status: null });
+  });
+
+  it("keeps a completed interruption as an error", () => {
+    expect(
+      parseAppServerThread(appServerThread, {
+        completedAt: 2,
+        items: [],
+        startedAt: 1,
+        status: "interrupted",
+      }),
+    ).toMatchObject({ status: "error" });
+  });
 });
 
 async function fakeAppServer(source: string): Promise<string> {

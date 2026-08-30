@@ -181,6 +181,29 @@ describe("CodexStore", () => {
     expect(readRolloutTail).not.toHaveBeenCalled();
   });
 
+  it("falls back to the rollout for an inconclusive app-server status", async () => {
+    const home = await temporaryHome();
+    const rolloutPath = join(home, "active.jsonl");
+    const readRolloutTail = vi.fn(async (): Promise<RolloutRecord[]> => [
+      { type: "event_msg", payload: { type: "task_started" } },
+    ]);
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => [
+          thread("active", { rolloutPath, status: null }),
+        ]),
+      }),
+      readRolloutTail,
+    );
+
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
+      id: "active",
+      status: "working",
+    });
+    expect(readRolloutTail).toHaveBeenCalledWith(rolloutPath);
+  });
+
   it("surfaces app-server discovery failures instead of reading SQLite", async () => {
     const home = await temporaryHome();
     createReasoningDatabase(home);
