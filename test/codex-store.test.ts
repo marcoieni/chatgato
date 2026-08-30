@@ -84,13 +84,13 @@ function store(
   ) => Promise<{ enabled: boolean; selectionId: string } | null> = async () =>
     null,
 ): CodexStore {
-  return new CodexStore(
-    home,
-    readRolloutTail,
-    readRemoteThreads,
+  return new CodexStore({
+    appServer: server,
+    codexHome: home,
     readRemoteFastMode,
-    server,
-  );
+    readRemoteThreads,
+    readRolloutTail,
+  });
 }
 
 function createReasoningDatabase(
@@ -239,13 +239,12 @@ describe("CodexStore", () => {
         thread("large-rollout", { rolloutPath, status: "working" }),
       ]),
     });
-    const subject = new CodexStore(
-      home,
-      undefined,
-      async () => [],
-      async () => null,
-      server,
-    );
+    const subject = new CodexStore({
+      appServer: server,
+      codexHome: home,
+      readRemoteFastMode: async () => null,
+      readRemoteThreads: async () => [],
+    });
 
     await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
       id: "large-rollout",

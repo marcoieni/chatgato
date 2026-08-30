@@ -7,7 +7,11 @@ import {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
-import { defaultCodexAppServer } from "../lib/codex-app-server.js";
+import { ActionSubscriptionRegistry } from "../lib/action-subscriptions.js";
+import {
+  defaultCodexAppServer,
+  type CodexAppServerNotification,
+} from "../lib/codex-app-server.js";
 import { usageImage } from "../lib/visuals.js";
 import type { UsageSettings } from "../types.js";
 
@@ -17,7 +21,7 @@ type VisibleAction = WillAppearEvent<UsageSettings>["action"];
 export class UsageAction extends SingletonAction<UsageSettings> {
   private readonly liveUsage = defaultCodexAppServer;
   private readonly poller = new ActionPoller();
-  private readonly subscriptions = new Map<string, () => void>();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
 
   override async onWillAppear(
     ev: WillAppearEvent<UsageSettings>,
@@ -28,8 +32,7 @@ export class UsageAction extends SingletonAction<UsageSettings> {
 
   override onWillDisappear(ev: WillDisappearEvent<UsageSettings>): void {
     this.poller.stop(ev.action.id);
-    this.subscriptions.get(ev.action.id)?.();
-    this.subscriptions.delete(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -69,14 +72,14 @@ export class UsageAction extends SingletonAction<UsageSettings> {
   }
 
   private subscribe(actionInstance: VisibleAction): void {
-    this.subscriptions.get(actionInstance.id)?.();
-    this.subscriptions.set(
+    this.subscriptions.replace<CodexAppServerNotification>(
       actionInstance.id,
-      this.liveUsage.subscribe((notification) => {
+      (listener) => this.liveUsage.subscribe(listener),
+      async (notification) => {
         if (notification.method === "account/rateLimits/updated") {
-          void this.refresh(actionInstance);
+          await this.refresh(actionInstance);
         }
-      }),
+      },
     );
   }
 }

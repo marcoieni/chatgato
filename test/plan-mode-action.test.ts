@@ -4,6 +4,7 @@ import type { PlanModeSettings } from "../src/types.js";
 const mocks = vi.hoisted(() => ({
   executeCommand: vi.fn<(command: string) => Promise<void>>(),
   planModeEnabled: vi.fn<() => Promise<boolean>>(),
+  subscribe: vi.fn<(listener: () => void) => () => void>(),
 }));
 
 vi.mock("@elgato/streamdeck", () => ({
@@ -26,6 +27,7 @@ vi.mock("../src/lib/codex-controller.js", () => ({
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
     planModeEnabled = mocks.planModeEnabled;
+    subscribe = mocks.subscribe;
   },
 }));
 
@@ -48,6 +50,8 @@ describe("PlanModeAction", () => {
     mocks.executeCommand.mockResolvedValue();
     mocks.planModeEnabled.mockReset();
     mocks.planModeEnabled.mockResolvedValue(false);
+    mocks.subscribe.mockReset();
+    mocks.subscribe.mockReturnValue(() => undefined);
   });
 
   it("routes through the Plan keyboard shortcut and shows the on state", async () => {

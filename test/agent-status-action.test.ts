@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   openThreadBySearch:
     vi.fn<(title: string, resultIndex: number) => Promise<void>>(),
   openUrl: vi.fn<(url: string) => Promise<void>>(),
+  subscribe: vi.fn<(listener: () => void) => () => void>(),
   threadSearchResult:
     vi.fn<
       (threadId: string) => Promise<{ resultIndex: number; title: string }>
@@ -34,6 +35,7 @@ vi.mock("../src/lib/codex-controller.js", () => ({
 
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
+    subscribe = mocks.subscribe;
     threadSearchResult = mocks.threadSearchResult;
     threadAtSlot = mocks.threadAtSlot;
   },
@@ -85,6 +87,8 @@ describe("AgentStatusAction navigation", () => {
     });
     mocks.threadAtSlot.mockReset();
     mocks.threadAtSlot.mockResolvedValue(null);
+    mocks.subscribe.mockReset();
+    mocks.subscribe.mockReturnValue(() => undefined);
   });
 
   it("keeps exact deep-link navigation for local chats", async () => {

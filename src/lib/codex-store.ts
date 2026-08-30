@@ -25,11 +25,13 @@ import {
 } from "./rollout-status.js";
 import type { CodexThread, RolloutRecord } from "../types.js";
 
-type LocalSubtaskDescriptor = {
+type LocalStatusDescriptor = {
   appServerStatus: CodexThread["status"] | null;
   rolloutPath: string | null;
   spawnStatus: string | null;
 };
+
+type LocalSubtaskDescriptor = LocalStatusDescriptor;
 
 type ThreadDescriptorBase = {
   id: string;
@@ -39,14 +41,12 @@ type ThreadDescriptorBase = {
   recencyAtMs: number;
 };
 
-type LocalThreadDescriptor = ThreadDescriptorBase & {
-  appServerStatus: CodexThread["status"] | null;
-  kind: "local";
-  reasoningEffort: string | null;
-  rolloutPath: string | null;
-  spawnStatus: string | null;
-  subtasks: LocalSubtaskDescriptor[];
-};
+type LocalThreadDescriptor = ThreadDescriptorBase &
+  LocalStatusDescriptor & {
+    kind: "local";
+    reasoningEffort: string | null;
+    subtasks: LocalSubtaskDescriptor[];
+  };
 
 type RemoteThreadDescriptor = ThreadDescriptorBase & {
   kind: "remote";
@@ -103,22 +103,37 @@ type RemoteFastModeReader = (
   forceRefresh?: boolean,
 ) => Promise<RemoteFastModeState | null>;
 
+export type CodexStoreOptions = {
+  appServer?: CodexAppServerClientLike;
+  codexHome?: string;
+  readRemoteFastMode?: RemoteFastModeReader;
+  readRemoteThreads?: RemoteThreadReader;
+  readRolloutTail?: RolloutTailReader;
+};
+
 const THREAD_DESCRIPTORS_CACHE_MS = 1_000;
 const defaultRemoteCodexStore = new RemoteCodexStore();
 
 export class CodexStore {
   readonly codexHome: string;
   readonly sqliteHome: string;
+  private readonly appServer: CodexAppServerClientLike;
+  private readonly readRemoteFastMode: RemoteFastModeReader;
+  private readonly readRemoteThreads: RemoteThreadReader;
+  private readonly readRolloutTail: RolloutTailReader;
 
-  constructor(
-    codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
-    private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
-    private readonly readRemoteThreads: RemoteThreadReader = defaultRemoteCodexStore.readThreadRows,
-    private readonly readRemoteFastMode: RemoteFastModeReader = defaultRemoteCodexStore.readFastModeState,
-    private readonly appServer: CodexAppServerClientLike = defaultCodexAppServer,
-  ) {
+  constructor(options: CodexStoreOptions = {}) {
+    const codexHome =
+      options.codexHome ??
+      (process.env.CODEX_HOME || join(homedir(), ".codex"));
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
+    this.readRolloutTail = options.readRolloutTail ?? readRolloutTailFromFile;
+    this.readRemoteThreads =
+      options.readRemoteThreads ?? defaultRemoteCodexStore.readThreadRows;
+    this.readRemoteFastMode =
+      options.readRemoteFastMode ?? defaultRemoteCodexStore.readFastModeState;
+    this.appServer = options.appServer ?? defaultCodexAppServer;
   }
 
   private threadDescriptorsCache:
@@ -128,7 +143,7 @@ export class CodexStore {
   /** Invalidates cached local state and notifies actions on app-server events. */
   subscribe(listener: () => void): () => void {
     return this.appServer.subscribe((notification) => {
-      if (!refreshesThreadState(notification.method)) return;
+      if (!refreshesStoreState(notification.method)) return;
       this.threadDescriptorsCache = undefined;
       listener();
     });
@@ -267,9 +282,9 @@ export class CodexStore {
     }
 
     const [status, subtaskStatuses] = await Promise.all([
-      this.localDescriptorStatus(descriptor),
+      this.localStatus(descriptor),
       Promise.all(
-        descriptor.subtasks.map((subtask) => this.localSubtaskStatus(subtask)),
+        descriptor.subtasks.map((subtask) => this.localStatus(subtask)),
       ),
     ]);
     return {
@@ -285,26 +300,8 @@ export class CodexStore {
     };
   }
 
-  private async localDescriptorStatus(
-    descriptor: LocalThreadDescriptor,
-  ): Promise<CodexThread["status"]> {
-    if (
-      descriptor.appServerStatus &&
-      descriptor.appServerStatus !== "working"
-    ) {
-      return descriptor.appServerStatus;
-    }
-    const records = descriptor.rolloutPath
-      ? await this.readRolloutTail(descriptor.rolloutPath)
-      : [];
-    const rolloutStatus = inferRolloutStatus(records, descriptor.spawnStatus);
-    return descriptor.appServerStatus === "working" && rolloutStatus === "idle"
-      ? "working"
-      : rolloutStatus;
-  }
-
-  private async localSubtaskStatus(
-    descriptor: LocalSubtaskDescriptor,
+  private async localStatus(
+    descriptor: LocalStatusDescriptor,
   ): Promise<CodexThread["status"]> {
     if (
       descriptor.appServerStatus &&
@@ -569,15 +566,19 @@ function asObject(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function refreshesThreadState(method: string): boolean {
+function refreshesStoreState(method: string): boolean {
   return (
     method === "fs/changed" ||
     method === "turn/started" ||
     method === "turn/completed" ||
     method === "thread/started" ||
     method === "thread/archived" ||
+    method === "thread/deleted" ||
     method === "thread/unarchived" ||
     method === "thread/closed" ||
+    method === "thread/reverted" ||
+    method === "thread/compacted" ||
+    method === "thread/queue/changed" ||
     method === "thread/status/changed" ||
     method === "thread/name/updated" ||
     method === "thread/settings/updated"

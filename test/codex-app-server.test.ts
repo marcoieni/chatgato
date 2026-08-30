@@ -250,6 +250,41 @@ lines.on("line", (line) => {
     await client.close();
   });
 
+  it("keeps healthy threads when one turn read fails", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "thread/list") send({ id: message.id, result: {
+    data: [
+      { id: "healthy", cwd: "/tmp/project", preview: "Healthy", path: "/tmp/healthy.jsonl",
+        updatedAt: 2, recencyAt: 2, parentThreadId: null, status: { type: "notLoaded" } },
+      { id: "broken", cwd: "/tmp/project", preview: "Broken", path: "/tmp/broken.jsonl",
+        updatedAt: 1, recencyAt: 1, parentThreadId: null, status: { type: "notLoaded" } }
+    ], nextCursor: null
+  } });
+  if (message.method === "thread/turns/list") {
+    if (message.params.threadId === "broken") {
+      send({ id: message.id, error: { code: -32001, message: "rollout unavailable" } });
+    } else {
+      send({ id: message.id, result: { data: [{ status: "completed", items: [],
+        startedAt: 1, completedAt: 2 }], nextCursor: null } });
+    }
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+
+    await expect(client.readThreads()).resolves.toMatchObject([
+      { id: "healthy", status: "unread" },
+      { id: "broken", status: null },
+    ]);
+    await client.close();
+  });
+
   it.each([
     ["startup", false],
     ["request", true],
@@ -324,6 +359,161 @@ lines.on("line", (line) => {
     expect(reads[2]).toBe(reads[0]);
     await expect(Promise.all(reads)).resolves.toHaveLength(3);
     await expect(readFile(marker, "utf8")).resolves.toBe("started\n");
+  });
+
+  it("rereads threads after a notification invalidates an in-flight result", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+let listCount = 0;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "thread/list") {
+    listCount += 1;
+    const id = listCount === 1 ? "stale" : "fresh";
+    if (listCount === 1) {
+      send({ method: "thread/status/changed", params: {
+        threadId: "fresh", status: { type: "idle" }
+      } });
+    }
+    setTimeout(() => send({ id: message.id, result: { data: [
+      { id, cwd: "/tmp/project", preview: id, path: "/tmp/" + id + ".jsonl",
+        updatedAt: listCount, recencyAt: listCount, parentThreadId: null,
+        status: { type: "notLoaded" } }
+    ], nextCursor: null } }), listCount === 1 ? 25 : 0);
+  }
+  if (message.method === "thread/turns/list") send({ id: message.id, result: {
+    data: [{ status: "completed", items: [], startedAt: 1, completedAt: 2 }],
+    nextCursor: null
+  } });
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    let resolveRefresh!: (
+      threads: Awaited<ReturnType<typeof client.readThreads>>,
+    ) => void;
+    const refreshed = new Promise<
+      Awaited<ReturnType<typeof client.readThreads>>
+    >((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const unsubscribe = client.subscribe((notification) => {
+      if (notification.method === "thread/status/changed") {
+        void client.readThreads().then(resolveRefresh);
+      }
+    });
+
+    const stale = client.readThreads();
+    await expect(stale).resolves.toMatchObject([{ id: "stale" }]);
+    await expect(refreshed).resolves.toMatchObject([{ id: "fresh" }]);
+
+    unsubscribe();
+    await client.close();
+  });
+
+  it("rereads usage after a sparse update invalidates an in-flight result", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+let readCount = 0;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "account/rateLimits/read") {
+    readCount += 1;
+    if (readCount === 1) {
+      send({ method: "account/rateLimits/updated", params: { rateLimits: {} } });
+    }
+    const usedPercent = readCount === 1 ? 90 : 10;
+    setTimeout(() => send({ id: message.id, result: { rateLimits: {
+      limitId: "codex", primary: { usedPercent, windowDurationMins: 300 }
+    } } }), readCount === 1 ? 25 : 0);
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    let resolveRefresh!: (
+      usage: Awaited<ReturnType<typeof client.readUsage>>,
+    ) => void;
+    const refreshed = new Promise<Awaited<ReturnType<typeof client.readUsage>>>(
+      (resolve) => {
+        resolveRefresh = resolve;
+      },
+    );
+    const unsubscribe = client.subscribe((notification) => {
+      if (notification.method === "account/rateLimits/updated") {
+        void client.readUsage().then(resolveRefresh);
+      }
+    });
+
+    const stale = client.readUsage();
+    await expect(stale).resolves.toMatchObject({
+      primary: { usedPercent: 90 },
+    });
+    await expect(refreshed).resolves.toMatchObject({
+      primary: { usedPercent: 10 },
+    });
+
+    unsubscribe();
+    await client.close();
+  });
+
+  it("watches config and rereads after a change during config/read", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+const codexHome = "/tmp/fake-codex-home";
+let configReads = 0;
+let watched = false;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: { codexHome } });
+  if (message.method === "fs/watch") {
+    watched = message.params.path === codexHome && message.params.watchId === "chatgato-config";
+    send({ id: message.id, result: { path: codexHome } });
+  }
+  if (message.method === "config/read") {
+    if (!watched) {
+      send({ id: message.id, error: { code: -32000, message: "config not watched" } });
+      return;
+    }
+    configReads += 1;
+    if (configReads === 1) {
+      send({ method: "fs/changed", params: {
+        watchId: "chatgato-config", changedPaths: [codexHome + "/config.toml"]
+      } });
+    }
+    const service_tier = configReads === 1 ? "default" : "fast";
+    setTimeout(() => send({ id: message.id, result: { config: { service_tier } } }),
+      configReads === 1 ? 25 : 0);
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    let resolveRefresh!: (
+      config: Awaited<ReturnType<typeof client.readConfig>>,
+    ) => void;
+    const refreshed = new Promise<
+      Awaited<ReturnType<typeof client.readConfig>>
+    >((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const unsubscribe = client.subscribe((notification) => {
+      if (notification.method === "fs/changed") {
+        void client.readConfig().then(resolveRefresh);
+      }
+    });
+
+    const stale = client.readConfig();
+    await expect(stale).resolves.toMatchObject({ service_tier: "default" });
+    await expect(refreshed).resolves.toMatchObject({ service_tier: "fast" });
+
+    unsubscribe();
+    await client.close();
   });
 
   it("keeps one process alive and reflects the next live response", async () => {

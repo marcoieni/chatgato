@@ -9,6 +9,7 @@ import {
 import streamDeck from "@elgato/streamdeck";
 import { normalizeAgentSlot } from "../lib/agent-slots.js";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
+import { ActionSubscriptionRegistry } from "../lib/action-subscriptions.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { buildThreadUrl } from "../lib/deep-links.js";
 import { openThreadBySearch, openUrl } from "../lib/codex-controller.js";
@@ -22,7 +23,7 @@ const logger = streamDeck.logger.createScope("Agent Status");
 export class AgentStatusAction extends SingletonAction<AgentSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
-  private readonly subscriptions = new Map<string, () => void>();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
   private readonly visibleThreads = new Map<string, CodexThread>();
 
   override async onWillAppear(
@@ -34,8 +35,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
 
   override onWillDisappear(ev: WillDisappearEvent<AgentSettings>): void {
     this.poller.stop(ev.action.id);
-    this.subscriptions.get(ev.action.id)?.();
-    this.subscriptions.delete(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
     this.visibleThreads.delete(ev.action.id);
   }
 
@@ -135,17 +135,13 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
   }
 
   private subscribe(actionInstance: VisibleAction): void {
-    this.subscriptions.get(actionInstance.id)?.();
-    const subscribe = (this.store as Partial<CodexStore>).subscribe;
-    if (!subscribe) return;
-    this.subscriptions.set(
+    this.subscriptions.replace<void>(
       actionInstance.id,
-      subscribe.call(this.store, () => {
-        void actionInstance
-          .getSettings<AgentSettings>()
-          .then((settings) => this.refresh(actionInstance, settings))
-          .catch(() => undefined);
-      }),
+      (listener) => this.store.subscribe(() => listener()),
+      async () => {
+        const settings = await actionInstance.getSettings<AgentSettings>();
+        await this.refresh(actionInstance, settings);
+      },
     );
   }
 }
