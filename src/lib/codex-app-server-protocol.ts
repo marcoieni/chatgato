@@ -196,10 +196,16 @@ function agentStatusFromAppServer(
     case "running":
       return "working";
     case "failed":
-    case "interrupted":
     case "cancelled":
     case "canceled":
       return "error";
+    case "interrupted":
+      // A separate app-server process can see a desktop-owned active turn as
+      // interrupted while it still has no completion timestamp. Defer to the
+      // rollout in that ambiguous state instead of showing a false error.
+      return turn?.completedAt === null || turn?.completedAt === undefined
+        ? null
+        : "error";
     default:
       return runtimeType === "idle" ? "idle" : null;
   }
