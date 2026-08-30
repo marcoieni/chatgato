@@ -15,6 +15,10 @@ type PendingRequest = {
   timeout: NodeJS.Timeout;
 };
 
+type RequestOptions = {
+  fatalTimeout?: boolean;
+};
+
 export class CodexAppServerResponseError extends Error {
   constructor(
     message: string,
@@ -106,6 +110,7 @@ export class LocalAppServerSession {
     method: string,
     timeoutMs: number,
     params?: JsonObject,
+    options: RequestOptions = {},
   ): Promise<JsonObject> {
     if (this.terminalError) return Promise.reject(this.terminalError);
     if (this.closed) {
@@ -118,7 +123,7 @@ export class LocalAppServerSession {
         const error = new Error(`Codex app-server ${method} timed out`);
         this.pendingRequests.delete(id);
         reject(error);
-        this.fail(error);
+        if (options.fatalTimeout !== false) this.fail(error);
       }, timeoutMs);
       timeout.unref();
       this.pendingRequests.set(id, { reject, resolve, timeout });

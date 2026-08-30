@@ -352,7 +352,8 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
     method: string,
     params?: JsonObject,
   ): Promise<JsonObject> {
-    const session = await this.session();
+    const connection = this.session();
+    const session = await connection;
     try {
       const response = await session.request(
         method,
@@ -362,6 +363,7 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
       return requireResultObject(method, response);
     } catch (error) {
       if (!(error instanceof CodexAppServerResponseError)) {
+        this.clearConnection(connection);
         await session.close();
       }
       throw error;
@@ -375,8 +377,7 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
       this.args,
       (notification) => this.handleNotification(notification),
       () => {
-        if (this.connection === connection) this.connection = null;
-        this.invalidateCaches();
+        this.clearConnection(connection);
       },
     );
     const connection = session
@@ -388,14 +389,14 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
           version: "0.1.0",
         },
       })
-      .then(async (response) => {
+      .then((response) => {
         const result = requireResultObject("initialize", response);
         session.notify("initialized", {});
-        await this.registerConfigWatch(session, result);
+        void this.registerConfigWatch(session, result).catch(() => undefined);
         return session;
       })
       .catch(async (error: unknown) => {
-        if (this.connection === connection) this.connection = null;
+        this.clearConnection(connection);
         await session.close();
         throw error;
       });
@@ -407,15 +408,30 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
     session: LocalAppServerSession,
     initializeResult: JsonObject,
   ): Promise<void> {
+    this.configWatchRoot = null;
+    this.configPath = null;
     const codexHome = initializeResult.codexHome;
     if (typeof codexHome !== "string" || !codexHome) return;
     this.configWatchRoot = codexHome;
     this.configPath = join(codexHome, "config.toml");
-    const response = await session.request("fs/watch", this.requestTimeoutMs, {
-      path: codexHome,
-      watchId: CONFIG_WATCH_ID,
-    });
+    const response = await session.request(
+      "fs/watch",
+      this.requestTimeoutMs,
+      {
+        path: codexHome,
+        watchId: CONFIG_WATCH_ID,
+      },
+      { fatalTimeout: false },
+    );
     requireResultObject("fs/watch", response);
+  }
+
+  private clearConnection(connection: Promise<LocalAppServerSession>): void {
+    if (this.connection !== connection) return;
+    this.connection = null;
+    this.configPath = null;
+    this.configWatchRoot = null;
+    this.invalidateCaches();
   }
 
   private handleNotification(notification: CodexAppServerNotification): void {

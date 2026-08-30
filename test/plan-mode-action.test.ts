@@ -155,13 +155,13 @@ describe("PlanModeAction", () => {
       payload: { settings: {} },
     } as never);
 
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
 
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
 
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
 
     planMode.onWillDisappear({ action: harness.action } as never);
@@ -179,7 +179,7 @@ describe("PlanModeAction", () => {
     } as never);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nOFF");
 
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("PLAN\nON");
     expect(mocks.planModeEnabled).toHaveBeenCalledTimes(2);
 

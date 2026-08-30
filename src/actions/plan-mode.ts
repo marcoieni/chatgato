@@ -15,7 +15,7 @@ import { planModeImage } from "../lib/visuals.js";
 import type { PlanModeSettings } from "../types.js";
 
 const logger = streamDeck.logger.createScope("Plan Mode");
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = 1_000;
 
 type VisibleAction = WillAppearEvent<PlanModeSettings>["action"];
 

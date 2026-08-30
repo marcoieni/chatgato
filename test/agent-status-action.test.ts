@@ -180,4 +180,27 @@ describe("AgentStatusAction navigation", () => {
       vi.useRealTimers();
     }
   });
+
+  it("reconciles desktop-owned task status every two seconds", async () => {
+    vi.useFakeTimers();
+    mocks.threadAtSlot.mockResolvedValue(thread());
+    const action = actionHarness();
+    const agentStatus = new AgentStatusAction();
+
+    try {
+      await agentStatus.onWillAppear({
+        action,
+        payload: { settings: { slot: 1 } },
+      } as never);
+
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(mocks.threadAtSlot).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mocks.threadAtSlot).toHaveBeenCalledTimes(2);
+    } finally {
+      agentStatus.onWillDisappear({ action } as never);
+      vi.useRealTimers();
+    }
+  });
 });

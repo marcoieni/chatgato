@@ -16,7 +16,7 @@ import { fastModeImage } from "../lib/visuals.js";
 import type { FastModeSettings } from "../types.js";
 
 const logger = streamDeck.logger.createScope("Fast Mode");
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = 1_000;
 const CONFIRM_TIMEOUT_MS = 2_000;
 const CONFIRM_INTERVAL_MS = 100;
 

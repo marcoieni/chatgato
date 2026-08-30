@@ -90,7 +90,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
         firstRun = false;
         await this.refresh(actionInstance, currentSettings);
       },
-      pollIntervalMs(settings.pollSeconds, 5, 2, 60),
+      pollIntervalMs(settings.pollSeconds, 2, 1, 30),
       () => actionInstance.showAlert(),
     );
   }

@@ -1,6 +1,7 @@
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CodexAppServerClient,
@@ -223,6 +224,42 @@ lines.on("line", (line) => {
     await expect(
       new CodexAppServerClient({ executable }).readUsage(),
     ).rejects.toThrow(/Invalid account\/rateLimits\/read result/u);
+  });
+
+  it("reconnects after a malformed non-object JSON-RPC result", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chatgato-reconnect-"));
+    temporaryDirectories.push(directory);
+    const marker = join(directory, "started.txt");
+    const executable = await fakeAppServer(`
+import { appendFileSync, readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+const marker = ${JSON.stringify(marker)};
+appendFileSync(marker, "started\\n");
+const attempt = readFileSync(marker, "utf8").trim().split("\\n").length;
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "account/rateLimits/read") {
+    send(attempt === 1
+      ? { id: message.id, result: "malformed" }
+      : { id: message.id, result: { rateLimits: {
+          limitId: "codex", primary: { usedPercent: 12, windowDurationMins: 300 }
+        } } });
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+
+    await expect(client.readUsage()).rejects.toThrow(
+      /Invalid account\/rateLimits\/read result/u,
+    );
+    await expect(client.readUsage()).resolves.toMatchObject({
+      primary: { usedPercent: 12 },
+    });
+    await expect(readFile(marker, "utf8")).resolves.toBe("started\nstarted\n");
+    await client.close();
   });
 
   it("surfaces a missing current task RPC instead of silently degrading", async () => {
@@ -513,6 +550,76 @@ lines.on("line", (line) => {
     await expect(refreshed).resolves.toMatchObject({ service_tier: "fast" });
 
     unsubscribe();
+    await client.close();
+  });
+
+  it("keeps reads available when config watch registration times out", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chatgato-watch-timeout-"));
+    temporaryDirectories.push(directory);
+    const marker = join(directory, "started.txt");
+    const executable = await fakeAppServer(`
+import { appendFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+appendFileSync(${JSON.stringify(marker)}, "started\\n");
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+let configReads = 0;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") {
+    send({ id: message.id, result: { codexHome: "/tmp/fake-codex-home" } });
+  }
+  if (message.method === "config/read") {
+    configReads += 1;
+    send({ id: message.id, result: {
+      config: { service_tier: configReads === 1 ? "default" : "fast" }
+    } });
+  }
+  if (message.method === "model/list") send({ id: message.id, result: {
+    data: [{ id: "gpt-test", supportedReasoningEfforts: [] }], nextCursor: null
+  } });
+  if (message.method === "thread/list") send({ id: message.id, result: {
+    data: [{ id: "thread", cwd: "/tmp/project", preview: "Thread",
+      path: "/tmp/thread.jsonl", updatedAt: 1, recencyAt: 1,
+      parentThreadId: null, status: { type: "notLoaded" } }], nextCursor: null
+  } });
+  if (message.method === "thread/turns/list") send({ id: message.id, result: {
+    data: [{ status: "completed", items: [], startedAt: 1, completedAt: 2 }],
+    nextCursor: null
+  } });
+  if (message.method === "account/rateLimits/read") send({ id: message.id, result: {
+    rateLimits: { limitId: "codex",
+      primary: { usedPercent: 25, windowDurationMins: 300 } }
+  } });
+});
+`);
+    let now = 0;
+    const client = new CodexAppServerClient({
+      executable,
+      now: () => now,
+      requestTimeoutMs: 250,
+    });
+
+    const [config, models, threads, usage] = await Promise.all([
+      client.readConfig(),
+      client.readModels(),
+      client.readThreads(),
+      client.readUsage(),
+    ]);
+    expect(config).toMatchObject({ service_tier: "default" });
+    expect(models).toMatchObject([{ id: "gpt-test" }]);
+    expect(threads).toMatchObject([{ id: "thread", status: "unread" }]);
+    expect(usage).toMatchObject({ primary: { usedPercent: 25 } });
+
+    await delay(300);
+    now = 751;
+    await expect(client.readConfig()).resolves.toMatchObject({
+      service_tier: "fast",
+    });
+    await expect(client.readUsage()).resolves.toMatchObject({
+      primary: { usedPercent: 25 },
+    });
+    await expect(readFile(marker, "utf8")).resolves.toBe("started\n");
     await client.close();
   });
 

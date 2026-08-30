@@ -94,9 +94,9 @@ The plugin starts one lazy, long-lived local `codex app-server` process and shar
 its documented stdio JSON-RPC connection across every key. `thread/list` and
 `thread/turns/list` provide recent chat metadata and status, `config/read` provides
 Fast mode, `model/list` provides reasoning choices, and
-`account/rateLimits/read` plus `account/rateLimits/updated` provide usage. Thread
-config, thread, and rate-limit notifications trigger immediate key refreshes; a five-second
-reconciliation poll covers persisted or unloaded threads.
+`account/rateLimits/read` plus `account/rateLimits/updated` provide usage. Thread,
+config, and rate-limit notifications trigger immediate key refreshes; one-to-two-second
+reconciliation polling covers persisted or unloaded threads.
 
 ChatGato targets the current app-server protocol and does not fall back when a
 required RPC is missing. Usage, Fast mode, model choices, and local task discovery
