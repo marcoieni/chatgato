@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <rect width="144" height="144" rx="24" fill="#071018"/>
+  <rect x="8" y="8" width="128" height="128" rx="20" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="2"/>
+  <text x="16" y="23" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="10" font-weight="800">LIFETIME TOKENS</text>
+  <text x="128" y="54" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="30" font-weight="800" text-anchor="end">12.4M</text>
+  <rect x="16" y="91" width="12" height="8" rx="3" fill="#304FFE"/>
+  <rect x="32" y="85" width="12" height="14" rx="3" fill="#304FFE"/>
+  <rect x="48" y="88" width="12" height="11" rx="3" fill="#304FFE"/>
+  <rect x="64" y="77" width="12" height="22" rx="3" fill="#304FFE"/>
+  <rect x="80" y="81" width="12" height="18" rx="3" fill="#304FFE"/>
+  <rect x="96" y="69" width="12" height="30" rx="3" fill="#304FFE"/>
+  <rect x="112" y="74" width="12" height="25" rx="3" fill="#00FF4C"/>
+  <text x="16" y="110" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="9" font-weight="800">DAILY</text>
+  <text x="128" y="110" fill="#9E5BFF" font-family="Arial,sans-serif" font-size="9" font-weight="800" text-anchor="end">PEAK 482K</text>
+  <text x="16" y="128" fill="#00FF4C" font-family="Arial,sans-serif" font-size="9" font-weight="800">STREAK 7/21D</text>
+  <text x="128" y="128" fill="#304FFE" font-family="Arial,sans-serif" font-size="9" font-weight="800" text-anchor="end">TURN 18M</text>
+</svg>

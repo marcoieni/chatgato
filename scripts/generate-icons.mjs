@@ -130,12 +130,29 @@ actionIcons.reasoning = rawKeySvg(
   { usesLucide: true },
 );
 actionIcons.usage = rawKeySvg(`${shell}
-  <text x="18" y="48" fill="${colors.white}" font-family="Arial,sans-serif" font-size="20" font-weight="800">5H</text>
-  <text x="126" y="48" fill="${colors.green}" font-family="Arial,sans-serif" font-size="32" font-weight="800" text-anchor="end">75%</text>
-  <rect x="18" y="57" width="108" height="9" rx="4.5" fill="${colors.slate}"/><rect x="18" y="57" width="81" height="9" rx="4.5" fill="${colors.green}"/>
-  <text x="18" y="102" fill="${colors.white}" font-family="Arial,sans-serif" font-size="20" font-weight="800">1W</text>
-  <text x="126" y="102" fill="${colors.blue}" font-family="Arial,sans-serif" font-size="32" font-weight="800" text-anchor="end">50%</text>
-  <rect x="18" y="111" width="108" height="9" rx="4.5" fill="${colors.slate}"/><rect x="18" y="111" width="54" height="9" rx="4.5" fill="${colors.blue}"/>`);
+  <text x="18" y="32" fill="${colors.white}" font-family="Arial,sans-serif" font-size="18" font-weight="800">5H</text>
+  <text x="126" y="32" fill="${colors.green}" font-family="Arial,sans-serif" font-size="28" font-weight="800" text-anchor="end">75%</text>
+  <text x="126" y="45" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="9" font-weight="700" text-anchor="end">RESET 2H 14M</text>
+  <rect x="18" y="51" width="108" height="8" rx="4" fill="${colors.slate}"/><rect x="18" y="51" width="81" height="8" rx="4" fill="${colors.green}"/>
+  <text x="18" y="80" fill="${colors.white}" font-family="Arial,sans-serif" font-size="18" font-weight="800">1W</text>
+  <text x="126" y="80" fill="${colors.blue}" font-family="Arial,sans-serif" font-size="28" font-weight="800" text-anchor="end">50%</text>
+  <text x="126" y="93" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="9" font-weight="700" text-anchor="end">RESET 3D 8H</text>
+  <rect x="18" y="99" width="108" height="8" rx="4" fill="${colors.slate}"/><rect x="18" y="99" width="54" height="8" rx="4" fill="${colors.blue}"/>
+  <rect x="27" y="116" width="90" height="17" rx="8.5" fill="${colors.purple}" fill-opacity=".2" stroke="${colors.purple}" stroke-opacity=".7"/>
+  <text x="72" y="128" fill="${colors.purple}" font-family="Arial,sans-serif" font-size="8" font-weight="800" text-anchor="middle">RESET ×2</text>`);
+actionIcons["usage-statistics"] = rawKeySvg(`${shell}
+  <text x="16" y="23" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="10" font-weight="800">LIFETIME TOKENS</text>
+  <text x="128" y="54" fill="${colors.white}" font-family="Arial,sans-serif" font-size="30" font-weight="800" text-anchor="end">12.4M</text>
+  ${[8, 14, 11, 22, 18, 30, 25]
+    .map(
+      (height, index) =>
+        `<rect x="${16 + index * 16}" y="${99 - height}" width="12" height="${height}" rx="3" fill="${index === 6 ? colors.green : colors.blue}"/>`,
+    )
+    .join("\n  ")}
+  <text x="16" y="110" fill="#9AA6B2" font-family="Arial,sans-serif" font-size="9" font-weight="800">DAILY</text>
+  <text x="128" y="110" fill="${colors.purple}" font-family="Arial,sans-serif" font-size="9" font-weight="800" text-anchor="end">PEAK 482K</text>
+  <text x="16" y="128" fill="${colors.green}" font-family="Arial,sans-serif" font-size="9" font-weight="800">STREAK 7/21D</text>
+  <text x="128" y="128" fill="${colors.blue}" font-family="Arial,sans-serif" font-size="9" font-weight="800" text-anchor="end">TURN 18M</text>`);
 
 const reasoningBackground = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
   <defs><linearGradient id="reasoning-gradient" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${colors.blue}"/><stop offset="1" stop-color="${colors.purple}"/></linearGradient></defs>

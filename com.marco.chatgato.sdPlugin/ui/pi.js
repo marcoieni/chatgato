@@ -146,6 +146,9 @@
       case "com.marco.chatgato.usage":
         renderUsage();
         break;
+      case "com.marco.chatgato.usage-statistics":
+        renderUsageStatistics();
+        break;
       default:
         form.innerHTML = "<p>Unknown ChatGato action.</p>";
     }
@@ -335,7 +338,23 @@
       "Seconds between local usage reads.",
     );
     note.textContent =
-      "The key shows the live percentage left in each rate-limit window (for example, 5H and 1W). Press it to refresh immediately. Local rollout data is used only when Codex's app-server is unavailable.";
+      "The key shows the percentage and reset countdown for each rate-limit window, plus reset credits and the reason a limit was reached when available. Codex push notifications refresh it immediately; press to force a read.";
+  }
+
+  function renderUsageStatistics() {
+    subtitle.textContent = "Codex token activity";
+    form.innerHTML = field(
+      "Refresh",
+      input(
+        "pollSeconds",
+        selected("pollSeconds", 60),
+        "number",
+        'min="5" max="300" step="1" required',
+      ),
+      "Seconds between local token-activity reads.",
+    );
+    note.textContent =
+      "The key shows lifetime tokens, seven recent daily totals, peak daily usage, current/longest streak, and longest turn. Active-thread token updates refresh it immediately; press to force a read.";
   }
 
   function bind() {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { remainingPercent, usageWindowLabel } from "../src/lib/codex-usage.js";
+import {
+  compactDuration,
+  compactTokenCount,
+  remainingPercent,
+  resetCountdownLabel,
+  usageWindowLabel,
+} from "../src/lib/codex-usage.js";
 
 describe("Codex usage", () => {
   it("labels common limit windows compactly", () => {
@@ -30,5 +36,26 @@ describe("Codex usage", () => {
         Date.now(),
       ),
     ).toBe(96);
+  });
+
+  it("formats reset countdowns for the space available on a key", () => {
+    const now = Date.parse("2026-08-30T10:00:00.000Z");
+    expect(resetCountdownLabel(now + 3 * 86_400_000 + 2 * 3_600_000, now)).toBe(
+      "RESET 3D 2H",
+    );
+    expect(resetCountdownLabel(now + 2 * 3_600_000 + 14 * 60_000, now)).toBe(
+      "RESET 2H 14M",
+    );
+    expect(resetCountdownLabel(now + 30_000, now)).toBe("RESET <1M");
+    expect(resetCountdownLabel(now, now)).toBe("RESET NOW");
+    expect(resetCountdownLabel(null, now)).toBeNull();
+  });
+
+  it("compacts token totals and turn durations", () => {
+    expect(compactTokenCount(12_400_000)).toBe("12.4M");
+    expect(compactTokenCount(482_000)).toBe("482K");
+    expect(compactTokenCount(null)).toBe("—");
+    expect(compactDuration(3_900)).toBe("1H 5M");
+    expect(compactDuration(null)).toBe("—");
   });
 });

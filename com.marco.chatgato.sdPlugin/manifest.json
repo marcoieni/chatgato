@@ -437,6 +437,23 @@
       ],
       "Tooltip": "Show how much Codex usage remains in each current rate-limit window.",
       "UUID": "com.marco.chatgato.usage"
+    },
+    {
+      "Controllers": [
+        "Keypad"
+      ],
+      "Icon": "imgs/action-list/usage-statistics",
+      "Name": "Usage Statistics",
+      "PropertyInspectorPath": "ui/pi.html",
+      "States": [
+        {
+          "Image": "imgs/actions/usage-statistics",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Tooltip": "Show lifetime tokens, recent daily activity, streaks, and the longest Codex turn.",
+      "UUID": "com.marco.chatgato.usage-statistics"
     }
   ],
   "Author": "Marco Ieni",

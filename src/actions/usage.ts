@@ -12,7 +12,7 @@ import {
   defaultCodexAppServer,
   type CodexAppServerNotification,
 } from "../lib/codex-app-server.js";
-import { usageImage } from "../lib/visuals.js";
+import { usageImage, usageStatisticsImage } from "../lib/visuals.js";
 import type { UsageSettings } from "../types.js";
 
 type VisibleAction = WillAppearEvent<UsageSettings>["action"];
@@ -77,6 +77,73 @@ export class UsageAction extends SingletonAction<UsageSettings> {
       (listener) => this.liveUsage.subscribe(listener),
       async (notification) => {
         if (notification.method === "account/rateLimits/updated") {
+          await this.refresh(actionInstance);
+        }
+      },
+    );
+  }
+}
+
+@action({ UUID: "com.marco.chatgato.usage-statistics" })
+export class UsageStatisticsAction extends SingletonAction<UsageSettings> {
+  private readonly liveUsage = defaultCodexAppServer;
+  private readonly poller = new ActionPoller();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
+
+  override async onWillAppear(
+    ev: WillAppearEvent<UsageSettings>,
+  ): Promise<void> {
+    this.subscribe(ev.action);
+    await this.startPolling(ev.action, ev.payload.settings);
+  }
+
+  override onWillDisappear(ev: WillDisappearEvent<UsageSettings>): void {
+    this.poller.stop(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
+  }
+
+  override async onDidReceiveSettings(
+    ev: DidReceiveSettingsEvent<UsageSettings>,
+  ): Promise<void> {
+    await this.startPolling(ev.action, ev.payload.settings);
+  }
+
+  override async onKeyDown(ev: KeyDownEvent<UsageSettings>): Promise<void> {
+    await this.refresh(ev.action);
+  }
+
+  private async startPolling(
+    actionInstance: VisibleAction,
+    settings: UsageSettings,
+  ): Promise<void> {
+    await this.poller.start(
+      actionInstance.id,
+      () => this.refresh(actionInstance),
+      pollIntervalMs(settings.pollSeconds, 60, 5, 300),
+    );
+  }
+
+  private async refresh(actionInstance: VisibleAction): Promise<void> {
+    try {
+      const usage = await this.liveUsage.readAccountUsage();
+      await Promise.all([
+        actionInstance.setImage(usageStatisticsImage(usage)),
+        actionInstance.setTitle(""),
+      ]);
+    } catch {
+      await Promise.all([
+        actionInstance.setImage(usageStatisticsImage(null, true)),
+        actionInstance.setTitle(""),
+      ]);
+    }
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.replace<CodexAppServerNotification>(
+      actionInstance.id,
+      (listener) => this.liveUsage.subscribe(listener),
+      async (notification) => {
+        if (notification.method === "thread/tokenUsage/updated") {
           await this.refresh(actionInstance);
         }
       },

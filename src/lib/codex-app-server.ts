@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { defaultCodexExecutable } from "./codex-executable.js";
 import {
+  accountUsageFromAppServerResult,
   asObject,
   parseAppServerModel,
   parseAppServerThread,
@@ -17,10 +18,16 @@ import {
   isFatalProtocolResponseError,
   LocalAppServerSession,
 } from "./codex-app-server-session.js";
-import type { CodexUsageSnapshot } from "../types.js";
+import type {
+  CodexAccountUsageSnapshot,
+  CodexUsageSnapshot,
+} from "../types.js";
 
 export { defaultCodexExecutable } from "./codex-executable.js";
-export { usageFromAppServerResult } from "./codex-app-server-protocol.js";
+export {
+  accountUsageFromAppServerResult,
+  usageFromAppServerResult,
+} from "./codex-app-server-protocol.js";
 export type {
   CodexAppServerClientLike,
   CodexAppServerModel,
@@ -93,6 +100,9 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
     null;
   private usageGeneration = 0;
   private usageInFlight: VersionedInFlight<CodexUsageSnapshot> | null = null;
+  private accountUsageGeneration = 0;
+  private accountUsageInFlight: VersionedInFlight<CodexAccountUsageSnapshot> | null =
+    null;
 
   constructor(options: CodexAppServerClientOptions = {}) {
     this.args = options.args ?? ["app-server"];
@@ -121,6 +131,24 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
       if (this.usageInFlight?.promise === read) this.usageInFlight = null;
     });
     this.usageInFlight = { generation, promise: read };
+    return read;
+  };
+
+  readonly readAccountUsage = (): Promise<CodexAccountUsageSnapshot> => {
+    const generation = this.accountUsageGeneration;
+    if (this.accountUsageInFlight) {
+      return this.followInvalidatedRead(
+        this.accountUsageInFlight,
+        generation,
+        this.readAccountUsage,
+      );
+    }
+    const read = this.readAccountUsageOnce().finally(() => {
+      if (this.accountUsageInFlight?.promise === read) {
+        this.accountUsageInFlight = null;
+      }
+    });
+    this.accountUsageInFlight = { generation, promise: read };
     return read;
   };
 
@@ -251,6 +279,15 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
     const usage = usageFromAppServerResult(result, this.now());
     if (!usage) {
       throw new Error("Invalid account/rateLimits/read result from Codex");
+    }
+    return usage;
+  }
+
+  private async readAccountUsageOnce(): Promise<CodexAccountUsageSnapshot> {
+    const result = await this.requestResult("account/usage/read");
+    const usage = accountUsageFromAppServerResult(result, this.now());
+    if (!usage) {
+      throw new Error("Invalid account/usage/read result from Codex");
     }
     return usage;
   }
@@ -450,8 +487,12 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
     if (notification.method === "account/rateLimits/updated") {
       this.usageGeneration += 1;
     }
+    if (notification.method === "thread/tokenUsage/updated") {
+      this.accountUsageGeneration += 1;
+    }
     if (notification.method === "account/updated") {
       this.invalidateModels();
+      this.accountUsageGeneration += 1;
     }
     for (const listener of this.listeners) {
       try {
@@ -490,6 +531,7 @@ export class CodexAppServerClient implements CodexAppServerClientLike {
     this.invalidateModels();
     this.invalidateThreads();
     this.usageGeneration += 1;
+    this.accountUsageGeneration += 1;
   }
 }
 

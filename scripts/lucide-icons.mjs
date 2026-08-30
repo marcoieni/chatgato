@@ -2,6 +2,7 @@ import ArrowDown from "lucide-static/dist/esm/icons/arrow-down.mjs";
 import ArrowLeft from "lucide-static/dist/esm/icons/arrow-left.mjs";
 import ArrowRight from "lucide-static/dist/esm/icons/arrow-right.mjs";
 import ArrowUp from "lucide-static/dist/esm/icons/arrow-up.mjs";
+import Activity from "lucide-static/dist/esm/icons/activity.mjs";
 import Bot from "lucide-static/dist/esm/icons/bot.mjs";
 import Brain from "lucide-static/dist/esm/icons/brain.mjs";
 import BrainCog from "lucide-static/dist/esm/icons/brain-cog.mjs";
@@ -46,6 +47,7 @@ export const actionIconSources = {
   terminal: SquareTerminal,
   "toggle-sidebar": PanelLeft,
   usage: ChartBar,
+  "usage-statistics": Activity,
 };
 
 export const reasoningIconSources = {

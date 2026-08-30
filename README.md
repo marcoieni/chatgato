@@ -12,7 +12,8 @@ No API key or login required.
 <img src="assets/logo.png" alt="ChatGato logo" width="240" align="right">
 
 - Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents progress is shown as well. On press, the keys open the chat.
-- **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
+- **Usage Limits** shows the percentage and reset countdown for each current rate-limit window, the reached-limit reason, and any earned reset credits.
+- **Usage Statistics** shows lifetime tokens, recent daily activity, peak usage, streaks, and the longest turn.
 - **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
   - **Allow** / **Decline**
@@ -94,8 +95,8 @@ The plugin starts one lazy, long-lived local `codex app-server` process and shar
 its documented stdio JSON-RPC connection across every key. `thread/list` and
 `thread/turns/list` provide recent chat metadata and status, `config/read` provides
 Fast mode, `model/list` provides reasoning choices, and
-`account/rateLimits/read` plus `account/rateLimits/updated` provide usage. Thread,
-config, and rate-limit notifications trigger immediate key refreshes; one-to-two-second
+`account/rateLimits/read` plus `account/rateLimits/updated` provide limits, while
+`account/usage/read` provides token activity. Thread, config, rate-limit, and token-usage notifications trigger immediate key refreshes; one-to-two-second
 reconciliation polling covers persisted or unloaded threads.
 
 ChatGato targets the current app-server protocol and does not fall back when a
@@ -128,7 +129,8 @@ gaps above and remote-project discovery still include internal, version-sensitiv
 formats. The plugin does not send chat titles, paths, prompts, or status to a
 third-party service; remote chat metadata only crosses the user-configured SSH
 connection. The Usage Limits key selects the canonical `codex` bucket rather than
-model-specific meters. Press the usage key to force a refresh.
+model-specific meters. The Usage Statistics key reads account-wide token activity.
+Press either usage key to force a refresh.
 
 ## Notes and limitations
 

@@ -58,16 +58,58 @@ export type CodexUsageWindow = {
   resetsAtMs: number | null;
 };
 
+export type CodexRateLimitReachedType =
+  | "rate_limit_reached"
+  | "workspace_owner_credits_depleted"
+  | "workspace_member_credits_depleted"
+  | "workspace_owner_usage_limit_reached"
+  | "workspace_member_usage_limit_reached"
+  | (string & {});
+
+export type CodexRateLimitResetCredit = {
+  id: string;
+  resetType: string;
+  status: string;
+  grantedAtMs: number;
+  expiresAtMs: number | null;
+  title: string | null;
+  description: string | null;
+};
+
+export type CodexRateLimitResetCredits = {
+  availableCount: number;
+  credits: CodexRateLimitResetCredit[] | null;
+};
+
 export type CodexUsageSnapshot = {
   updatedAtMs: number;
   primary: CodexUsageWindow | null;
   secondary: CodexUsageWindow | null;
   planType: string | null;
+  rateLimitReachedType: CodexRateLimitReachedType | null;
+  resetCredits: CodexRateLimitResetCredits | null;
   credits: {
     hasCredits: boolean;
     unlimited: boolean;
     balance: string | null;
   } | null;
+};
+
+export type CodexAccountUsageDailyBucket = {
+  startDate: string;
+  tokens: number;
+};
+
+export type CodexAccountUsageSnapshot = {
+  updatedAtMs: number;
+  summary: {
+    lifetimeTokens: number | null;
+    peakDailyTokens: number | null;
+    longestRunningTurnSeconds: number | null;
+    currentStreakDays: number | null;
+    longestStreakDays: number | null;
+  };
+  dailyUsageBuckets: CodexAccountUsageDailyBucket[] | null;
 };
 
 export type RolloutRecord = {

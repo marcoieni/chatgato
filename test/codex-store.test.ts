@@ -59,10 +59,23 @@ function appServer(
     readConfig: vi.fn(async () => ({})),
     readModels: vi.fn(async () => []),
     readThreads: vi.fn(async () => []),
+    readAccountUsage: vi.fn(async () => ({
+      dailyUsageBuckets: null,
+      summary: {
+        currentStreakDays: null,
+        lifetimeTokens: null,
+        longestRunningTurnSeconds: null,
+        longestStreakDays: null,
+        peakDailyTokens: null,
+      },
+      updatedAtMs: 0,
+    })),
     readUsage: vi.fn(async () => ({
       credits: null,
       planType: null,
       primary: null,
+      rateLimitReachedType: null,
+      resetCredits: null,
       secondary: null,
       updatedAtMs: 0,
     })),

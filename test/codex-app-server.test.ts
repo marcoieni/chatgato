@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  accountUsageFromAppServerResult,
   CodexAppServerClient,
   usageFromAppServerResult,
 } from "../src/lib/codex-app-server.js";
@@ -100,6 +101,11 @@ lines.on("line", (line) => {
   if (message.method === "account/rateLimits/read") send({ id: message.id, result: {
     rateLimits: { limitId: "codex", primary: { usedPercent: 25, windowDurationMins: 300 } }
   } });
+  if (message.method === "account/usage/read") send({ id: message.id, result: {
+    summary: { lifetimeTokens: 1234000, peakDailyTokens: 220000,
+      longestRunningTurnSec: 360, currentStreakDays: 4, longestStreakDays: 9 },
+    dailyUsageBuckets: [{ startDate: "2026-08-30", tokens: 12000 }]
+  } });
 });
 `);
     const client = new CodexAppServerClient({ executable });
@@ -120,6 +126,10 @@ lines.on("line", (line) => {
     ]);
     await expect(client.readUsage()).resolves.toMatchObject({
       primary: { usedPercent: 25, windowMinutes: 300 },
+    });
+    await expect(client.readAccountUsage()).resolves.toMatchObject({
+      summary: { lifetimeTokens: 1_234_000, currentStreakDays: 4 },
+      dailyUsageBuckets: [{ startDate: "2026-08-30", tokens: 12_000 }],
     });
     expect(notifications).toContain("account/rateLimits/updated");
     await expect(readFile(marker, "utf8")).resolves.toBe("started\n");
@@ -177,6 +187,8 @@ lines.on("line", (line) => {
         resetsAtMs: 1_784_500_000_000,
       },
       planType: "pro",
+      rateLimitReachedType: null,
+      resetCredits: null,
       credits: null,
     });
   });
@@ -223,6 +235,86 @@ lines.on("line", (line) => {
       secondary: null,
       credits: { hasCredits: false, unlimited: true, balance: null },
     });
+  });
+
+  it("preserves the reached reason and earned reset-credit details", () => {
+    expect(
+      usageFromAppServerResult(
+        {
+          rateLimits: {
+            limitId: "codex",
+            primary: {
+              usedPercent: 100,
+              windowDurationMins: 300,
+              resetsAt: 1_784_000_000,
+            },
+            rateLimitReachedType: "workspace_member_usage_limit_reached",
+          },
+          rateLimitResetCredits: {
+            availableCount: 2,
+            credits: [
+              {
+                id: "credit-1",
+                resetType: "codexRateLimits",
+                status: "available",
+                grantedAt: 1_783_000_000,
+                expiresAt: 1_785_000_000,
+                title: "Welcome reset",
+                description: "One extra Codex reset",
+              },
+            ],
+          },
+        },
+        10,
+      ),
+    ).toMatchObject({
+      rateLimitReachedType: "workspace_member_usage_limit_reached",
+      resetCredits: {
+        availableCount: 2,
+        credits: [
+          {
+            id: "credit-1",
+            grantedAtMs: 1_783_000_000_000,
+            expiresAtMs: 1_785_000_000_000,
+          },
+        ],
+      },
+    });
+  });
+
+  it("parses account-wide token activity", () => {
+    expect(
+      accountUsageFromAppServerResult(
+        {
+          summary: {
+            lifetimeTokens: 12_400_000,
+            peakDailyTokens: 482_000,
+            longestRunningTurnSec: 3_900,
+            currentStreakDays: 7,
+            longestStreakDays: 21,
+          },
+          dailyUsageBuckets: [
+            { startDate: "2026-08-29", tokens: 100_000 },
+            { startDate: "2026-08-30", tokens: 120_000 },
+          ],
+        },
+        123,
+      ),
+    ).toEqual({
+      updatedAtMs: 123,
+      summary: {
+        lifetimeTokens: 12_400_000,
+        peakDailyTokens: 482_000,
+        longestRunningTurnSeconds: 3_900,
+        currentStreakDays: 7,
+        longestStreakDays: 21,
+      },
+      dailyUsageBuckets: [
+        { startDate: "2026-08-29", tokens: 100_000 },
+        { startDate: "2026-08-30", tokens: 120_000 },
+      ],
+    });
+    expect(accountUsageFromAppServerResult({ summary: null })).toBeNull();
   });
 
   it("rejects malformed and model-specific-only payloads", async () => {

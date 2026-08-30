@@ -25,7 +25,7 @@ import {
   ReasoningAction,
 } from "./actions/reasoning.js";
 import { TapToTalkAction } from "./actions/tap-to-talk.js";
-import { UsageAction } from "./actions/usage.js";
+import { UsageAction, UsageStatisticsAction } from "./actions/usage.js";
 import { PromptAction } from "./actions/prompt.js";
 
 streamDeck.logger.setLevel("info");
@@ -53,5 +53,6 @@ streamDeck.actions.registerAction(new DecreaseReasoningAction());
 streamDeck.actions.registerAction(new IncreaseReasoningAction());
 streamDeck.actions.registerAction(new ReasoningAction());
 streamDeck.actions.registerAction(new UsageAction());
+streamDeck.actions.registerAction(new UsageStatisticsAction());
 
 streamDeck.connect();

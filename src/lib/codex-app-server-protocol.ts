@@ -1,5 +1,8 @@
 import type {
   AgentStatus,
+  CodexAccountUsageDailyBucket,
+  CodexAccountUsageSnapshot,
+  CodexRateLimitResetCredit,
   CodexUsageSnapshot,
   CodexUsageWindow,
 } from "../types.js";
@@ -31,6 +34,7 @@ export type CodexAppServerClientLike = {
   readConfig: () => Promise<JsonObject>;
   readModels: () => Promise<CodexAppServerModel[]>;
   readThreads: () => Promise<CodexAppServerThread[]>;
+  readAccountUsage: () => Promise<CodexAccountUsageSnapshot>;
   readUsage: () => Promise<CodexUsageSnapshot>;
   subscribe: (
     listener: (notification: CodexAppServerNotification) => void,
@@ -116,7 +120,16 @@ export function usageFromAppServerResult(
   const primary = parseWindow(limits.primary);
   const secondary = parseWindow(limits.secondary);
   const credits = parseCredits(limits.credits ?? object.credits);
-  if (!primary && !secondary && !credits?.hasCredits && !credits?.unlimited) {
+  const rateLimitReachedType = nonemptyString(limits.rateLimitReachedType);
+  const resetCredits = parseResetCredits(object.rateLimitResetCredits);
+  if (
+    !primary &&
+    !secondary &&
+    !credits?.hasCredits &&
+    !credits?.unlimited &&
+    !rateLimitReachedType &&
+    !resetCredits
+  ) {
     return null;
   }
 
@@ -126,7 +139,40 @@ export function usageFromAppServerResult(
     primary,
     secondary,
     planType: typeof planType === "string" ? planType : null,
+    rateLimitReachedType,
+    resetCredits,
     credits,
+  };
+}
+
+export function accountUsageFromAppServerResult(
+  result: unknown,
+  updatedAtMs = Date.now(),
+): CodexAccountUsageSnapshot | null {
+  const object = asObject(result);
+  const summary = asObject(object?.summary);
+  if (!summary) return null;
+
+  const bucketsValue = object?.dailyUsageBuckets;
+  const dailyUsageBuckets = Array.isArray(bucketsValue)
+    ? bucketsValue.flatMap((value) => {
+        const bucket = parseDailyUsageBucket(value);
+        return bucket ? [bucket] : [];
+      })
+    : null;
+
+  return {
+    updatedAtMs,
+    summary: {
+      lifetimeTokens: nonnegativeNumber(summary.lifetimeTokens),
+      peakDailyTokens: nonnegativeNumber(summary.peakDailyTokens),
+      longestRunningTurnSeconds: nonnegativeNumber(
+        summary.longestRunningTurnSec,
+      ),
+      currentStreakDays: nonnegativeNumber(summary.currentStreakDays),
+      longestStreakDays: nonnegativeNumber(summary.longestStreakDays),
+    },
+    dailyUsageBuckets,
   };
 }
 
@@ -246,6 +292,55 @@ function parseCredits(value: unknown): CodexUsageSnapshot["credits"] | null {
   };
 }
 
+function parseResetCredits(
+  value: unknown,
+): CodexUsageSnapshot["resetCredits"] | null {
+  const summary = asObject(value);
+  if (!summary) return null;
+  const availableCount = nonnegativeNumber(summary.availableCount);
+  if (availableCount === null) return null;
+
+  const creditValues = summary.credits;
+  const credits = Array.isArray(creditValues)
+    ? creditValues.flatMap((credit) => {
+        const parsed = parseResetCredit(credit);
+        return parsed ? [parsed] : [];
+      })
+    : null;
+  return { availableCount: Math.floor(availableCount), credits };
+}
+
+function parseResetCredit(value: unknown): CodexRateLimitResetCredit | null {
+  const credit = asObject(value);
+  if (!credit) return null;
+  const id = nonemptyString(credit.id);
+  const resetType = nonemptyString(credit.resetType);
+  const status = nonemptyString(credit.status);
+  const grantedAt = nonnegativeNumber(credit.grantedAt);
+  if (!id || !resetType || !status || grantedAt === null) return null;
+
+  const expiresAt = nonnegativeNumber(credit.expiresAt);
+  return {
+    id,
+    resetType,
+    status,
+    grantedAtMs: grantedAt * 1_000,
+    expiresAtMs: expiresAt === null ? null : expiresAt * 1_000,
+    title: nonemptyString(credit.title),
+    description: nonemptyString(credit.description),
+  };
+}
+
+function parseDailyUsageBucket(
+  value: unknown,
+): CodexAccountUsageDailyBucket | null {
+  const bucket = asObject(value);
+  if (!bucket) return null;
+  const startDate = nonemptyString(bucket.startDate);
+  const tokens = nonnegativeNumber(bucket.tokens);
+  return startDate && tokens !== null ? { startDate, tokens } : null;
+}
+
 function isCanonicalCodexLimit(limitId: unknown): boolean {
   return (
     typeof limitId !== "string" || limitId.trim() === "" || limitId === "codex"
@@ -255,4 +350,14 @@ function isCanonicalCodexLimit(limitId: unknown): boolean {
 function finiteNumber(value: unknown): number | null {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function nonnegativeNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = finiteNumber(value);
+  return number !== null && number >= 0 ? number : null;
+}
+
+function nonemptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
 }

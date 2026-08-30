@@ -1,6 +1,6 @@
 # ChatGato Privacy Policy
 
-Effective date: August 9, 2026
+Effective date: August 30, 2026
 
 ChatGato is a Stream Deck plugin that controls Codex in the ChatGPT desktop app
 and displays information about recent Codex chats. This policy explains what
@@ -12,7 +12,8 @@ ChatGato may process the following data on your computer:
 
 - **Codex chat data:** chat identifiers, titles or previews, workspace paths,
   timestamps, reasoning settings, chat status, plan mode, and Codex usage-limit
-  information. ChatGato reads this data from Codex's local database,
+  information and token-activity statistics (lifetime and daily token totals,
+  streaks, and longest-turn duration). ChatGato reads this data from Codex's local database,
   configuration, cache, and rollout files, and reads live usage limits through
   the documented local Codex app-server. Rollout data can contain prompts,
   responses, tool calls, and chat settings; ChatGato reads recent rollout data
@@ -47,9 +48,9 @@ that data under their own terms and privacy policies. ChatGato does not control
 any subsequent processing by those products.
 
 For usage refreshes, ChatGato launches the installed Codex binary and asks its
-local app-server for account rate limits. Codex performs its normal authenticated
-service request; ChatGato does not read the credentials or call that remote
-service directly.
+local app-server for account rate limits and token-activity statistics. Codex
+performs its normal authenticated service requests; ChatGato does not read the
+credentials or call that remote service directly.
 
 If you use remote projects, chat metadata travels only between your computer and
 the SSH host you configured, through your system SSH client. ChatGato does not

@@ -14,9 +14,14 @@ import {
   pushToTalkImage,
   pushToTalkSvg,
   reasoningSvg,
+  usageStatisticsSvg,
   usageSvg,
 } from "../src/lib/visuals.js";
-import type { CodexThread, CodexUsageSnapshot } from "../src/types.js";
+import type {
+  CodexAccountUsageSnapshot,
+  CodexThread,
+  CodexUsageSnapshot,
+} from "../src/types.js";
 
 describe("Stream Deck visuals", () => {
   it("exposes the ChatGato status colors", () => {
@@ -328,6 +333,8 @@ describe("Stream Deck visuals", () => {
       primary: { usedPercent: 18, windowMinutes: 300, resetsAtMs: null },
       secondary: { usedPercent: 61, windowMinutes: 10_080, resetsAtMs: null },
       planType: "pro",
+      rateLimitReachedType: null,
+      resetCredits: null,
       credits: null,
     };
     const svg = usageSvg(usage);
@@ -335,7 +342,54 @@ describe("Stream Deck visuals", () => {
     expect(svg).toContain(">82%</text>");
     expect(svg).toContain(">1W</text>");
     expect(svg).toContain(">39%</text>");
-    expect(svg).toContain('font-size="20">5H</text>');
-    expect(svg).toContain('font-size="32" text-anchor="end">82%</text>');
+    expect(svg).toContain('font-size="18">5H</text>');
+    expect(svg).toContain('font-size="28" text-anchor="end">82%</text>');
+  });
+
+  it("renders reset countdowns, reached reason, and earned reset credits", () => {
+    const now = Date.parse("2026-08-30T10:00:00.000Z");
+    const usage: CodexUsageSnapshot = {
+      updatedAtMs: now,
+      primary: {
+        usedPercent: 100,
+        windowMinutes: 300,
+        resetsAtMs: now + 2 * 3_600_000 + 14 * 60_000,
+      },
+      secondary: null,
+      planType: "pro",
+      rateLimitReachedType: "workspace_member_usage_limit_reached",
+      resetCredits: { availableCount: 2, credits: null },
+      credits: null,
+    };
+
+    const svg = usageSvg(usage, false, now);
+    expect(svg).toContain(">RESET 2H 14M</text>");
+    expect(svg).toContain('data-usage-badge="USAGE CAP"');
+    expect(svg).toContain('data-usage-badge="RESET ×2"');
+  });
+
+  it("renders account token statistics and seven daily bars", () => {
+    const usage: CodexAccountUsageSnapshot = {
+      updatedAtMs: 1,
+      summary: {
+        lifetimeTokens: 12_400_000,
+        peakDailyTokens: 482_000,
+        longestRunningTurnSeconds: 3_900,
+        currentStreakDays: 7,
+        longestStreakDays: 21,
+      },
+      dailyUsageBuckets: [
+        { startDate: "2026-08-28", tokens: 90_000 },
+        { startDate: "2026-08-29", tokens: 120_000 },
+        { startDate: "2026-08-30", tokens: 100_000 },
+      ],
+    };
+
+    const svg = usageStatisticsSvg(usage);
+    expect(svg).toContain(">12.4M</text>");
+    expect(svg).toContain(">PEAK 482K</text>");
+    expect(svg).toContain(">STREAK 7/21D</text>");
+    expect(svg).toContain(">TURN 1H 5M</text>");
+    expect(svg.match(/data-daily-tokens=/gu)).toHaveLength(7);
   });
 });
