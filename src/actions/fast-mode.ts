@@ -15,7 +15,7 @@ import { fastModeImage } from "../lib/visuals.js";
 import type { FastModeSettings } from "../types.js";
 
 const logger = streamDeck.logger.createScope("Fast Mode");
-const POLL_INTERVAL_MS = 1_000;
+const POLL_INTERVAL_MS = 5_000;
 const CONFIRM_TIMEOUT_MS = 2_000;
 const CONFIRM_INTERVAL_MS = 100;
 
@@ -32,6 +32,7 @@ type FastModeChange = {
 export class FastModeAction extends SingletonAction<FastModeSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new Map<string, () => void>();
   private activeScope: FastModeScope | null = null;
   private lastStates: FastModeStates | null = null;
   private toggling = false;
@@ -39,11 +40,14 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
   override async onWillAppear(
     ev: WillAppearEvent<FastModeSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<FastModeSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.get(ev.action.id)?.();
+    this.subscriptions.delete(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -100,6 +104,18 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     await this.render(
       actionInstance,
       enabledForScope(states, this.activeScope),
+    );
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.get(actionInstance.id)?.();
+    const subscribe = (this.store as Partial<CodexStore>).subscribe;
+    if (!subscribe) return;
+    this.subscriptions.set(
+      actionInstance.id,
+      subscribe.call(this.store, () => {
+        void this.refresh(actionInstance).catch(() => undefined);
+      }),
     );
   }
 

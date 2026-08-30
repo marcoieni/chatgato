@@ -157,7 +157,7 @@ describe("FastModeAction", () => {
     } as never);
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nOFF");
 
-    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(5_000);
 
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
     fastMode.onWillDisappear({ action: harness.action } as never);

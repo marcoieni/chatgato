@@ -22,16 +22,20 @@ const logger = streamDeck.logger.createScope("Agent Status");
 export class AgentStatusAction extends SingletonAction<AgentSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new Map<string, () => void>();
   private readonly visibleThreads = new Map<string, CodexThread>();
 
   override async onWillAppear(
     ev: WillAppearEvent<AgentSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<AgentSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.get(ev.action.id)?.();
+    this.subscriptions.delete(ev.action.id);
     this.visibleThreads.delete(ev.action.id);
   }
 
@@ -86,7 +90,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
         firstRun = false;
         await this.refresh(actionInstance, currentSettings);
       },
-      pollIntervalMs(settings.pollSeconds, 2, 1, 30),
+      pollIntervalMs(settings.pollSeconds, 5, 2, 60),
       () => actionInstance.showAlert(),
     );
   }
@@ -128,5 +132,20 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
 
   private slot(settings: AgentSettings): number {
     return normalizeAgentSlot(settings.slot);
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.get(actionInstance.id)?.();
+    const subscribe = (this.store as Partial<CodexStore>).subscribe;
+    if (!subscribe) return;
+    this.subscriptions.set(
+      actionInstance.id,
+      subscribe.call(this.store, () => {
+        void actionInstance
+          .getSettings<AgentSettings>()
+          .then((settings) => this.refresh(actionInstance, settings))
+          .catch(() => undefined);
+      }),
+    );
   }
 }

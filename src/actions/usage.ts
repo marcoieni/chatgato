@@ -7,9 +7,7 @@ import {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
-import { CodexAppServerUsageClient } from "../lib/codex-app-server.js";
-import { CodexStore } from "../lib/codex-store.js";
-import { CodexUsageService } from "../lib/codex-usage-service.js";
+import { defaultCodexAppServer } from "../lib/codex-app-server.js";
 import { usageImage } from "../lib/visuals.js";
 import type { UsageSettings } from "../types.js";
 
@@ -17,21 +15,21 @@ type VisibleAction = WillAppearEvent<UsageSettings>["action"];
 
 @action({ UUID: "com.marco.chatgato.usage" })
 export class UsageAction extends SingletonAction<UsageSettings> {
-  private readonly store = new CodexStore();
-  private readonly liveUsage = new CodexAppServerUsageClient();
-  private readonly usage = new CodexUsageService(this.liveUsage.readUsage, () =>
-    this.store.latestUsage(),
-  );
+  private readonly liveUsage = defaultCodexAppServer;
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new Map<string, () => void>();
 
   override async onWillAppear(
     ev: WillAppearEvent<UsageSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<UsageSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.get(ev.action.id)?.();
+    this.subscriptions.delete(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -57,7 +55,7 @@ export class UsageAction extends SingletonAction<UsageSettings> {
 
   private async refresh(actionInstance: VisibleAction): Promise<void> {
     try {
-      const usage = await this.usage.latestUsage();
+      const usage = await this.liveUsage.readUsage();
       await Promise.all([
         actionInstance.setImage(usageImage(usage)),
         actionInstance.setTitle(""),
@@ -68,5 +66,17 @@ export class UsageAction extends SingletonAction<UsageSettings> {
         actionInstance.setTitle(""),
       ]);
     }
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.get(actionInstance.id)?.();
+    this.subscriptions.set(
+      actionInstance.id,
+      this.liveUsage.subscribe((notification) => {
+        if (notification.method === "account/rateLimits/updated") {
+          void this.refresh(actionInstance);
+        }
+      }),
+    );
   }
 }

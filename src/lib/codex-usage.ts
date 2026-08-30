@@ -1,93 +1,10 @@
-import type {
-  CodexUsageSnapshot,
-  CodexUsageWindow,
-  RawRateLimitWindow,
-  RolloutRecord,
-} from "../types.js";
-
-function finiteNumber(value: unknown): number | null {
-  const number = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function parseWindow(
-  window: RawRateLimitWindow | null | undefined,
-): CodexUsageWindow | null {
-  if (!window) return null;
-  const usedPercent = finiteNumber(window.used_percent);
-  const windowMinutes = finiteNumber(window.window_minutes);
-  if (usedPercent === null || windowMinutes === null || windowMinutes <= 0)
-    return null;
-
-  const resetsAtSeconds =
-    window.resets_at === null || window.resets_at === undefined
-      ? null
-      : finiteNumber(window.resets_at);
-  return {
-    usedPercent: Math.min(100, Math.max(0, usedPercent)),
-    windowMinutes,
-    resetsAtMs: resetsAtSeconds === null ? null : resetsAtSeconds * 1000,
-  };
-}
-
-function isCanonicalCodexLimit(limitId: unknown): boolean {
-  return (
-    typeof limitId !== "string" || limitId.trim() === "" || limitId === "codex"
-  );
-}
-
-export function usageFromRollout(
-  records: readonly RolloutRecord[],
-): CodexUsageSnapshot | null {
-  let latest: CodexUsageSnapshot | null = null;
-
-  for (const record of records) {
-    const limits = record.payload?.rate_limits;
-    // Codex can emit separate model-specific meters (for example,
-    // `codex_bengalfox`) into the same rollout. The account menu displays the
-    // canonical `codex` meter, so do not let a newer specialized meter replace
-    // the value shown by the Stream Deck key. Older rollouts did not include a
-    // limit ID, and those records remain valid.
-    if (!limits || !isCanonicalCodexLimit(limits.limit_id)) continue;
-
-    const primary = parseWindow(limits.primary);
-    const secondary = parseWindow(limits.secondary);
-    const credits = limits.credits
-      ? {
-          hasCredits: limits.credits.has_credits === true,
-          unlimited: limits.credits.unlimited === true,
-          balance:
-            limits.credits.balance === undefined ||
-            limits.credits.balance === null
-              ? null
-              : String(limits.credits.balance),
-        }
-      : null;
-
-    if (!primary && !secondary && !credits?.unlimited && !credits?.hasCredits)
-      continue;
-
-    const timestamp =
-      typeof record.timestamp === "string" ? Date.parse(record.timestamp) : NaN;
-    latest = {
-      updatedAtMs: Number.isFinite(timestamp) ? timestamp : 0,
-      primary,
-      secondary,
-      planType: typeof limits.plan_type === "string" ? limits.plan_type : null,
-      credits,
-    };
-  }
-
-  return latest;
-}
+import type { CodexUsageWindow } from "../types.js";
 
 export function remainingPercent(
   window: CodexUsageWindow,
   nowMs?: number,
 ): number {
-  // Codex only writes a fresh usage snapshot when a task reports token usage.
-  // Between tasks, the last snapshot can therefore outlive its rate-limit
-  // window. Once that window has reset, its old consumption no longer applies.
+  // Once the reported window has reset, its old consumption no longer applies.
   if (
     nowMs !== undefined &&
     window.resetsAtMs !== null &&

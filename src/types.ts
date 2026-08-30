@@ -70,25 +70,6 @@ export type CodexUsageSnapshot = {
   } | null;
 };
 
-export type RawRateLimitWindow = {
-  used_percent?: unknown;
-  window_minutes?: unknown;
-  resets_at?: unknown;
-};
-
-export type RawRateLimits = {
-  limit_id?: unknown;
-  limit_name?: unknown;
-  primary?: RawRateLimitWindow | null;
-  secondary?: RawRateLimitWindow | null;
-  plan_type?: unknown;
-  credits?: {
-    has_credits?: unknown;
-    unlimited?: unknown;
-    balance?: unknown;
-  } | null;
-};
-
 export type RolloutRecord = {
   timestamp?: string;
   type?: string;
@@ -108,7 +89,6 @@ export type RolloutRecord = {
         mode?: unknown;
       };
     };
-    rate_limits?: RawRateLimits | null;
     [key: string]: unknown;
   };
 };

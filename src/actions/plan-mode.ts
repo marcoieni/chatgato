@@ -14,7 +14,7 @@ import { planModeImage } from "../lib/visuals.js";
 import type { PlanModeSettings } from "../types.js";
 
 const logger = streamDeck.logger.createScope("Plan Mode");
-const POLL_INTERVAL_MS = 1_000;
+const POLL_INTERVAL_MS = 5_000;
 
 type VisibleAction = WillAppearEvent<PlanModeSettings>["action"];
 
@@ -22,17 +22,21 @@ type VisibleAction = WillAppearEvent<PlanModeSettings>["action"];
 export class PlanModeAction extends SingletonAction<PlanModeSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new Map<string, () => void>();
   private toggling = false;
   private optimisticEnabled: boolean | null = null;
 
   override async onWillAppear(
     ev: WillAppearEvent<PlanModeSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<PlanModeSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.get(ev.action.id)?.();
+    this.subscriptions.delete(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -98,5 +102,17 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
       actionInstance.setImage(planModeImage(enabled)),
       actionInstance.setTitle(enabled ? "PLAN\nON" : "PLAN\nOFF"),
     ]);
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.get(actionInstance.id)?.();
+    const subscribe = (this.store as Partial<CodexStore>).subscribe;
+    if (!subscribe) return;
+    this.subscriptions.set(
+      actionInstance.id,
+      subscribe.call(this.store, () => {
+        void this.refresh(actionInstance).catch(() => undefined);
+      }),
+    );
   }
 }

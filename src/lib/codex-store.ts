@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
-import { open, readFile, stat } from "node:fs/promises";
+import { open, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { usageFromRollout } from "./codex-usage.js";
+import {
+  defaultCodexAppServer,
+  type CodexAppServerClientLike,
+  type CodexAppServerThread,
+} from "./codex-app-server.js";
 import { fastModeEnabledFromConfig } from "./fast-mode-config.js";
 import {
   isWithinRemotePath,
@@ -19,32 +23,12 @@ import {
   parseRolloutLines,
   planModeFromRollout,
 } from "./rollout-status.js";
-import type {
-  CodexThread,
-  CodexUsageSnapshot,
-  RolloutRecord,
-} from "../types.js";
-
-type LocalThreadRow = {
-  id: string;
-  title: string;
-  cwd: string;
-  rollout_path: string;
-  updated_at_ms: number;
-  reasoning_effort: string | null;
-  spawn_status: string | null;
-  recency_at_ms: number;
-};
-
-type LocalSubtaskRow = {
-  parent_thread_id: string;
-  rollout_path: string;
-  status: string;
-};
+import type { CodexThread, RolloutRecord } from "../types.js";
 
 type LocalSubtaskDescriptor = {
-  rolloutPath: string;
-  spawnStatus: string;
+  appServerStatus: CodexThread["status"] | null;
+  rolloutPath: string | null;
+  spawnStatus: string | null;
 };
 
 type ThreadDescriptorBase = {
@@ -56,9 +40,10 @@ type ThreadDescriptorBase = {
 };
 
 type LocalThreadDescriptor = ThreadDescriptorBase & {
+  appServerStatus: CodexThread["status"] | null;
   kind: "local";
   reasoningEffort: string | null;
-  rolloutPath: string;
+  rolloutPath: string | null;
   spawnStatus: string | null;
   subtasks: LocalSubtaskDescriptor[];
 };
@@ -74,21 +59,10 @@ type RemoteThreadDescriptor = ThreadDescriptorBase & {
 
 type ThreadDescriptor = LocalThreadDescriptor | RemoteThreadDescriptor;
 
-type RolloutPathRow = {
-  rollout_path: string;
-};
-
 type ReasoningRow = {
   id: string;
   model: string | null;
   reasoning_effort: string | null;
-};
-
-type ModelsCache = {
-  models?: Array<{
-    slug?: unknown;
-    supported_reasoning_levels?: Array<{ effort?: unknown }>;
-  }>;
 };
 
 export type ReasoningDirection = "increase" | "decrease";
@@ -141,6 +115,7 @@ export class CodexStore {
     private readonly readRolloutTail: RolloutTailReader = readRolloutTailFromFile,
     private readonly readRemoteThreads: RemoteThreadReader = defaultRemoteCodexStore.readThreadRows,
     private readonly readRemoteFastMode: RemoteFastModeReader = defaultRemoteCodexStore.readFastModeState,
+    private readonly appServer: CodexAppServerClientLike = defaultCodexAppServer,
   ) {
     this.codexHome = codexHome;
     this.sqliteHome = resolveCodexSqliteHome(codexHome);
@@ -149,6 +124,15 @@ export class CodexStore {
   private threadDescriptorsCache:
     | { descriptors: Promise<ThreadDescriptor[]>; expiresAtMs: number }
     | undefined;
+
+  /** Invalidates cached local state and notifies actions on app-server events. */
+  subscribe(listener: () => void): () => void {
+    return this.appServer.subscribe((notification) => {
+      if (!refreshesThreadState(notification.method)) return;
+      this.threadDescriptorsCache = undefined;
+      listener();
+    });
+  }
 
   async recentThreads(limit = 12, cwdFilter?: string): Promise<CodexThread[]> {
     return Promise.all(
@@ -243,56 +227,12 @@ export class CodexStore {
   }
 
   private async loadThreadDescriptors(): Promise<ThreadDescriptor[]> {
-    const { localRows, localSubtaskRows } = this.withDatabase((db) => {
-      const statement = db.prepare(
-        `SELECT t.id, t.title, t.cwd, t.rollout_path,
-                COALESCE(t.updated_at_ms, t.updated_at * 1000) AS updated_at_ms,
-                t.recency_at_ms,
-                t.reasoning_effort,
-                NULL AS spawn_status
-           FROM threads t
-          WHERE t.archived = 0 AND t.preview <> ''
-            AND NOT EXISTS (
-                  SELECT 1
-                    FROM thread_spawn_edges e
-                   WHERE e.child_thread_id = t.id
-                )
-       ORDER BY t.recency_at_ms DESC, t.id DESC`,
-      );
-      const subtaskStatement = db.prepare(
-        `SELECT e.parent_thread_id, t.rollout_path, e.status
-           FROM thread_spawn_edges e
-           JOIN threads t ON t.id = e.child_thread_id
-       ORDER BY e.parent_thread_id, e.child_thread_id`,
-      );
-      return {
-        localRows: [
-          ...(statement.iterate() as unknown as Iterable<LocalThreadRow>),
-        ],
-        localSubtaskRows: [
-          ...(subtaskStatement.iterate() as unknown as Iterable<LocalSubtaskRow>),
-        ],
-      };
-    });
-
-    const remoteRows = await this.readRemoteThreads(this.codexHome).catch(
-      () => [],
-    );
+    const [localDescriptors, remoteRows] = await Promise.all([
+      this.loadLocalThreadDescriptors(),
+      this.readRemoteThreads(this.codexHome).catch(() => []),
+    ]);
     const descriptorsById = new Map<string, ThreadDescriptor>();
-    const localSubtasksByParent = new Map<string, LocalSubtaskDescriptor[]>();
-    for (const row of localSubtaskRows) {
-      const subtasks = localSubtasksByParent.get(row.parent_thread_id) ?? [];
-      subtasks.push({
-        rolloutPath: row.rollout_path,
-        spawnStatus: row.status,
-      });
-      localSubtasksByParent.set(row.parent_thread_id, subtasks);
-    }
-    for (const row of localRows) {
-      const descriptor = localThreadDescriptor(
-        row,
-        localSubtasksByParent.get(row.id) ?? [],
-      );
+    for (const descriptor of localDescriptors) {
       descriptorsById.set(descriptor.id, descriptor);
     }
     for (const row of remoteRows) {
@@ -302,6 +242,10 @@ export class CodexStore {
       (left, right) =>
         right.recencyAtMs - left.recencyAtMs || right.id.localeCompare(left.id),
     );
+  }
+
+  private async loadLocalThreadDescriptors(): Promise<LocalThreadDescriptor[]> {
+    return localAppServerThreadDescriptors(await this.appServer.readThreads());
   }
 
   private async hydrateThread(
@@ -322,15 +266,10 @@ export class CodexStore {
       };
     }
 
-    const [records, subtaskStatuses] = await Promise.all([
-      this.readRolloutTail(descriptor.rolloutPath),
+    const [status, subtaskStatuses] = await Promise.all([
+      this.localDescriptorStatus(descriptor),
       Promise.all(
-        descriptor.subtasks.map(async (subtask) =>
-          inferRolloutStatus(
-            await this.readRolloutTail(subtask.rolloutPath),
-            subtask.spawnStatus,
-          ),
-        ),
+        descriptor.subtasks.map((subtask) => this.localSubtaskStatus(subtask)),
       ),
     ]);
     return {
@@ -341,35 +280,45 @@ export class CodexStore {
       updatedAtMs: Number(descriptor.updatedAtMs) || 0,
       reasoningEffort: descriptor.reasoningEffort,
       spawnStatus: descriptor.spawnStatus,
-      status: inferRolloutStatus(records, descriptor.spawnStatus),
+      status,
       subtaskStatuses,
     };
   }
 
-  async latestUsage(limit = 12): Promise<CodexUsageSnapshot | null> {
-    const rows = this.withDatabase(
-      (db) =>
-        db
-          .prepare(
-            `SELECT rollout_path
-             FROM threads
-            WHERE rollout_path <> ''
-         ORDER BY recency_at_ms DESC, id DESC
-            LIMIT ?`,
-          )
-          .all(Math.max(1, limit)) as unknown as RolloutPathRow[],
-    );
+  private async localDescriptorStatus(
+    descriptor: LocalThreadDescriptor,
+  ): Promise<CodexThread["status"]> {
+    if (
+      descriptor.appServerStatus &&
+      descriptor.appServerStatus !== "working"
+    ) {
+      return descriptor.appServerStatus;
+    }
+    const records = descriptor.rolloutPath
+      ? await this.readRolloutTail(descriptor.rolloutPath)
+      : [];
+    const rolloutStatus = inferRolloutStatus(records, descriptor.spawnStatus);
+    return descriptor.appServerStatus === "working" && rolloutStatus === "idle"
+      ? "working"
+      : rolloutStatus;
+  }
 
-    const snapshots = await Promise.all(
-      rows.map(async (row) =>
-        usageFromRollout(await this.readRolloutTail(row.rollout_path)),
-      ),
-    );
-    return (
-      snapshots
-        .filter((snapshot): snapshot is CodexUsageSnapshot => snapshot !== null)
-        .sort((left, right) => right.updatedAtMs - left.updatedAtMs)[0] ?? null
-    );
+  private async localSubtaskStatus(
+    descriptor: LocalSubtaskDescriptor,
+  ): Promise<CodexThread["status"]> {
+    if (
+      descriptor.appServerStatus &&
+      descriptor.appServerStatus !== "working"
+    ) {
+      return descriptor.appServerStatus;
+    }
+    const records = descriptor.rolloutPath
+      ? await this.readRolloutTail(descriptor.rolloutPath)
+      : [];
+    const rolloutStatus = inferRolloutStatus(records, descriptor.spawnStatus);
+    return descriptor.appServerStatus === "working" && rolloutStatus === "idle"
+      ? "working"
+      : rolloutStatus;
   }
 
   async fastModeEnabled(forceRemoteRefresh = false): Promise<boolean> {
@@ -392,36 +341,16 @@ export class CodexStore {
   }
 
   private async localFastModeEnabled(): Promise<boolean> {
-    let config: string;
-    try {
-      config = await readFile(join(this.codexHome, "config.toml"), "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
-      throw error;
-    }
-
-    const serviceTier = readRootTomlString(config, "service_tier");
-    const featureEnabled = readTomlBoolean(config, "features", "fast_mode");
-    // Codex CLI documents "fast"; the desktop app currently persists the same mode as
-    // "priority". Accept both representations so the Stream Deck state follows either surface.
-    return fastModeEnabledFromConfig(serviceTier, featureEnabled);
+    const config = await this.appServer.readConfig();
+    const features = asObject(config.features);
+    return fastModeEnabledFromConfig(config.service_tier, features?.fast_mode);
   }
 
   async planModeEnabled(): Promise<boolean> {
-    const row = this.withDatabase(
-      (db) =>
-        db
-          .prepare(
-            `SELECT rollout_path
-             FROM threads
-            WHERE archived = 0 AND preview <> ''
-         ORDER BY recency_at_ms DESC, id DESC
-            LIMIT 1`,
-          )
-          .get() as RolloutPathRow | undefined,
-    );
-    if (!row) return false;
-    return planModeFromRollout(await this.readRolloutTail(row.rollout_path));
+    const descriptor = (await this.loadLocalThreadDescriptors())[0];
+    return descriptor?.rolloutPath
+      ? planModeFromRollout(await this.readRolloutTail(descriptor.rolloutPath))
+      : false;
   }
 
   async reasoningSnapshot(): Promise<ReasoningSnapshot> {
@@ -442,18 +371,10 @@ export class CodexStore {
       throw new Error("The current Codex chat has no reasoning setting");
     }
 
-    const cache = JSON.parse(
-      await readFile(join(this.codexHome, "models_cache.json"), "utf8"),
-    ) as ModelsCache;
-    const model = cache.models?.find(
-      (candidate) => candidate.slug === row.model,
-    );
-    const efforts = (model?.supported_reasoning_levels ?? [])
-      .map((level) => level.effort)
-      .filter(
-        (effort): effort is string =>
-          typeof effort === "string" && effort.length > 0,
-      );
+    const efforts =
+      (await this.appServer.readModels()).find(
+        (candidate) => candidate.id === row.model,
+      )?.reasoningEfforts ?? [];
     if (!efforts.includes(row.reasoning_effort)) {
       throw new Error(
         `Unsupported reasoning effort for ${row.model}: ${row.reasoning_effort}`,
@@ -499,22 +420,40 @@ export class CodexStore {
   }
 }
 
-function localThreadDescriptor(
-  row: LocalThreadRow,
-  subtasks: LocalSubtaskDescriptor[],
-): LocalThreadDescriptor {
-  return {
-    cwd: row.cwd,
-    id: row.id,
-    kind: "local",
-    reasoningEffort: row.reasoning_effort,
-    recencyAtMs: row.recency_at_ms,
-    rolloutPath: row.rollout_path,
-    spawnStatus: row.spawn_status,
-    subtasks,
-    title: row.title,
-    updatedAtMs: row.updated_at_ms,
-  };
+function localAppServerThreadDescriptors(
+  threads: readonly CodexAppServerThread[],
+): LocalThreadDescriptor[] {
+  const subtasksByParent = new Map<string, LocalSubtaskDescriptor[]>();
+  for (const thread of threads) {
+    if (!thread.parentThreadId) continue;
+    const subtasks = subtasksByParent.get(thread.parentThreadId) ?? [];
+    subtasks.push({
+      appServerStatus: thread.status,
+      rolloutPath: thread.rolloutPath,
+      spawnStatus: null,
+    });
+    subtasksByParent.set(thread.parentThreadId, subtasks);
+  }
+
+  return threads.flatMap((thread) =>
+    thread.parentThreadId
+      ? []
+      : [
+          {
+            appServerStatus: thread.status,
+            cwd: thread.cwd,
+            id: thread.id,
+            kind: "local" as const,
+            reasoningEffort: null,
+            recencyAtMs: thread.recencyAtMs,
+            rolloutPath: thread.rolloutPath,
+            spawnStatus: null,
+            subtasks: subtasksByParent.get(thread.id) ?? [],
+            title: thread.title,
+            updatedAtMs: thread.updatedAtMs,
+          },
+        ],
+  );
 }
 
 function remoteThreadDescriptor(row: RemoteThreadRow): RemoteThreadDescriptor {
@@ -574,39 +513,6 @@ function readRootTomlString(config: string, key: string): string | undefined {
   return undefined;
 }
 
-function readTomlBoolean(
-  config: string,
-  table: string,
-  key: string,
-): boolean | undefined {
-  const escapedTable = table.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-  const tablePattern = new RegExp(
-    `^\\[\\s*(?:${escapedTable}|"${escapedTable}"|'${escapedTable}')\\s*\\](?:\\s*#.*)?$`,
-    "u",
-  );
-  const assignmentPattern = new RegExp(
-    `^(?:${escapedKey}|"${escapedKey}"|'${escapedKey}')\\s*=\\s*(true|false)(?:\\s*#.*)?$`,
-    "u",
-  );
-  let inTable = false;
-
-  for (const line of config.split(/\r?\n/u)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    if (trimmed.startsWith("[")) {
-      inTable = tablePattern.test(trimmed);
-      continue;
-    }
-    if (!inTable) continue;
-
-    const assignment = assignmentPattern.exec(trimmed);
-    if (assignment) return assignment[1] === "true";
-  }
-
-  return undefined;
-}
-
 function parseTomlString(value: string): string | undefined {
   const quote = value[0];
   if (quote !== '"' && quote !== "'") return undefined;
@@ -655,6 +561,27 @@ function parseTomlString(value: string): string | undefined {
   }
 
   return undefined;
+}
+
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function refreshesThreadState(method: string): boolean {
+  return (
+    method === "fs/changed" ||
+    method === "turn/started" ||
+    method === "turn/completed" ||
+    method === "thread/started" ||
+    method === "thread/archived" ||
+    method === "thread/unarchived" ||
+    method === "thread/closed" ||
+    method === "thread/status/changed" ||
+    method === "thread/name/updated" ||
+    method === "thread/settings/updated"
+  );
 }
 
 async function readRolloutTailFromFile(path: string): Promise<RolloutRecord[]> {
