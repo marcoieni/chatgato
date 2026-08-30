@@ -1,24 +1,60 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
-import { createInterface, type Interface } from "node:readline";
-import type { CodexUsageSnapshot, CodexUsageWindow } from "../types.js";
+import { defaultCodexExecutable } from "./codex-executable.js";
+import {
+  asObject,
+  parseAppServerModel,
+  parseAppServerThread,
+  requireResultObject,
+  usageFromAppServerResult,
+  type CodexAppServerClientLike,
+  type CodexAppServerModel,
+  type CodexAppServerNotification,
+  type CodexAppServerThread,
+  type JsonObject,
+} from "./codex-app-server-protocol.js";
+import {
+  CodexAppServerResponseError,
+  isFatalProtocolResponseError,
+  LocalAppServerSession,
+} from "./codex-app-server-session.js";
+import type { CodexUsageSnapshot } from "../types.js";
+
+export { defaultCodexExecutable } from "./codex-executable.js";
+export { usageFromAppServerResult } from "./codex-app-server-protocol.js";
+export type {
+  CodexAppServerClientLike,
+  CodexAppServerModel,
+  CodexAppServerNotification,
+  CodexAppServerThread,
+} from "./codex-app-server-protocol.js";
 
 const DEFAULT_STARTUP_TIMEOUT_MS = 3_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
-const PROCESS_EXIT_GRACE_MS = 250;
-const MAX_STDERR_LENGTH = 4_000;
+const THREADS_PER_PAGE = 100;
+const THREAD_TURN_STATUS_LIMIT = 40;
+const THREAD_CACHE_MS = 1_000;
+const CONFIG_CACHE_MS = 750;
+const MODEL_CACHE_MS = 5 * 60_000;
+const CONFIG_WATCH_ID = "chatgato-config";
+const THREAD_SOURCE_KINDS = [
+  "cli",
+  "vscode",
+  "exec",
+  "appServer",
+  "subAgent",
+  "subAgentReview",
+  "subAgentCompact",
+  "subAgentThreadSpawn",
+  "subAgentOther",
+  "unknown",
+] as const;
 
-type JsonObject = Record<string, unknown>;
-
-type PendingRequest = {
-  reject: (error: Error) => void;
-  resolve: (message: JsonObject) => void;
-  timeout: NodeJS.Timeout;
+type VersionedInFlight<T> = {
+  generation: number;
+  promise: Promise<T>;
 };
 
-export type CodexAppServerUsageClientOptions = {
+export type CodexAppServerClientOptions = {
   args?: readonly string[];
   executable?: string;
   now?: () => number;
@@ -26,199 +62,39 @@ export type CodexAppServerUsageClientOptions = {
   startupTimeoutMs?: number;
 };
 
-class LocalAppServerSession {
-  private readonly child: ChildProcessWithoutNullStreams;
-  private readonly exited: Promise<void>;
-  private readonly lines: Interface;
-  private readonly pendingRequests = new Map<number, PendingRequest>();
-  private closed = false;
-  private didExit = false;
-  private nextRequestId = 0;
-  private stderr = "";
-  private terminalError: Error | null = null;
-
-  constructor(executable: string, args: readonly string[]) {
-    this.child = spawn(executable, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
-    });
-    this.exited = new Promise((resolve) => {
-      this.child.once("close", (code, signal) => {
-        this.didExit = true;
-        resolve();
-        if (this.closed) return;
-        const detail = this.stderr.trim();
-        this.fail(
-          new Error(
-            `Codex app-server exited before responding (code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""})${detail ? `: ${detail}` : ""}`,
-          ),
-        );
-      });
-    });
-
-    this.child.stderr.setEncoding("utf8");
-    this.child.stderr.on("data", (chunk: string) => {
-      if (this.stderr.length < MAX_STDERR_LENGTH) {
-        this.stderr += chunk.slice(0, MAX_STDERR_LENGTH - this.stderr.length);
-      }
-    });
-
-    this.lines = createInterface({ input: this.child.stdout });
-    this.lines.on("line", (line) => this.handleLine(line));
-    this.child.stdin.on("error", (error) => {
-      this.fail(
-        new Error(`Codex app-server stdin failed: ${error.message}`, {
-          cause: error,
-        }),
-      );
-    });
-    this.child.once("error", (error) => {
-      this.fail(
-        new Error(`Failed to start Codex app-server: ${error.message}`, {
-          cause: error,
-        }),
-      );
-    });
-  }
-
-  request(
-    method: string,
-    timeoutMs: number,
-    params?: JsonObject,
-  ): Promise<JsonObject> {
-    if (this.terminalError) return Promise.reject(this.terminalError);
-    if (this.closed) {
-      return Promise.reject(new Error("Codex app-server session is closed"));
-    }
-
-    const id = this.nextRequestId++;
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingRequests.delete(id);
-        reject(new Error(`Codex app-server ${method} timed out`));
-      }, timeoutMs);
-      timeout.unref();
-      this.pendingRequests.set(id, { reject, resolve, timeout });
-      this.send({ id, method, ...(params ? { params } : {}) });
-    });
-  }
-
-  notify(method: string, params: JsonObject): void {
-    this.send({ method, params });
-  }
-
-  async close(): Promise<void> {
-    if (this.closed) {
-      await this.waitForExit();
-      return;
-    }
-
-    this.closed = true;
-    this.lines.close();
-    const error = new Error("Codex app-server session closed");
-    for (const pending of this.pendingRequests.values()) {
-      clearTimeout(pending.timeout);
-      pending.reject(error);
-    }
-    this.pendingRequests.clear();
-
-    if (!this.child.stdin.destroyed && !this.child.stdin.writableEnded) {
-      this.child.stdin.end();
-    }
-    if (!this.didExit) this.child.kill();
-    await this.waitForExit();
-  }
-
-  private handleLine(line: string): void {
-    if (this.closed || !line.trim()) return;
-
-    let message: JsonObject;
-    try {
-      const decoded = JSON.parse(line) as unknown;
-      const object = asObject(decoded);
-      if (!object) return;
-      message = object;
-    } catch {
-      // A non-response line cannot be correlated with an outstanding request.
-      // Keep waiting for the bounded request timeout rather than accepting it.
-      return;
-    }
-
-    if (typeof message.id !== "number") return;
-    if (!("result" in message) && !("error" in message)) return;
-    const pending = this.pendingRequests.get(message.id);
-    if (!pending) return;
-
-    this.pendingRequests.delete(message.id);
-    clearTimeout(pending.timeout);
-    if (message.error !== undefined) {
-      pending.reject(jsonRpcResponseError(message));
-    } else {
-      pending.resolve(message);
-    }
-  }
-
-  private send(message: JsonObject): void {
-    if (
-      this.closed ||
-      this.child.stdin.destroyed ||
-      this.child.stdin.writableEnded ||
-      !this.child.stdin.writable
-    ) {
-      this.fail(new Error("Codex app-server stdin is closed"));
-      return;
-    }
-
-    try {
-      this.child.stdin.write(`${JSON.stringify(message)}\n`, (error) => {
-        if (error) {
-          this.fail(
-            new Error(`Failed to write to Codex app-server: ${error.message}`, {
-              cause: error,
-            }),
-          );
-        }
-      });
-    } catch (error) {
-      this.fail(
-        new Error("Failed to write to Codex app-server", { cause: error }),
-      );
-    }
-  }
-
-  private fail(error: Error): void {
-    if (this.closed || this.terminalError) return;
-    this.terminalError = error;
-    for (const pending of this.pendingRequests.values()) {
-      clearTimeout(pending.timeout);
-      pending.reject(error);
-    }
-    this.pendingRequests.clear();
-  }
-
-  private async waitForExit(): Promise<void> {
-    if (this.didExit) return;
-    await Promise.race([this.exited, delay(PROCESS_EXIT_GRACE_MS)]);
-    if (this.didExit) return;
-    this.child.kill("SIGKILL");
-    await Promise.race([this.exited, delay(PROCESS_EXIT_GRACE_MS)]);
-  }
-}
-
 /**
- * Reads the authenticated account limits exposed by the installed Codex
- * app-server. Calls on the same client are single-flight so adjacent Stream
- * Deck refreshes cannot launch overlapping Codex processes.
+ * Owns one lazy, long-lived Codex app-server process shared by all local reads.
+ * Protocol failures are surfaced to callers so actions can show an offline state.
  */
-export class CodexAppServerUsageClient {
+export class CodexAppServerClient implements CodexAppServerClientLike {
   private readonly args: readonly string[];
   private readonly executable: string;
+  private readonly listeners = new Set<
+    (notification: CodexAppServerNotification) => void
+  >();
   private readonly now: () => number;
   private readonly requestTimeoutMs: number;
   private readonly startupTimeoutMs: number;
-  private inFlight: Promise<CodexUsageSnapshot> | null = null;
+  private connection: Promise<LocalAppServerSession> | null = null;
+  private configCache: { expiresAtMs: number; value: JsonObject } | undefined;
+  private configGeneration = 0;
+  private configInFlight: VersionedInFlight<JsonObject> | null = null;
+  private configPath: string | null = null;
+  private configWatchRoot: string | null = null;
+  private modelsCache:
+    { expiresAtMs: number; value: CodexAppServerModel[] } | undefined;
+  private modelsGeneration = 0;
+  private modelsInFlight: VersionedInFlight<CodexAppServerModel[]> | null =
+    null;
+  private threadsCache:
+    { expiresAtMs: number; value: CodexAppServerThread[] } | undefined;
+  private threadsGeneration = 0;
+  private threadsInFlight: VersionedInFlight<CodexAppServerThread[]> | null =
+    null;
+  private usageGeneration = 0;
+  private usageInFlight: VersionedInFlight<CodexUsageSnapshot> | null = null;
 
-  constructor(options: CodexAppServerUsageClientOptions = {}) {
+  constructor(options: CodexAppServerClientOptions = {}) {
     this.args = options.args ?? ["app-server"];
     this.executable = options.executable ?? defaultCodexExecutable();
     this.now = options.now ?? Date.now;
@@ -233,221 +109,409 @@ export class CodexAppServerUsageClient {
   }
 
   readonly readUsage = (): Promise<CodexUsageSnapshot> => {
-    if (this.inFlight) return this.inFlight;
-    const read = this.readOnce().finally(() => {
-      if (this.inFlight === read) this.inFlight = null;
+    const generation = this.usageGeneration;
+    if (this.usageInFlight) {
+      return this.followInvalidatedRead(
+        this.usageInFlight,
+        generation,
+        this.readUsage,
+      );
+    }
+    const read = this.readUsageOnce().finally(() => {
+      if (this.usageInFlight?.promise === read) this.usageInFlight = null;
     });
-    this.inFlight = read;
+    this.usageInFlight = { generation, promise: read };
     return read;
   };
 
-  private async readOnce(): Promise<CodexUsageSnapshot> {
-    const session = new LocalAppServerSession(this.executable, this.args);
-    try {
-      const initialize = await session.request(
-        "initialize",
-        this.startupTimeoutMs,
-        {
-          clientInfo: {
-            name: "chatgato",
-            title: "ChatGato",
-            version: "0.1.0",
-          },
-        },
+  readonly readConfig = (): Promise<JsonObject> => {
+    const generation = this.configGeneration;
+    const now = this.now();
+    if (this.configCache && this.configCache.expiresAtMs > now) {
+      return Promise.resolve(this.configCache.value);
+    }
+    if (this.configInFlight) {
+      return this.followInvalidatedRead(
+        this.configInFlight,
+        generation,
+        this.readConfig,
       );
-      requireResultObject("initialize", initialize);
-      session.notify("initialized", {});
+    }
+    const read = this.requestResult("config/read", {
+      includeLayers: false,
+    })
+      .then((result) => {
+        const config = asObject(result.config);
+        if (!config) throw new Error("Invalid config/read result from Codex");
+        if (generation === this.configGeneration) {
+          this.configCache = {
+            expiresAtMs: this.now() + CONFIG_CACHE_MS,
+            value: config,
+          };
+        }
+        return config;
+      })
+      .finally(() => {
+        if (this.configInFlight?.promise === read) this.configInFlight = null;
+      });
+    this.configInFlight = { generation, promise: read };
+    return read;
+  };
 
-      const response = await session.request(
-        "account/rateLimits/read",
-        this.requestTimeoutMs,
+  readonly readModels = (): Promise<CodexAppServerModel[]> => {
+    const generation = this.modelsGeneration;
+    const now = this.now();
+    if (this.modelsCache && this.modelsCache.expiresAtMs > now) {
+      return Promise.resolve(this.modelsCache.value);
+    }
+    if (this.modelsInFlight) {
+      return this.followInvalidatedRead(
+        this.modelsInFlight,
+        generation,
+        this.readModels,
       );
-      const result = requireResultObject("account/rateLimits/read", response);
-      const usage = usageFromAppServerResult(result, this.now());
-      if (!usage) {
-        throw new Error("Invalid account/rateLimits/read result from Codex");
+    }
+    const read = this.readModelsOnce()
+      .then((models) => {
+        if (generation === this.modelsGeneration) {
+          this.modelsCache = {
+            expiresAtMs: this.now() + MODEL_CACHE_MS,
+            value: models,
+          };
+        }
+        return models;
+      })
+      .finally(() => {
+        if (this.modelsInFlight?.promise === read) this.modelsInFlight = null;
+      });
+    this.modelsInFlight = { generation, promise: read };
+    return read;
+  };
+
+  readonly readThreads = (): Promise<CodexAppServerThread[]> => {
+    const generation = this.threadsGeneration;
+    const now = this.now();
+    if (this.threadsCache && this.threadsCache.expiresAtMs > now) {
+      return Promise.resolve(this.threadsCache.value);
+    }
+    if (this.threadsInFlight) {
+      return this.followInvalidatedRead(
+        this.threadsInFlight,
+        generation,
+        this.readThreads,
+      );
+    }
+    const read = this.readThreadsOnce()
+      .then((threads) => {
+        if (generation === this.threadsGeneration) {
+          this.threadsCache = {
+            expiresAtMs: this.now() + THREAD_CACHE_MS,
+            value: threads,
+          };
+        }
+        return threads;
+      })
+      .finally(() => {
+        if (this.threadsInFlight?.promise === read) this.threadsInFlight = null;
+      });
+    this.threadsInFlight = { generation, promise: read };
+    return read;
+  };
+
+  readonly subscribe = (
+    listener: (notification: CodexAppServerNotification) => void,
+  ): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  async close(): Promise<void> {
+    const connection = this.connection;
+    this.connection = null;
+    this.configPath = null;
+    this.configWatchRoot = null;
+    this.invalidateCaches();
+    if (!connection) return;
+    const session = await connection.catch(() => null);
+    await session?.close();
+  }
+
+  private followInvalidatedRead<T>(
+    inFlight: VersionedInFlight<T>,
+    generation: number,
+    readFresh: () => Promise<T>,
+  ): Promise<T> {
+    return inFlight.generation === generation
+      ? inFlight.promise
+      : inFlight.promise.then(readFresh, readFresh);
+  }
+
+  private async readUsageOnce(): Promise<CodexUsageSnapshot> {
+    const result = await this.requestResult("account/rateLimits/read");
+    const usage = usageFromAppServerResult(result, this.now());
+    if (!usage) {
+      throw new Error("Invalid account/rateLimits/read result from Codex");
+    }
+    return usage;
+  }
+
+  private async readModelsOnce(): Promise<CodexAppServerModel[]> {
+    const models: CodexAppServerModel[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    do {
+      const result = await this.requestResult("model/list", {
+        ...(cursor ? { cursor } : {}),
+        includeHidden: true,
+        limit: 100,
+      });
+      const data = Array.isArray(result.data) ? result.data : null;
+      if (!data) throw new Error("Invalid model/list result from Codex");
+      for (const value of data) {
+        const model = parseAppServerModel(value);
+        if (model) models.push(model);
       }
-      return usage;
-    } finally {
-      await session.close();
+      cursor = readCursor(result.nextCursor);
+      requireFreshCursor("model/list", cursor, seenCursors);
+    } while (cursor);
+    return models;
+  }
+
+  private async readThreadsOnce(): Promise<CodexAppServerThread[]> {
+    const rawThreads: JsonObject[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    do {
+      const result = await this.requestResult("thread/list", {
+        archived: false,
+        ...(cursor ? { cursor } : {}),
+        limit: THREADS_PER_PAGE,
+        sortDirection: "desc",
+        sortKey: "recency_at",
+        sourceKinds: [...THREAD_SOURCE_KINDS],
+        useStateDbOnly: true,
+      });
+      const data = Array.isArray(result.data) ? result.data : null;
+      if (!data) throw new Error("Invalid thread/list result from Codex");
+      for (const value of data) {
+        const thread = asObject(value);
+        if (thread) rawThreads.push(thread);
+      }
+      cursor = readCursor(result.nextCursor);
+      requireFreshCursor("thread/list", cursor, seenCursors);
+    } while (cursor);
+
+    const recentThreads = rawThreads.slice(0, THREAD_TURN_STATUS_LIMIT);
+    const turns = new Map(
+      (
+        await Promise.all(
+          recentThreads.map(async (thread) => {
+            const threadId = typeof thread.id === "string" ? thread.id : null;
+            if (!threadId) return null;
+            try {
+              const result = await this.requestResult("thread/turns/list", {
+                itemsView: "summary",
+                limit: 1,
+                sortDirection: "desc",
+                threadId,
+              });
+              if (!Array.isArray(result.data)) {
+                throw new Error("Invalid thread/turns/list result from Codex");
+              }
+              return [threadId, result.data[0]] as const;
+            } catch (error) {
+              if (
+                !(error instanceof CodexAppServerResponseError) ||
+                isFatalProtocolResponseError(error)
+              ) {
+                throw error;
+              }
+              return null;
+            }
+          }),
+        )
+      ).filter((entry) => entry !== null),
+    );
+
+    return rawThreads
+      .map((thread) =>
+        parseAppServerThread(
+          thread,
+          typeof thread.id === "string" ? turns.get(thread.id) : undefined,
+        ),
+      )
+      .filter((thread): thread is CodexAppServerThread => thread !== null)
+      .sort(
+        (left, right) =>
+          right.recencyAtMs - left.recencyAtMs ||
+          right.id.localeCompare(left.id),
+      );
+  }
+
+  private async requestResult(
+    method: string,
+    params?: JsonObject,
+  ): Promise<JsonObject> {
+    const connection = this.session();
+    const session = await connection;
+    try {
+      const response = await session.request(
+        method,
+        this.requestTimeoutMs,
+        params,
+      );
+      return requireResultObject(method, response);
+    } catch (error) {
+      if (!(error instanceof CodexAppServerResponseError)) {
+        this.clearConnection(connection);
+        await session.close();
+      }
+      throw error;
     }
   }
-}
 
-/** Selects only the canonical `codex` bucket and maps compatible field casing. */
-export function usageFromAppServerResult(
-  result: unknown,
-  updatedAtMs = Date.now(),
-): CodexUsageSnapshot | null {
-  const object = asObject(result);
-  if (!object) return null;
+  private session(): Promise<LocalAppServerSession> {
+    if (this.connection) return this.connection;
+    const session = new LocalAppServerSession(
+      this.executable,
+      this.args,
+      (notification) => this.handleNotification(notification),
+      () => {
+        this.clearConnection(connection);
+      },
+    );
+    const connection = session
+      .request("initialize", this.startupTimeoutMs, {
+        capabilities: { experimentalApi: true },
+        clientInfo: {
+          name: "chatgato",
+          title: "ChatGato",
+          version: "0.1.0",
+        },
+      })
+      .then((response) => {
+        const result = requireResultObject("initialize", response);
+        session.notify("initialized", {});
+        void this.registerConfigWatch(session, result).catch(() => undefined);
+        return session;
+      })
+      .catch(async (error: unknown) => {
+        this.clearConnection(connection);
+        await session.close();
+        throw error;
+      });
+    this.connection = connection;
+    return connection;
+  }
 
-  const multiBucketValue =
-    object.rateLimitsByLimitId ?? object.rate_limits_by_limit_id;
-  let limits: JsonObject | null;
-  if (multiBucketValue !== undefined && multiBucketValue !== null) {
-    const buckets = asObject(multiBucketValue);
-    if (!buckets) return null;
-    limits = asObject(buckets.codex);
-  } else {
-    limits = asObject(object.rateLimits ?? object.rate_limits);
+  private async registerConfigWatch(
+    session: LocalAppServerSession,
+    initializeResult: JsonObject,
+  ): Promise<void> {
+    this.configWatchRoot = null;
+    this.configPath = null;
+    const codexHome = initializeResult.codexHome;
+    if (typeof codexHome !== "string" || !codexHome) return;
+    this.configWatchRoot = codexHome;
+    this.configPath = join(codexHome, "config.toml");
+    const response = await session.request(
+      "fs/watch",
+      this.requestTimeoutMs,
+      {
+        path: codexHome,
+        watchId: CONFIG_WATCH_ID,
+      },
+      { fatalTimeout: false },
+    );
+    requireResultObject("fs/watch", response);
+  }
+
+  private clearConnection(connection: Promise<LocalAppServerSession>): void {
+    if (this.connection !== connection) return;
+    this.connection = null;
+    this.configPath = null;
+    this.configWatchRoot = null;
+    this.invalidateCaches();
+  }
+
+  private handleNotification(notification: CodexAppServerNotification): void {
     if (
-      limits &&
-      !isCanonicalCodexLimit(readField(limits, "limitId", "limit_id"))
+      notification.method.startsWith("thread/") ||
+      notification.method.startsWith("turn/") ||
+      notification.method.startsWith("item/")
     ) {
-      limits = null;
+      this.invalidateThreads();
+    }
+    if (notification.method === "fs/changed") {
+      if (!this.isConfigChange(notification.params)) return;
+      this.invalidateConfig();
+      this.invalidateModels();
+    }
+    if (notification.method === "account/rateLimits/updated") {
+      this.usageGeneration += 1;
+    }
+    if (notification.method === "account/updated") {
+      this.invalidateModels();
+    }
+    for (const listener of this.listeners) {
+      try {
+        listener(notification);
+      } catch {
+        // One action listener must not break notification delivery to others.
+      }
     }
   }
-  if (!limits) return null;
 
-  const primary = parseWindow(readField(limits, "primary"));
-  const secondary = parseWindow(readField(limits, "secondary"));
-  const credits = parseCredits(
-    readField(limits, "credits") ?? readField(object, "credits"),
-  );
-  if (!primary && !secondary && !credits?.hasCredits && !credits?.unlimited) {
-    return null;
+  private isConfigChange(params: JsonObject): boolean {
+    const changedPaths = params.changedPaths;
+    if (!Array.isArray(changedPaths)) return true;
+    return changedPaths.some(
+      (path) => path === this.configPath || path === this.configWatchRoot,
+    );
   }
 
-  const planType =
-    readField(limits, "planType", "plan_type") ??
-    readField(object, "planType", "plan_type");
-  return {
-    updatedAtMs,
-    primary,
-    secondary,
-    planType: typeof planType === "string" ? planType : null,
-    credits,
-  };
-}
-
-export function defaultCodexExecutable(
-  platform = process.platform,
-  userHome = homedir(),
-): string {
-  const candidates =
-    platform === "darwin"
-      ? [
-          "/Applications/ChatGPT.app/Contents/Resources/codex",
-          join(
-            userHome,
-            "Applications",
-            "ChatGPT.app",
-            "Contents",
-            "Resources",
-            "codex",
-          ),
-        ]
-      : platform === "win32"
-        ? windowsCodexCandidates()
-        : [];
-  return (
-    candidates.find((candidate) => existsSync(candidate)) ??
-    (platform === "win32" ? "codex.exe" : "codex")
-  );
-}
-
-function windowsCodexCandidates(): string[] {
-  const localAppData = process.env.LOCALAPPDATA;
-  if (!localAppData) return [];
-  return [
-    join(localAppData, "Programs", "ChatGPT", "resources", "codex.exe"),
-    join(localAppData, "Programs", "ChatGPT", "codex.exe"),
-  ];
-}
-
-function parseWindow(value: unknown): CodexUsageWindow | null {
-  const window = asObject(value);
-  if (!window) return null;
-  const usedPercent = finiteNumber(
-    readField(window, "usedPercent", "used_percent"),
-  );
-  const windowMinutes = finiteNumber(
-    readField(
-      window,
-      "windowDurationMins",
-      "windowMinutes",
-      "window_duration_mins",
-      "window_minutes",
-    ),
-  );
-  if (usedPercent === null || windowMinutes === null || windowMinutes <= 0) {
-    return null;
+  private invalidateConfig(): void {
+    this.configGeneration += 1;
+    this.configCache = undefined;
   }
 
-  const resetsAt = readField(window, "resetsAt", "resets_at");
-  const resetsAtSeconds =
-    resetsAt === null || resetsAt === undefined ? null : finiteNumber(resetsAt);
-  return {
-    usedPercent: Math.min(100, Math.max(0, usedPercent)),
-    windowMinutes,
-    resetsAtMs: resetsAtSeconds === null ? null : resetsAtSeconds * 1_000,
-  };
-}
-
-function parseCredits(value: unknown): CodexUsageSnapshot["credits"] | null {
-  const credits = asObject(value);
-  if (!credits) return null;
-  const balance = readField(credits, "balance");
-  return {
-    hasCredits: readField(credits, "hasCredits", "has_credits") === true,
-    unlimited: readField(credits, "unlimited") === true,
-    balance: balance === null || balance === undefined ? null : String(balance),
-  };
-}
-
-function isCanonicalCodexLimit(limitId: unknown): boolean {
-  return (
-    typeof limitId !== "string" || limitId.trim() === "" || limitId === "codex"
-  );
-}
-
-function readField(object: JsonObject, ...keys: string[]): unknown {
-  for (const key of keys) {
-    if (Object.hasOwn(object, key)) return object[key];
+  private invalidateModels(): void {
+    this.modelsGeneration += 1;
+    this.modelsCache = undefined;
   }
-  return undefined;
+
+  private invalidateThreads(): void {
+    this.threadsGeneration += 1;
+    this.threadsCache = undefined;
+  }
+
+  private invalidateCaches(): void {
+    this.invalidateConfig();
+    this.invalidateModels();
+    this.invalidateThreads();
+    this.usageGeneration += 1;
+  }
 }
 
-function finiteNumber(value: unknown): number | null {
-  const number = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(number) ? number : null;
+/** Shared by every local action in the plugin process. */
+export const defaultCodexAppServer = new CodexAppServerClient();
+
+function readCursor(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined;
 }
 
-function asObject(value: unknown): JsonObject | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonObject)
-    : null;
-}
-
-function requireResultObject(method: string, message: JsonObject): JsonObject {
-  const result = asObject(message.result);
-  if (!result) throw new Error(`Invalid ${method} result from Codex`);
-  return result;
-}
-
-function jsonRpcResponseError(message: JsonObject): Error {
-  const error = asObject(message.error);
-  const code =
-    typeof error?.code === "number" || typeof error?.code === "string"
-      ? ` (${error.code})`
-      : "";
-  const detail =
-    typeof error?.message === "string"
-      ? error.message
-      : "Malformed JSON-RPC error";
-  return new Error(
-    `Codex app-server request ${String(message.id)} failed${code}: ${detail}`,
-  );
+function requireFreshCursor(
+  method: string,
+  cursor: string | undefined,
+  seen: Set<string>,
+): void {
+  if (!cursor) return;
+  if (seen.has(cursor)) {
+    throw new Error(`Codex app-server repeated a ${method} cursor`);
+  }
+  seen.add(cursor);
 }
 
 function positiveTimeout(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) && value! > 0 ? value! : fallback;
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    timeout.unref();
-  });
 }

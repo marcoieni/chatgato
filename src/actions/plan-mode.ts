@@ -9,6 +9,7 @@ import {
 import streamDeck from "@elgato/streamdeck";
 import { executeCommand } from "../lib/codex-controller.js";
 import { ActionPoller } from "../lib/action-poller.js";
+import { ActionSubscriptionRegistry } from "../lib/action-subscriptions.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { planModeImage } from "../lib/visuals.js";
 import type { PlanModeSettings } from "../types.js";
@@ -22,17 +23,20 @@ type VisibleAction = WillAppearEvent<PlanModeSettings>["action"];
 export class PlanModeAction extends SingletonAction<PlanModeSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
   private toggling = false;
   private optimisticEnabled: boolean | null = null;
 
   override async onWillAppear(
     ev: WillAppearEvent<PlanModeSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<PlanModeSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -98,5 +102,13 @@ export class PlanModeAction extends SingletonAction<PlanModeSettings> {
       actionInstance.setImage(planModeImage(enabled)),
       actionInstance.setTitle(enabled ? "PLAN\nON" : "PLAN\nOFF"),
     ]);
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.replace<void>(
+      actionInstance.id,
+      (listener) => this.store.subscribe(() => listener()),
+      () => this.refresh(actionInstance),
+    );
   }
 }

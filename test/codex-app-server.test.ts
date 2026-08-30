@@ -1,9 +1,10 @@
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  CodexAppServerUsageClient,
+  CodexAppServerClient,
   usageFromAppServerResult,
 } from "../src/lib/codex-app-server.js";
 import { remainingPercent } from "../src/lib/codex-usage.js";
@@ -26,6 +27,72 @@ async function fakeAppServer(source: string): Promise<string> {
 }
 
 describe("Codex app-server usage", () => {
+  it("shares one connection across config, models, threads, usage, and notifications", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chatgato-shared-server-"));
+    temporaryDirectories.push(directory);
+    const marker = join(directory, "started.txt");
+    const executable = await fakeAppServer(`
+import { appendFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+appendFileSync(${JSON.stringify(marker)}, "started\\n");
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "config/read") {
+    send({ method: "account/rateLimits/updated", params: { rateLimits: {} } });
+    send({ id: message.id, result: { config: { service_tier: "fast" } } });
+  }
+  if (message.method === "model/list") send({ id: message.id, result: {
+    data: [{ id: "gpt-test", supportedReasoningEfforts: [
+      { reasoningEffort: "low" }, { reasoningEffort: "high" }
+    ] }], nextCursor: null
+  } });
+  if (message.method === "thread/list") send({ id: message.id, result: {
+    data: [
+      { id: "root", cwd: "/tmp/project", path: "/tmp/root.jsonl", preview: "Root chat",
+        parentThreadId: null, updatedAt: 20, recencyAt: 21, status: { type: "notLoaded" } },
+      { id: "child", cwd: "/tmp/project", path: "/tmp/child.jsonl", preview: "Child chat",
+        parentThreadId: "root", updatedAt: 19, recencyAt: 19, status: { type: "notLoaded" } }
+    ], nextCursor: null
+  } });
+  if (message.method === "thread/turns/list") send({ id: message.id, result: {
+    data: [{ status: message.params.threadId === "root" ? "completed" : "inProgress",
+      items: [], startedAt: 18, completedAt: message.params.threadId === "root" ? 20 : null }],
+    nextCursor: null
+  } });
+  if (message.method === "account/rateLimits/read") send({ id: message.id, result: {
+    rateLimits: { limitId: "codex", primary: { usedPercent: 25, windowDurationMins: 300 } }
+  } });
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    const notifications: string[] = [];
+    const unsubscribe = client.subscribe((event) =>
+      notifications.push(event.method),
+    );
+
+    await expect(client.readConfig()).resolves.toMatchObject({
+      service_tier: "fast",
+    });
+    await expect(client.readModels()).resolves.toEqual([
+      { id: "gpt-test", reasoningEfforts: ["low", "high"] },
+    ]);
+    await expect(client.readThreads()).resolves.toMatchObject([
+      { id: "root", status: "unread", updatedAtMs: 20_000 },
+      { id: "child", parentThreadId: "root", status: "working" },
+    ]);
+    await expect(client.readUsage()).resolves.toMatchObject({
+      primary: { usedPercent: 25, windowMinutes: 300 },
+    });
+    expect(notifications).toContain("account/rateLimits/updated");
+    await expect(readFile(marker, "utf8")).resolves.toBe("started\n");
+
+    unsubscribe();
+    await client.close();
+  });
+
   it("performs the handshake and ignores interleaved notifications and responses", async () => {
     const executable = await fakeAppServer(`
 import { createInterface } from "node:readline";
@@ -57,7 +124,7 @@ lines.on("line", (line) => {
   }
 });
 `);
-    const client = new CodexAppServerUsageClient({
+    const client = new CodexAppServerClient({
       executable,
       now: () => 123_456,
     });
@@ -106,32 +173,7 @@ lines.on("line", (line) => {
     });
   });
 
-  it("accepts compatible snake_case fields and preserves credits", () => {
-    expect(
-      usageFromAppServerResult({
-        rate_limits_by_limit_id: {
-          codex: {
-            limit_id: "codex",
-            plan_type: "team",
-            primary: {
-              used_percent: 12,
-              window_minutes: 300,
-              resets_at: 1_784_000_000,
-            },
-            credits: {
-              has_credits: true,
-              unlimited: false,
-              balance: "42.5",
-            },
-          },
-        },
-      }),
-    ).toMatchObject({
-      planType: "team",
-      primary: { usedPercent: 12, windowMinutes: 300 },
-      credits: { hasCredits: true, unlimited: false, balance: "42.5" },
-    });
-
+  it("preserves credits from the current protocol response", () => {
     expect(
       usageFromAppServerResult({
         rateLimits: {
@@ -158,6 +200,13 @@ lines.on("line", (line) => {
         },
       }),
     ).toBeNull();
+    expect(
+      usageFromAppServerResult({
+        rate_limits: {
+          primary: { used_percent: 1, window_minutes: 300 },
+        },
+      }),
+    ).toBeNull();
 
     const executable = await fakeAppServer(`
 import { createInterface } from "node:readline";
@@ -173,8 +222,104 @@ lines.on("line", (line) => {
 `);
 
     await expect(
-      new CodexAppServerUsageClient({ executable }).readUsage(),
+      new CodexAppServerClient({ executable }).readUsage(),
     ).rejects.toThrow(/Invalid account\/rateLimits\/read result/u);
+  });
+
+  it("reconnects after a malformed non-object JSON-RPC result", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chatgato-reconnect-"));
+    temporaryDirectories.push(directory);
+    const marker = join(directory, "started.txt");
+    const executable = await fakeAppServer(`
+import { appendFileSync, readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+const marker = ${JSON.stringify(marker)};
+appendFileSync(marker, "started\\n");
+const attempt = readFileSync(marker, "utf8").trim().split("\\n").length;
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "account/rateLimits/read") {
+    send(attempt === 1
+      ? { id: message.id, result: "malformed" }
+      : { id: message.id, result: { rateLimits: {
+          limitId: "codex", primary: { usedPercent: 12, windowDurationMins: 300 }
+        } } });
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+
+    await expect(client.readUsage()).rejects.toThrow(
+      /Invalid account\/rateLimits\/read result/u,
+    );
+    await expect(client.readUsage()).resolves.toMatchObject({
+      primary: { usedPercent: 12 },
+    });
+    await expect(readFile(marker, "utf8")).resolves.toBe("started\nstarted\n");
+    await client.close();
+  });
+
+  it("surfaces a missing current task RPC instead of silently degrading", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "thread/list") send({ id: message.id, result: {
+    data: [{ id: "current", cwd: "/tmp/project", preview: "Current",
+      path: "/tmp/current.jsonl", updatedAt: 1, recencyAt: 1,
+      parentThreadId: null, status: { type: "notLoaded" } }],
+    nextCursor: null
+  } });
+  if (message.method === "thread/turns/list") send({ id: message.id, error: {
+    code: -32601, message: "method not found"
+  } });
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+
+    await expect(client.readThreads()).rejects.toThrow(/method not found/u);
+    await client.close();
+  });
+
+  it("keeps healthy threads when one turn read fails", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "thread/list") send({ id: message.id, result: {
+    data: [
+      { id: "healthy", cwd: "/tmp/project", preview: "Healthy", path: "/tmp/healthy.jsonl",
+        updatedAt: 2, recencyAt: 2, parentThreadId: null, status: { type: "notLoaded" } },
+      { id: "broken", cwd: "/tmp/project", preview: "Broken", path: "/tmp/broken.jsonl",
+        updatedAt: 1, recencyAt: 1, parentThreadId: null, status: { type: "notLoaded" } }
+    ], nextCursor: null
+  } });
+  if (message.method === "thread/turns/list") {
+    if (message.params.threadId === "broken") {
+      send({ id: message.id, error: { code: -32001, message: "rollout unavailable" } });
+    } else {
+      send({ id: message.id, result: { data: [{ status: "completed", items: [],
+        startedAt: 1, completedAt: 2 }], nextCursor: null } });
+    }
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+
+    await expect(client.readThreads()).resolves.toMatchObject([
+      { id: "healthy", status: "unread" },
+      { id: "broken", status: null },
+    ]);
+    await client.close();
   });
 
   it.each([
@@ -211,7 +356,7 @@ exec ${shellQuote(process.execPath)} ${shellQuote(server)} "$@"
 `,
       );
       await chmod(executable, 0o755);
-      const client = new CodexAppServerUsageClient({
+      const client = new CodexAppServerClient({
         executable,
         requestTimeoutMs: initialize ? 100 : 5_000,
         startupTimeoutMs: initialize ? 5_000 : 1_000,
@@ -244,7 +389,7 @@ lines.on("line", (line) => {
   }
 });
 `);
-    const client = new CodexAppServerUsageClient({ executable });
+    const client = new CodexAppServerClient({ executable });
 
     const reads = [client.readUsage(), client.readUsage(), client.readUsage()];
     expect(reads[1]).toBe(reads[0]);
@@ -253,22 +398,248 @@ lines.on("line", (line) => {
     await expect(readFile(marker, "utf8")).resolves.toBe("started\n");
   });
 
-  it("reflects an early reset from the next live response", async () => {
+  it("rereads threads after a notification invalidates an in-flight result", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+let listCount = 0;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "thread/list") {
+    listCount += 1;
+    const id = listCount === 1 ? "stale" : "fresh";
+    if (listCount === 1) {
+      send({ method: "thread/status/changed", params: {
+        threadId: "fresh", status: { type: "idle" }
+      } });
+    }
+    setTimeout(() => send({ id: message.id, result: { data: [
+      { id, cwd: "/tmp/project", preview: id, path: "/tmp/" + id + ".jsonl",
+        updatedAt: listCount, recencyAt: listCount, parentThreadId: null,
+        status: { type: "notLoaded" } }
+    ], nextCursor: null } }), listCount === 1 ? 25 : 0);
+  }
+  if (message.method === "thread/turns/list") send({ id: message.id, result: {
+    data: [{ status: "completed", items: [], startedAt: 1, completedAt: 2 }],
+    nextCursor: null
+  } });
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    let resolveRefresh!: (
+      threads: Awaited<ReturnType<typeof client.readThreads>>,
+    ) => void;
+    const refreshed = new Promise<
+      Awaited<ReturnType<typeof client.readThreads>>
+    >((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const unsubscribe = client.subscribe((notification) => {
+      if (notification.method === "thread/status/changed") {
+        void client.readThreads().then(resolveRefresh);
+      }
+    });
+
+    const stale = client.readThreads();
+    await expect(stale).resolves.toMatchObject([{ id: "stale" }]);
+    await expect(refreshed).resolves.toMatchObject([{ id: "fresh" }]);
+
+    unsubscribe();
+    await client.close();
+  });
+
+  it("rereads usage after a sparse update invalidates an in-flight result", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+let readCount = 0;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: {} });
+  if (message.method === "account/rateLimits/read") {
+    readCount += 1;
+    if (readCount === 1) {
+      send({ method: "account/rateLimits/updated", params: { rateLimits: {} } });
+    }
+    const usedPercent = readCount === 1 ? 90 : 10;
+    setTimeout(() => send({ id: message.id, result: { rateLimits: {
+      limitId: "codex", primary: { usedPercent, windowDurationMins: 300 }
+    } } }), readCount === 1 ? 25 : 0);
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    let resolveRefresh!: (
+      usage: Awaited<ReturnType<typeof client.readUsage>>,
+    ) => void;
+    const refreshed = new Promise<Awaited<ReturnType<typeof client.readUsage>>>(
+      (resolve) => {
+        resolveRefresh = resolve;
+      },
+    );
+    const unsubscribe = client.subscribe((notification) => {
+      if (notification.method === "account/rateLimits/updated") {
+        void client.readUsage().then(resolveRefresh);
+      }
+    });
+
+    const stale = client.readUsage();
+    await expect(stale).resolves.toMatchObject({
+      primary: { usedPercent: 90 },
+    });
+    await expect(refreshed).resolves.toMatchObject({
+      primary: { usedPercent: 10 },
+    });
+
+    unsubscribe();
+    await client.close();
+  });
+
+  it("watches config and rereads after a change during config/read", async () => {
+    const executable = await fakeAppServer(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+const codexHome = "/tmp/fake-codex-home";
+let configReads = 0;
+let watched = false;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") send({ id: message.id, result: { codexHome } });
+  if (message.method === "fs/watch") {
+    watched = message.params.path === codexHome && message.params.watchId === "chatgato-config";
+    send({ id: message.id, result: { path: codexHome } });
+  }
+  if (message.method === "config/read") {
+    if (!watched) {
+      send({ id: message.id, error: { code: -32000, message: "config not watched" } });
+      return;
+    }
+    configReads += 1;
+    if (configReads === 1) {
+      send({ method: "fs/changed", params: {
+        watchId: "chatgato-config", changedPaths: [codexHome + "/config.toml"]
+      } });
+    }
+    const service_tier = configReads === 1 ? "default" : "fast";
+    setTimeout(() => send({ id: message.id, result: { config: { service_tier } } }),
+      configReads === 1 ? 25 : 0);
+  }
+});
+`);
+    const client = new CodexAppServerClient({ executable });
+    let resolveRefresh!: (
+      config: Awaited<ReturnType<typeof client.readConfig>>,
+    ) => void;
+    const refreshed = new Promise<
+      Awaited<ReturnType<typeof client.readConfig>>
+    >((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const unsubscribe = client.subscribe((notification) => {
+      if (notification.method === "fs/changed") {
+        void client.readConfig().then(resolveRefresh);
+      }
+    });
+
+    const stale = client.readConfig();
+    await expect(stale).resolves.toMatchObject({ service_tier: "default" });
+    await expect(refreshed).resolves.toMatchObject({ service_tier: "fast" });
+
+    unsubscribe();
+    await client.close();
+  });
+
+  it("keeps reads available when config watch registration times out", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chatgato-watch-timeout-"));
+    temporaryDirectories.push(directory);
+    const marker = join(directory, "started.txt");
+    const executable = await fakeAppServer(`
+import { appendFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+appendFileSync(${JSON.stringify(marker)}, "started\\n");
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+let configReads = 0;
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.method === "initialize") {
+    send({ id: message.id, result: { codexHome: "/tmp/fake-codex-home" } });
+  }
+  if (message.method === "config/read") {
+    configReads += 1;
+    send({ id: message.id, result: {
+      config: { service_tier: configReads === 1 ? "default" : "fast" }
+    } });
+  }
+  if (message.method === "model/list") send({ id: message.id, result: {
+    data: [{ id: "gpt-test", supportedReasoningEfforts: [] }], nextCursor: null
+  } });
+  if (message.method === "thread/list") send({ id: message.id, result: {
+    data: [{ id: "thread", cwd: "/tmp/project", preview: "Thread",
+      path: "/tmp/thread.jsonl", updatedAt: 1, recencyAt: 1,
+      parentThreadId: null, status: { type: "notLoaded" } }], nextCursor: null
+  } });
+  if (message.method === "thread/turns/list") send({ id: message.id, result: {
+    data: [{ status: "completed", items: [], startedAt: 1, completedAt: 2 }],
+    nextCursor: null
+  } });
+  if (message.method === "account/rateLimits/read") send({ id: message.id, result: {
+    rateLimits: { limitId: "codex",
+      primary: { usedPercent: 25, windowDurationMins: 300 } }
+  } });
+});
+`);
+    let now = 0;
+    const client = new CodexAppServerClient({
+      executable,
+      now: () => now,
+      requestTimeoutMs: 250,
+    });
+
+    const [config, models, threads, usage] = await Promise.all([
+      client.readConfig(),
+      client.readModels(),
+      client.readThreads(),
+      client.readUsage(),
+    ]);
+    expect(config).toMatchObject({ service_tier: "default" });
+    expect(models).toMatchObject([{ id: "gpt-test" }]);
+    expect(threads).toMatchObject([{ id: "thread", status: "unread" }]);
+    expect(usage).toMatchObject({ primary: { usedPercent: 25 } });
+
+    await delay(300);
+    now = 751;
+    await expect(client.readConfig()).resolves.toMatchObject({
+      service_tier: "fast",
+    });
+    await expect(client.readUsage()).resolves.toMatchObject({
+      primary: { usedPercent: 25 },
+    });
+    await expect(readFile(marker, "utf8")).resolves.toBe("started\n");
+    await client.close();
+  });
+
+  it("keeps one process alive and reflects the next live response", async () => {
     const directory = await mkdtemp(join(tmpdir(), "chatgato-early-reset-"));
     temporaryDirectories.push(directory);
     const counter = join(directory, "count.txt");
     const executable = await fakeAppServer(`
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 const counter = ${JSON.stringify(counter)};
-const count = existsSync(counter) ? Number(readFileSync(counter, "utf8")) + 1 : 1;
-writeFileSync(counter, String(count));
+appendFileSync(counter, "started\\n");
+let count = 0;
 const lines = createInterface({ input: process.stdin });
 const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
 lines.on("line", (line) => {
   const message = JSON.parse(line);
   if (message.method === "initialize") send({ id: message.id, result: {} });
   if (message.method === "account/rateLimits/read") {
+    count += 1;
     send({ id: message.id, result: { rateLimits: {
       limitId: "codex",
       primary: {
@@ -280,13 +651,14 @@ lines.on("line", (line) => {
   }
 });
 `);
-    const client = new CodexAppServerUsageClient({ executable });
+    const client = new CodexAppServerClient({ executable });
 
     const beforeReset = await client.readUsage();
     const afterReset = await client.readUsage();
     expect(remainingPercent(beforeReset.primary!)).toBe(18);
     expect(remainingPercent(afterReset.primary!)).toBe(100);
     expect(afterReset.primary!.resetsAtMs).toBe(1_784_018_000_000);
+    await expect(readFile(counter, "utf8")).resolves.toBe("started\n");
   });
 });
 

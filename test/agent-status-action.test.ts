@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   openThreadBySearch:
     vi.fn<(title: string, resultIndex: number) => Promise<void>>(),
   openUrl: vi.fn<(url: string) => Promise<void>>(),
+  subscribe: vi.fn<(listener: () => void) => () => void>(),
   threadSearchResult:
     vi.fn<
       (threadId: string) => Promise<{ resultIndex: number; title: string }>
@@ -34,6 +35,7 @@ vi.mock("../src/lib/codex-controller.js", () => ({
 
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
+    subscribe = mocks.subscribe;
     threadSearchResult = mocks.threadSearchResult;
     threadAtSlot = mocks.threadAtSlot;
   },
@@ -85,6 +87,8 @@ describe("AgentStatusAction navigation", () => {
     });
     mocks.threadAtSlot.mockReset();
     mocks.threadAtSlot.mockResolvedValue(null);
+    mocks.subscribe.mockReset();
+    mocks.subscribe.mockReturnValue(() => undefined);
   });
 
   it("keeps exact deep-link navigation for local chats", async () => {
@@ -171,6 +175,29 @@ describe("AgentStatusAction navigation", () => {
 
       await vi.advanceTimersByTimeAsync(300);
       expect(action.setImage).toHaveBeenCalledOnce();
+    } finally {
+      agentStatus.onWillDisappear({ action } as never);
+      vi.useRealTimers();
+    }
+  });
+
+  it("reconciles desktop-owned task status every two seconds", async () => {
+    vi.useFakeTimers();
+    mocks.threadAtSlot.mockResolvedValue(thread());
+    const action = actionHarness();
+    const agentStatus = new AgentStatusAction();
+
+    try {
+      await agentStatus.onWillAppear({
+        action,
+        payload: { settings: { slot: 1 } },
+      } as never);
+
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(mocks.threadAtSlot).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mocks.threadAtSlot).toHaveBeenCalledTimes(2);
     } finally {
       agentStatus.onWillDisappear({ action } as never);
       vi.useRealTimers();

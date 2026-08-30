@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  DatabaseSync,
-  StatementSync,
-  type SQLInputValue,
-  type SQLOutputValue,
-} from "node:sqlite";
+import { DatabaseSync } from "node:sqlite";
 import {
   CodexStore,
   reasoningTargetIndex,
   resolveCodexSqliteHome,
 } from "../src/lib/codex-store.js";
+import type {
+  CodexAppServerClientLike,
+  CodexAppServerThread,
+} from "../src/lib/codex-app-server.js";
+import type { RemoteThreadRow } from "../src/lib/remote-codex-store.js";
 import type { RolloutRecord } from "../src/types.js";
 
 const temporaryDirectories: string[] = [];
@@ -20,59 +20,6 @@ const temporaryDirectories: string[] = [];
 beforeEach(() => {
   vi.stubEnv("CODEX_SQLITE_HOME", "");
 });
-
-function createThreadDatabase(home: string): DatabaseSync {
-  const db = new DatabaseSync(join(home, "state_5.sqlite"));
-  db.exec(`
-    CREATE TABLE threads (
-      id TEXT PRIMARY KEY, title TEXT, cwd TEXT, rollout_path TEXT,
-      updated_at INTEGER, updated_at_ms INTEGER, recency_at_ms INTEGER,
-      model TEXT, reasoning_effort TEXT, archived INTEGER, preview TEXT
-    );
-    CREATE TABLE thread_spawn_edges (
-      parent_thread_id TEXT, child_thread_id TEXT PRIMARY KEY, status TEXT
-    );
-  `);
-  return db;
-}
-
-type ThreadFixture = {
-  archived?: number;
-  cwd?: string;
-  id: string;
-  model?: string | null;
-  preview?: string;
-  reasoningEffort?: string | null;
-  recencyAtMs?: number;
-  rolloutPath: string;
-  title?: string;
-  updatedAt?: number;
-  updatedAtMs?: number;
-};
-
-function insertThread(db: DatabaseSync, fixture: ThreadFixture): void {
-  const title = fixture.title ?? fixture.id;
-  const updatedAtMs = fixture.updatedAtMs ?? 1_000;
-  db.prepare(
-    `
-    INSERT INTO threads
-    (id, title, cwd, rollout_path, updated_at, updated_at_ms, recency_at_ms, model, reasoning_effort, archived, preview)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `,
-  ).run(
-    fixture.id,
-    title,
-    fixture.cwd ?? "/tmp/project",
-    fixture.rolloutPath,
-    fixture.updatedAt ?? 1,
-    updatedAtMs,
-    fixture.recencyAtMs ?? updatedAtMs,
-    fixture.model === undefined ? "gpt-test" : fixture.model,
-    fixture.reasoningEffort === undefined ? "high" : fixture.reasoningEffort,
-    fixture.archived ?? 0,
-    fixture.preview ?? title,
-  );
-}
 
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -82,19 +29,178 @@ afterEach(async () => {
   );
 });
 
-describe("CodexStore", () => {
-  it("recovers approval permissions that fall outside the rollout tail", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-approval-context-"));
-    temporaryDirectories.push(home);
-    const rolloutPath = join(home, "large-rollout.jsonl");
-    const db = createThreadDatabase(home);
-    insertThread(db, {
-      id: "large-rollout",
-      rolloutPath,
-      title: "Large rollout",
-    });
-    db.close();
+async function temporaryHome(prefix = "chatgato-store-"): Promise<string> {
+  const home = await mkdtemp(join(tmpdir(), prefix));
+  temporaryDirectories.push(home);
+  return home;
+}
 
+function thread(
+  id: string,
+  overrides: Partial<CodexAppServerThread> = {},
+): CodexAppServerThread {
+  return {
+    cwd: "/tmp/project",
+    id,
+    parentThreadId: null,
+    recencyAtMs: 1_000,
+    rolloutPath: null,
+    status: "unread",
+    title: id,
+    updatedAtMs: 1_000,
+    ...overrides,
+  };
+}
+
+function appServer(
+  overrides: Partial<CodexAppServerClientLike> = {},
+): CodexAppServerClientLike {
+  return {
+    readConfig: vi.fn(async () => ({})),
+    readModels: vi.fn(async () => []),
+    readThreads: vi.fn(async () => []),
+    readUsage: vi.fn(async () => ({
+      credits: null,
+      planType: null,
+      primary: null,
+      secondary: null,
+      updatedAtMs: 0,
+    })),
+    subscribe: vi.fn(() => () => undefined),
+    ...overrides,
+  };
+}
+
+function store(
+  home: string,
+  server: CodexAppServerClientLike,
+  readRolloutTail: (path: string) => Promise<RolloutRecord[]> = async () => [],
+  readRemoteThreads: (
+    home: string,
+  ) => Promise<RemoteThreadRow[]> = async () => [],
+  readRemoteFastMode: (
+    home: string,
+    forceRefresh?: boolean,
+  ) => Promise<{ enabled: boolean; selectionId: string } | null> = async () =>
+    null,
+): CodexStore {
+  return new CodexStore({
+    appServer: server,
+    codexHome: home,
+    readRemoteFastMode,
+    readRemoteThreads,
+    readRolloutTail,
+  });
+}
+
+function createReasoningDatabase(
+  home: string,
+  fixture: { effort?: string; id?: string; model?: string } = {},
+): void {
+  const db = new DatabaseSync(join(home, "state_5.sqlite"));
+  db.exec(`
+    CREATE TABLE threads (
+      id TEXT PRIMARY KEY,
+      model TEXT,
+      reasoning_effort TEXT,
+      archived INTEGER,
+      recency_at_ms INTEGER
+    )
+  `);
+  db.prepare(
+    `INSERT INTO threads
+       (id, model, reasoning_effort, archived, recency_at_ms)
+     VALUES (?, ?, ?, 0, 1000)`,
+  ).run(
+    fixture.id ?? "reasoning-thread",
+    fixture.model ?? "gpt-current",
+    fixture.effort ?? "medium",
+  );
+  db.close();
+}
+
+describe("CodexStore", () => {
+  it("uses app-server metadata and rollout detail for ambiguous active state", async () => {
+    const home = await temporaryHome();
+    const rootPath = join(home, "root.jsonl");
+    const readRolloutTail = vi.fn(
+      async (path: string): Promise<RolloutRecord[]> =>
+        path === rootPath
+          ? [{ type: "event_msg", payload: { type: "exec_approval_request" } }]
+          : [],
+    );
+    const server = appServer({
+      readConfig: vi.fn(async () => ({ service_tier: "fast" })),
+      readThreads: vi.fn(async () => [
+        thread("root", {
+          recencyAtMs: 2_000,
+          rolloutPath: rootPath,
+          status: "working",
+          title: "Official metadata",
+          updatedAtMs: 2_000,
+        }),
+        thread("child", {
+          parentThreadId: "root",
+          rolloutPath: join(home, "child.jsonl"),
+          status: "unread",
+        }),
+      ]),
+    });
+    const subject = store(home, server, readRolloutTail);
+
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
+      id: "root",
+      status: "awaiting-approval",
+      subtaskStatuses: ["unread"],
+      title: "Official metadata",
+    });
+    await expect(subject.fastModeEnabled()).resolves.toBe(true);
+    expect(readRolloutTail).toHaveBeenCalledOnce();
+  });
+
+  it("uses definitive app-server status without reading a rollout", async () => {
+    const home = await temporaryHome();
+    const readRolloutTail = vi.fn(async () => []);
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => [
+          thread("done", {
+            rolloutPath: join(home, "done.jsonl"),
+            status: "unread",
+          }),
+        ]),
+      }),
+      readRolloutTail,
+    );
+
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
+      id: "done",
+      status: "unread",
+    });
+    expect(readRolloutTail).not.toHaveBeenCalled();
+  });
+
+  it("surfaces app-server discovery failures instead of reading SQLite", async () => {
+    const home = await temporaryHome();
+    createReasoningDatabase(home);
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => {
+          throw new Error("current protocol unavailable");
+        }),
+      }),
+    );
+
+    await expect(subject.threadAtSlot(1)).rejects.toThrow(
+      "current protocol unavailable",
+    );
+  });
+
+  it("recovers approval permissions that fall outside the rollout tail", async () => {
+    const home = await temporaryHome();
+    const rolloutPath = join(home, "large-rollout.jsonl");
     const records: RolloutRecord[] = [
       {
         type: "response_item",
@@ -128,296 +234,188 @@ describe("CodexStore", () => {
       rolloutPath,
       `${records.map((record) => JSON.stringify(record)).join("\n")}\n`,
     );
+    const server = appServer({
+      readThreads: vi.fn(async () => [
+        thread("large-rollout", { rolloutPath, status: "working" }),
+      ]),
+    });
+    const subject = new CodexStore({
+      appServer: server,
+      codexHome: home,
+      readRemoteFastMode: async () => null,
+      readRemoteThreads: async () => [],
+    });
 
-    const store = new CodexStore(home);
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
       id: "large-rollout",
       status: "working",
     });
   });
 
-  it("finds a duplicate title's position in Codex chat search", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-search-rank-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
+  it("finds a duplicate title's position in Codex task search", async () => {
+    const home = await temporaryHome();
     const sharedPrefix = "x".repeat(200);
-    insertThread(db, {
-      id: "newer-long-title",
-      recencyAtMs: 5_000,
-      rolloutPath: join(home, "newer-long.jsonl"),
-      title: `${sharedPrefix}A`,
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => [
+          thread("long-a", { recencyAtMs: 5_000, title: `${sharedPrefix}A` }),
+          thread("long-b", { recencyAtMs: 4_000, title: `${sharedPrefix}B` }),
+          thread("duplicate-a", {
+            recencyAtMs: 3_000,
+            title: "Remote chat",
+          }),
+          thread("duplicate-b", {
+            recencyAtMs: 2_000,
+            title: "Remote chat",
+          }),
+        ]),
+      }),
+    );
+
+    await expect(subject.threadSearchResult("duplicate-b")).resolves.toEqual({
+      resultIndex: 1,
+      title: "Remote chat",
     });
-    insertThread(db, {
-      id: "selected-long-title",
-      recencyAtMs: 4_000,
-      rolloutPath: join(home, "selected-long.jsonl"),
+    await expect(subject.threadSearchResult("long-b")).resolves.toEqual({
+      resultIndex: 1,
       title: `${sharedPrefix}B`,
     });
-    insertThread(db, {
-      id: "newer-duplicate",
-      recencyAtMs: 3_000,
-      rolloutPath: join(home, "newer.jsonl"),
-      title: "Remote chat",
-    });
-    insertThread(db, {
-      id: "selected-duplicate",
-      recencyAtMs: 2_000,
-      rolloutPath: join(home, "selected.jsonl"),
-      title: "Remote chat",
-    });
-    insertThread(db, {
-      id: "other-task",
-      recencyAtMs: 1_000,
-      rolloutPath: join(home, "other.jsonl"),
-      title: "Other chat",
-    });
-    db.close();
-
-    const store = new CodexStore(home);
-
-    await expect(
-      store.threadSearchResult("selected-duplicate"),
-    ).resolves.toEqual({ resultIndex: 1, title: "Remote chat" });
-    await expect(store.threadSearchResult("other-task")).resolves.toEqual({
-      resultIndex: 0,
-      title: "Other chat",
-    });
-    await expect(
-      store.threadSearchResult("selected-long-title"),
-    ).resolves.toEqual({ resultIndex: 1, title: `${sharedPrefix}B` });
   });
 
-  it("reads the database from CODEX_SQLITE_HOME", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-home-"));
-    const sqliteHome = await mkdtemp(join(tmpdir(), "chatgato-sqlite-"));
-    temporaryDirectories.push(home, sqliteHome);
-    vi.stubEnv("CODEX_SQLITE_HOME", sqliteHome);
-
-    const db = createThreadDatabase(sqliteHome);
-    insertThread(db, {
-      id: "environment-thread",
-      rolloutPath: join(home, "rollout.jsonl"),
-    });
-    db.close();
-
-    const store = new CodexStore(home);
-
-    expect(store.sqliteHome).toBe(sqliteHome);
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
-      id: "environment-thread",
-    });
-  });
-
-  it("prefers the sqlite_home config setting over CODEX_SQLITE_HOME", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-home-"));
-    const environmentHome = await mkdtemp(
-      join(tmpdir(), "chatgato-environment-sqlite-"),
-    );
-    const configuredHome = await mkdtemp(
-      join(tmpdir(), "chatgato-configured-sqlite-"),
-    );
-    temporaryDirectories.push(home, environmentHome, configuredHome);
-    vi.stubEnv("CODEX_SQLITE_HOME", environmentHome);
-    await writeFile(
-      join(home, "config.toml"),
-      `sqlite_home = ${JSON.stringify(configuredHome)} # SQLite state\n[other]\nsqlite_home = "/ignored"\n`,
-    );
-
-    const db = createThreadDatabase(configuredHome);
-    insertThread(db, {
-      id: "configured-thread",
-      rolloutPath: join(home, "rollout.jsonl"),
-    });
-    db.close();
-
-    const store = new CodexStore(home);
-
-    expect(store.sqliteHome).toBe(configuredHome);
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
-      id: "configured-thread",
-    });
-  });
-
-  it("resolves relative SQLite locations from the current working directory", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-home-"));
-    temporaryDirectories.push(home);
-    await mkdir(join(home, "configured"));
-    await writeFile(join(home, "config.toml"), "sqlite_home = 'configured'\n");
-
-    expect(resolveCodexSqliteHome(home, "environment", home)).toBe(
-      join(home, "configured"),
-    );
-  });
-
-  it("reads a recent thread and derives its live status", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const rollout = join(home, "rollout.jsonl");
-    await writeFile(
-      rollout,
-      [
-        { type: "event_msg", payload: { type: "task_started" } },
-        {
-          type: "response_item",
-          payload: { type: "custom_tool_call", name: "exec" },
-        },
-        {
-          timestamp: "2026-07-16T08:00:00.000Z",
-          type: "event_msg",
-          payload: {
-            type: "token_count",
-            rate_limits: {
-              primary: {
-                used_percent: 18,
-                window_minutes: 300,
-                resets_at: 1_784_000_000,
-              },
-            },
+  it("uses model/list with SQLite only for the active task's selection", async () => {
+    const home = await temporaryHome();
+    createReasoningDatabase(home);
+    const subject = store(
+      home,
+      appServer({
+        readModels: vi.fn(async () => [
+          {
+            id: "gpt-current",
+            reasoningEfforts: ["low", "medium", "high"],
           },
-        },
-      ]
-        .map((record) => JSON.stringify(record))
-        .join("\n"),
+        ]),
+      }),
     );
 
-    const db = createThreadDatabase(home);
-    insertThread(db, {
-      id: "thread-1",
-      rolloutPath: rollout,
-      title: "Test chat",
+    await expect(subject.reasoningSnapshot()).resolves.toEqual({
+      currentEffort: "medium",
+      efforts: ["low", "medium", "high"],
+      model: "gpt-current",
+      threadId: "reasoning-thread",
     });
-    db.close();
+  });
+
+  it("does not fall back to models_cache.json", async () => {
+    const home = await temporaryHome();
+    createReasoningDatabase(home);
     await writeFile(
       join(home, "models_cache.json"),
       JSON.stringify({
         models: [
           {
-            slug: "gpt-test",
-            supported_reasoning_levels: ["low", "medium", "high", "xhigh"].map(
-              (effort) => ({ effort }),
-            ),
+            slug: "gpt-current",
+            supported_reasoning_levels: [{ effort: "medium" }],
           },
         ],
       }),
     );
+    const subject = store(
+      home,
+      appServer({
+        readModels: vi.fn(async () => {
+          throw new Error("model/list unavailable");
+        }),
+      }),
+    );
 
-    const store = new CodexStore(home);
-    const thread = await store.threadAtSlot(1);
-    expect(thread).toMatchObject({
-      id: "thread-1",
-      title: "Test chat",
-      cwd: "/tmp/project",
-      reasoningEffort: "high",
-      status: "working",
-    });
-    expect(await store.latestUsage()).toMatchObject({
-      updatedAtMs: Date.parse("2026-07-16T08:00:00.000Z"),
-      primary: { usedPercent: 18, windowMinutes: 300 },
-    });
-    await expect(store.reasoningTarget("increase")).resolves.toEqual({
-      changed: true,
-      effort: "xhigh",
-      optionIndex: 3,
-    });
-    await expect(store.reasoningTarget("decrease", 2)).resolves.toEqual({
-      changed: true,
-      effort: "low",
-      optionIndex: 0,
-    });
+    await expect(subject.reasoningSnapshot()).rejects.toThrow(
+      "model/list unavailable",
+    );
   });
 
-  it("reads fast mode from Codex's persisted service tier", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-fast-mode-"));
-    temporaryDirectories.push(home);
-    const store = new CodexStore(home);
-
-    await expect(store.fastModeEnabled()).resolves.toBe(false);
-
-    await writeFile(join(home, "config.toml"), 'service_tier = "fast"\n');
-    await expect(store.fastModeEnabled()).resolves.toBe(true);
-
-    await writeFile(join(home, "config.toml"), 'service_tier = "priority"\n');
-    await expect(store.fastModeEnabled()).resolves.toBe(true);
-
+  it("resolves the remaining SQLite path from current configuration", async () => {
+    const home = await temporaryHome();
+    const configuredHome = join(home, "configured");
     await writeFile(
       join(home, "config.toml"),
-      'service_tier = "fast"\n\n[features]\nfast_mode = false\n',
+      `sqlite_home = ${JSON.stringify(configuredHome)} # current state\n`,
     );
-    await expect(store.fastModeEnabled()).resolves.toBe(false);
 
-    await writeFile(
-      join(home, "config.toml"),
-      'service_tier = "default"\n\n[features]\nfast_mode = true\n',
+    expect(resolveCodexSqliteHome(home, join(home, "environment"), home)).toBe(
+      configuredHome,
     );
-    await expect(store.fastModeEnabled()).resolves.toBe(false);
+    await writeFile(join(home, "config.toml"), "sqlite_home = 'relative'\n");
+    expect(resolveCodexSqliteHome(home, undefined, home)).toBe(
+      join(home, "relative"),
+    );
   });
 
-  it("reads fast mode from the desktop app's selected remote host", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-fast-mode-"));
-    temporaryDirectories.push(home);
+  it("reads Fast mode only from config/read", async () => {
+    const home = await temporaryHome();
+    let config: Record<string, unknown> = {};
+    const readConfig = vi.fn(async () => config);
+    const subject = store(home, appServer({ readConfig }));
+
+    await expect(subject.fastModeEnabled()).resolves.toBe(false);
+    config = { service_tier: "fast" };
+    await expect(subject.fastModeEnabled()).resolves.toBe(true);
+    config = { service_tier: "priority" };
+    await expect(subject.fastModeEnabled()).resolves.toBe(true);
+    config = { features: { fast_mode: false }, service_tier: "fast" };
+    await expect(subject.fastModeEnabled()).resolves.toBe(false);
+    config = { features: { fast_mode: true }, service_tier: "default" };
+    await expect(subject.fastModeEnabled()).resolves.toBe(false);
+  });
+
+  it("uses the selected remote host's Fast mode", async () => {
+    const home = await temporaryHome();
     const readRemoteFastMode = vi.fn(async () => ({
       enabled: true,
       selectionId: "remote:selected-project",
     }));
-    const store = new CodexStore(
+    const subject = store(
       home,
+      appServer({
+        readConfig: vi.fn(async () => ({ service_tier: "default" })),
+      }),
       async () => [],
       async () => [],
       readRemoteFastMode,
     );
 
-    await expect(store.fastModeEnabled()).resolves.toBe(true);
-    expect(readRemoteFastMode).toHaveBeenLastCalledWith(home, false);
-
-    await expect(store.fastModeEnabled(true)).resolves.toBe(true);
+    await expect(subject.fastModeEnabled()).resolves.toBe(true);
+    await expect(subject.fastModeEnabled(true)).resolves.toBe(true);
     expect(readRemoteFastMode).toHaveBeenLastCalledWith(home, true);
   });
 
-  it("keeps local fast mode available when stale remote state cannot be read", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-fast-mode-"));
-    temporaryDirectories.push(home);
-    await writeFile(join(home, "config.toml"), 'service_tier = "fast"\n');
-    const store = new CodexStore(
+  it("keeps local Fast mode when remote state is unavailable", async () => {
+    const home = await temporaryHome();
+    const subject = store(
       home,
+      appServer({
+        readConfig: vi.fn(async () => ({ service_tier: "fast" })),
+      }),
       async () => [],
       async () => [],
       async () => {
-        throw new Error("stale remote is offline");
+        throw new Error("remote host offline");
       },
     );
 
-    await expect(store.fastModeStates()).resolves.toEqual({
+    await expect(subject.fastModeStates()).resolves.toEqual({
       localEnabled: true,
       remoteEnabled: null,
       selectionId: "local",
     });
   });
 
-  it("reads plan mode from the latest visible chat's rollout", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-plan-mode-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    insertThread(db, {
-      archived: 1,
-      id: "archived-plan",
-      recencyAtMs: 3_000,
-      rolloutPath: join(home, "archived.jsonl"),
-    });
-    insertThread(db, {
-      id: "current-task",
-      recencyAtMs: 2_000,
-      rolloutPath: join(home, "current.jsonl"),
-    });
-    insertThread(db, {
-      id: "older-task",
-      recencyAtMs: 1_000,
-      rolloutPath: join(home, "older.jsonl"),
-    });
-    db.close();
-
+  it("reads Plan mode from the latest app-server task's rollout", async () => {
+    const home = await temporaryHome();
+    const currentPath = join(home, "current.jsonl");
     const readRolloutTail = vi.fn(
       async (path: string): Promise<RolloutRecord[]> =>
-        path.endsWith("current.jsonl")
+        path === currentPath
           ? [
               {
                 type: "turn_context",
@@ -426,307 +424,190 @@ describe("CodexStore", () => {
             ]
           : [],
     );
-    const store = new CodexStore(home, readRolloutTail);
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => [
+          thread("current", {
+            recencyAtMs: 2_000,
+            rolloutPath: currentPath,
+          }),
+          thread("older", {
+            recencyAtMs: 1_000,
+            rolloutPath: join(home, "older.jsonl"),
+          }),
+        ]),
+      }),
+      readRolloutTail,
+    );
 
-    await expect(store.planModeEnabled()).resolves.toBe(true);
+    await expect(subject.planModeEnabled()).resolves.toBe(true);
     expect(readRolloutTail).toHaveBeenCalledOnce();
-    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "current.jsonl"));
+    expect(readRolloutTail).toHaveBeenCalledWith(currentPath);
   });
 
-  it("hydrates only the thread selected for a slot", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    for (let slot = 1; slot <= 6; slot += 1) {
-      insertThread(db, {
-        id: `thread-${slot}`,
-        recencyAtMs: 1_000 - slot,
-        rolloutPath: join(home, `rollout-${slot}.jsonl`),
-        title: `Chat ${slot}`,
-        updatedAtMs: 1_000 - slot,
-      });
-    }
-    db.close();
-
-    const readRolloutTail = vi.fn(
-      async (_path: string): Promise<RolloutRecord[]> => [],
+  it("does not use SQLite to replace a missing Plan-mode rollout", async () => {
+    const home = await temporaryHome();
+    createReasoningDatabase(home);
+    const readRolloutTail = vi.fn(async () => []);
+    const subject = store(
+      home,
+      appServer({ readThreads: vi.fn(async () => [thread("current")]) }),
+      readRolloutTail,
     );
-    const store = new CodexStore(home, readRolloutTail);
 
-    await expect(store.threadAtSlot(4)).resolves.toMatchObject({
+    await expect(subject.planModeEnabled()).resolves.toBe(false);
+    expect(readRolloutTail).not.toHaveBeenCalled();
+  });
+
+  it("hydrates only the task selected for a slot", async () => {
+    const home = await temporaryHome();
+    const threads = Array.from({ length: 6 }, (_, index) =>
+      thread(`thread-${index + 1}`, {
+        recencyAtMs: 1_000 - index,
+        rolloutPath: join(home, `rollout-${index + 1}.jsonl`),
+        status: null,
+      }),
+    );
+    const readRolloutTail = vi.fn(async () => []);
+    const subject = store(
+      home,
+      appServer({ readThreads: vi.fn(async () => threads) }),
+      readRolloutTail,
+    );
+
+    await expect(subject.threadAtSlot(4)).resolves.toMatchObject({
       id: "thread-4",
     });
     expect(readRolloutTail).toHaveBeenCalledOnce();
     expect(readRolloutTail).toHaveBeenCalledWith(join(home, "rollout-4.jsonl"));
   });
 
-  it("excludes subagents from chat slots and reports them on their parent", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    insertThread(db, {
-      id: "parent-thread",
-      recencyAtMs: 1_000,
-      rolloutPath: join(home, "parent.jsonl"),
-      title: "Parent chat",
-    });
-    insertThread(db, {
-      id: "subagent-thread",
-      recencyAtMs: 2_000,
-      rolloutPath: join(home, "subagent.jsonl"),
-      title: "Research subagent",
-    });
-    db.prepare(
-      `INSERT INTO thread_spawn_edges
-       (parent_thread_id, child_thread_id, status)
-       VALUES (?, ?, ?)`,
-    ).run("parent-thread", "subagent-thread", "running");
-    db.close();
-
-    const readRolloutTail = vi.fn(
-      async (path: string): Promise<RolloutRecord[]> =>
-        path.endsWith("subagent.jsonl")
-          ? [{ type: "event_msg", payload: { type: "task_complete" } }]
-          : [],
+  it("excludes subagents from slots and reports them on their parent", async () => {
+    const home = await temporaryHome();
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => [
+          thread("child", {
+            parentThreadId: "parent",
+            recencyAtMs: 2_000,
+            status: "unread",
+          }),
+          thread("parent", { recencyAtMs: 1_000, status: "idle" }),
+        ]),
+      }),
     );
-    const store = new CodexStore(home, readRolloutTail);
 
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
-      id: "parent-thread",
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
+      id: "parent",
+      status: "idle",
       subtaskStatuses: ["unread"],
     });
-    await expect(store.threadAtSlot(2)).resolves.toBeNull();
-    expect(readRolloutTail).toHaveBeenCalledTimes(2);
-    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "parent.jsonl"));
-    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "subagent.jsonl"));
+    await expect(subject.threadAtSlot(2)).resolves.toBeNull();
   });
 
-  it("merges cached SSH chats with local chats by recency", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    insertThread(db, {
-      id: "local-thread",
-      recencyAtMs: 2_000,
-      rolloutPath: join(home, "local.jsonl"),
-      title: "Local chat",
-      updatedAtMs: 2_000,
-    });
-    db.close();
-
-    const readRolloutTail = vi.fn(
-      async (_path: string): Promise<RolloutRecord[]> => [],
-    );
-    const readRemoteThreads = vi.fn(async () => [
+  it("merges remote and local tasks by recency", async () => {
+    const home = await temporaryHome();
+    const readRemoteThreads = vi.fn(async (): Promise<RemoteThreadRow[]> => [
       {
         cwd: "/home/user/work",
-        id: "remote-thread",
+        id: "remote",
         recencyAtMs: 3_000,
         remoteHostId: "remote-ssh-discovered:devbox",
-        remotePlatform: "posix" as const,
+        remotePlatform: "posix",
         rolloutPath: null,
-        status: "unread" as const,
+        status: "unread",
         title: "Remote chat",
         updatedAtMs: 3_100,
       },
     ]);
-    const store = new CodexStore(home, readRolloutTail, readRemoteThreads);
+    const subject = store(
+      home,
+      appServer({
+        readThreads: vi.fn(async () => [
+          thread("local", { recencyAtMs: 2_000, status: "idle" }),
+        ]),
+      }),
+      async () => [],
+      readRemoteThreads,
+    );
 
-    await expect(store.threadAtSlot(1)).resolves.toMatchObject({
-      id: "remote-thread",
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
+      id: "remote",
       remoteHostId: "remote-ssh-discovered:devbox",
-      rolloutPath: null,
-      status: "unread",
-      title: "Remote chat",
     });
-    await expect(store.threadAtSlot(2)).resolves.toMatchObject({
-      id: "local-thread",
-    });
-    await expect(
-      store.threadAtSlot(1, "/home/user/work"),
-    ).resolves.toMatchObject({
-      id: "remote-thread",
+    await expect(subject.threadAtSlot(2)).resolves.toMatchObject({
+      id: "local",
     });
     expect(readRemoteThreads).toHaveBeenCalledOnce();
-    expect(readRolloutTail).toHaveBeenCalledOnce();
-    expect(readRolloutTail).toHaveBeenCalledWith(join(home, "local.jsonl"));
   });
 
   it("matches nested Windows remote workspaces case-insensitively", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    createThreadDatabase(home).close();
-    const readRemoteThreads = vi.fn(async () => [
-      {
-        cwd: "c:\\WORK\\repo",
-        id: "windows-remote-thread",
-        recencyAtMs: 3_000,
-        remoteHostId: "windows-host",
-        remotePlatform: "windows" as const,
-        rolloutPath: "C:\\Users\\dev\\.codex\\remote.jsonl",
-        status: "unread" as const,
-        title: "Windows remote chat",
-        updatedAtMs: 3_100,
-      },
-    ]);
-    const store = new CodexStore(home, async () => [], readRemoteThreads);
+    const home = await temporaryHome();
+    const subject = store(
+      home,
+      appServer(),
+      async () => [],
+      async () => [
+        {
+          cwd: "c:\\WORK\\repo",
+          id: "windows-remote",
+          recencyAtMs: 3_000,
+          remoteHostId: "windows-host",
+          remotePlatform: "windows",
+          rolloutPath: null,
+          status: "unread",
+          title: "Windows remote chat",
+          updatedAtMs: 3_100,
+        },
+      ],
+    );
 
-    await expect(store.threadAtSlot(1, "C:\\work")).resolves.toMatchObject({
-      id: "windows-remote-thread",
+    await expect(subject.threadAtSlot(1, "C:\\work")).resolves.toMatchObject({
+      id: "windows-remote",
     });
   });
 
-  it("shares an in-flight SSH refresh across agent slots", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    insertThread(db, {
-      id: "local-thread",
-      rolloutPath: join(home, "local.jsonl"),
+  it("shares an in-flight task refresh across slots", async () => {
+    const home = await temporaryHome();
+    let finishRead!: (threads: CodexAppServerThread[]) => void;
+    const pending = new Promise<CodexAppServerThread[]>((resolve) => {
+      finishRead = resolve;
     });
-    db.close();
+    const readThreads = vi.fn(() => pending);
+    const subject = store(home, appServer({ readThreads }));
 
-    let finishRemoteRead!: () => void;
-    const remoteRead = new Promise<never[]>((resolve) => {
-      finishRemoteRead = () => resolve([]);
-    });
-    const readRemoteThreads = vi.fn(() => remoteRead);
-    const store = new CodexStore(home, async () => [], readRemoteThreads);
+    const first = subject.threadAtSlot(1);
+    await vi.waitFor(() => expect(readThreads).toHaveBeenCalledOnce());
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10_000);
+    const second = subject.threadAtSlot(1);
+    finishRead([thread("local", { status: "idle" })]);
 
-    const firstSlot = store.threadAtSlot(1);
-    await vi.waitFor(() => expect(readRemoteThreads).toHaveBeenCalledOnce());
-    const originalNow = Date.now();
-    vi.spyOn(Date, "now").mockReturnValue(originalNow + 10_000);
-    const secondSlot = store.threadAtSlot(1);
-    finishRemoteRead();
-
-    await expect(firstSlot).resolves.toMatchObject({ id: "local-thread" });
-    await expect(secondSlot).resolves.toMatchObject({ id: "local-thread" });
-    expect(readRemoteThreads).toHaveBeenCalledOnce();
+    await expect(first).resolves.toMatchObject({ id: "local" });
+    await expect(second).resolves.toMatchObject({ id: "local" });
+    expect(readThreads).toHaveBeenCalledOnce();
   });
 
-  it("continues scanning global recency rows until it finds a workspace match", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    for (let rank = 1; rank <= 40; rank += 1) {
-      insertThread(db, {
-        cwd: "/tmp/other-project",
-        id: `other-${rank}`,
-        recencyAtMs: 1_000 - rank,
-        rolloutPath: join(home, `other-${rank}.jsonl`),
-        title: `Other ${rank}`,
-        updatedAtMs: 1_000 - rank,
-      });
-    }
-    insertThread(db, {
-      id: "matching-thread",
-      recencyAtMs: 959,
-      rolloutPath: join(home, "matching.jsonl"),
-      title: "Matching chat",
-      updatedAtMs: 959,
-    });
-    db.close();
+  it("scans the full app-server result for a workspace match", async () => {
+    const home = await temporaryHome();
+    const threads = [
+      ...Array.from({ length: 40 }, (_, index) =>
+        thread(`other-${index}`, {
+          cwd: "/tmp/other-project",
+          recencyAtMs: 2_000 - index,
+        }),
+      ),
+      thread("matching", { cwd: "/tmp/project", recencyAtMs: 1_000 }),
+    ];
+    const subject = store(
+      home,
+      appServer({ readThreads: vi.fn(async () => threads) }),
+    );
 
-    const store = new CodexStore(home);
-
-    await expect(store.threadAtSlot(1, "/tmp/project")).resolves.toMatchObject({
-      id: "matching-thread",
-    });
-  });
-
-  it("uses one thread cursor when a workspace filter has no matches", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const db = createThreadDatabase(home);
-    for (let rank = 1; rank <= 200; rank += 1) {
-      insertThread(db, {
-        cwd: "/tmp/other-project",
-        id: `other-${rank}`,
-        recencyAtMs: 1_000 - rank,
-        rolloutPath: join(home, `other-${rank}.jsonl`),
-        updatedAtMs: 1_000 - rank,
-      });
-    }
-    db.close();
-
-    const iterate = vi.spyOn(StatementSync.prototype, "iterate");
-    const all = vi.spyOn(StatementSync.prototype, "all");
-    const store = new CodexStore(home);
-
-    await expect(store.threadAtSlot(1, "/tmp/project")).resolves.toBeNull();
-    expect(iterate).toHaveBeenCalledTimes(2);
-    expect(all).not.toHaveBeenCalled();
-  });
-
-  it("keeps thread ordering stable while Codex updates the database", async () => {
-    const home = await mkdtemp(join(tmpdir(), "chatgato-test-"));
-    temporaryDirectories.push(home);
-    const databasePath = join(home, "state_5.sqlite");
-    const db = createThreadDatabase(home);
-    db.exec("PRAGMA journal_mode = WAL");
-    for (let rank = 1; rank <= 36; rank += 1) {
-      insertThread(db, {
-        cwd: "/tmp/other-project",
-        id: `other-${rank}`,
-        recencyAtMs: 1_000 - rank,
-        rolloutPath: join(home, `other-${rank}.jsonl`),
-        updatedAtMs: 1_000 - rank,
-      });
-    }
-    insertThread(db, {
-      id: "matching-thread",
-      recencyAtMs: 963,
-      rolloutPath: join(home, "matching.jsonl"),
-      title: "Matching chat",
-      updatedAtMs: 963,
-    });
-    db.close();
-
-    const writer = new DatabaseSync(databasePath);
-    const originalIterate = StatementSync.prototype.iterate;
-    let reordered = false;
-    vi.spyOn(StatementSync.prototype, "iterate").mockImplementation(function (
-      this: StatementSync,
-      namedParameters?: Record<string, SQLInputValue>,
-      ...anonymousParameters: SQLInputValue[]
-    ) {
-      const parameters =
-        namedParameters === undefined
-          ? []
-          : [namedParameters, ...anonymousParameters];
-      const iterate = originalIterate as (
-        ...values: Array<SQLInputValue | Record<string, SQLInputValue>>
-      ) => NodeJS.Iterator<Record<string, SQLOutputValue>>;
-      const rows = iterate.apply(this, parameters);
-      return (function* (): Generator<
-        Record<string, SQLOutputValue>,
-        undefined
-      > {
-        let visited = 0;
-        for (const row of rows) {
-          visited += 1;
-          if (visited === 36) {
-            writer.prepare("DELETE FROM threads WHERE id = ?").run("other-1");
-            reordered = true;
-          }
-          yield row;
-        }
-        return undefined;
-      })();
-    });
-
-    try {
-      const store = new CodexStore(home);
-      await expect(
-        store.threadAtSlot(1, "/tmp/project"),
-      ).resolves.toMatchObject({
-        id: "matching-thread",
-      });
-      expect(reordered).toBe(true);
-    } finally {
-      writer.close();
-    }
+    await expect(
+      subject.threadAtSlot(1, "/tmp/project"),
+    ).resolves.toMatchObject({ id: "matching" });
   });
 
   it("clamps reasoning changes at the model's supported boundaries", () => {

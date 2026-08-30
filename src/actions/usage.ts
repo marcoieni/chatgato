@@ -7,9 +7,11 @@ import {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
-import { CodexAppServerUsageClient } from "../lib/codex-app-server.js";
-import { CodexStore } from "../lib/codex-store.js";
-import { CodexUsageService } from "../lib/codex-usage-service.js";
+import { ActionSubscriptionRegistry } from "../lib/action-subscriptions.js";
+import {
+  defaultCodexAppServer,
+  type CodexAppServerNotification,
+} from "../lib/codex-app-server.js";
 import { usageImage } from "../lib/visuals.js";
 import type { UsageSettings } from "../types.js";
 
@@ -17,21 +19,20 @@ type VisibleAction = WillAppearEvent<UsageSettings>["action"];
 
 @action({ UUID: "com.marco.chatgato.usage" })
 export class UsageAction extends SingletonAction<UsageSettings> {
-  private readonly store = new CodexStore();
-  private readonly liveUsage = new CodexAppServerUsageClient();
-  private readonly usage = new CodexUsageService(this.liveUsage.readUsage, () =>
-    this.store.latestUsage(),
-  );
+  private readonly liveUsage = defaultCodexAppServer;
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
 
   override async onWillAppear(
     ev: WillAppearEvent<UsageSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<UsageSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -57,7 +58,7 @@ export class UsageAction extends SingletonAction<UsageSettings> {
 
   private async refresh(actionInstance: VisibleAction): Promise<void> {
     try {
-      const usage = await this.usage.latestUsage();
+      const usage = await this.liveUsage.readUsage();
       await Promise.all([
         actionInstance.setImage(usageImage(usage)),
         actionInstance.setTitle(""),
@@ -68,5 +69,17 @@ export class UsageAction extends SingletonAction<UsageSettings> {
         actionInstance.setTitle(""),
       ]);
     }
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.replace<CodexAppServerNotification>(
+      actionInstance.id,
+      (listener) => this.liveUsage.subscribe(listener),
+      async (notification) => {
+        if (notification.method === "account/rateLimits/updated") {
+          await this.refresh(actionInstance);
+        }
+      },
+    );
   }
 }

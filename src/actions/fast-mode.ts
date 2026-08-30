@@ -10,6 +10,7 @@ import streamDeck from "@elgato/streamdeck";
 import { setTimeout as delay } from "node:timers/promises";
 import { executeCommand } from "../lib/codex-controller.js";
 import { ActionPoller } from "../lib/action-poller.js";
+import { ActionSubscriptionRegistry } from "../lib/action-subscriptions.js";
 import { CodexStore, type FastModeStates } from "../lib/codex-store.js";
 import { fastModeImage } from "../lib/visuals.js";
 import type { FastModeSettings } from "../types.js";
@@ -32,6 +33,7 @@ type FastModeChange = {
 export class FastModeAction extends SingletonAction<FastModeSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
   private activeScope: FastModeScope | null = null;
   private lastStates: FastModeStates | null = null;
   private toggling = false;
@@ -39,11 +41,13 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
   override async onWillAppear(
     ev: WillAppearEvent<FastModeSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<FastModeSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
   }
 
   override async onDidReceiveSettings(
@@ -100,6 +104,14 @@ export class FastModeAction extends SingletonAction<FastModeSettings> {
     await this.render(
       actionInstance,
       enabledForScope(states, this.activeScope),
+    );
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.replace<void>(
+      actionInstance.id,
+      (listener) => this.store.subscribe(() => listener()),
+      () => this.refresh(actionInstance),
     );
   }
 

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   fastModeStates:
     vi.fn<(forceRemoteRefresh?: boolean) => Promise<FastModeStates>>(),
   executeCommand: vi.fn<(command: string) => Promise<void>>(),
+  subscribe: vi.fn<(listener: () => void) => () => void>(),
 }));
 
 vi.mock("../src/lib/codex-controller.js", () => ({
@@ -15,6 +16,7 @@ vi.mock("../src/lib/codex-controller.js", () => ({
 vi.mock("../src/lib/codex-store.js", () => ({
   CodexStore: class {
     fastModeStates = mocks.fastModeStates;
+    subscribe = mocks.subscribe;
   },
 }));
 
@@ -50,6 +52,8 @@ describe("FastModeAction", () => {
     mocks.fastModeStates.mockResolvedValue(modeStates(false, null));
     mocks.executeCommand.mockReset();
     mocks.executeCommand.mockResolvedValue();
+    mocks.subscribe.mockReset();
+    mocks.subscribe.mockReturnValue(() => undefined);
   });
 
   it("routes through the Fast keyboard shortcut and confirms the on state", async () => {
@@ -161,6 +165,34 @@ describe("FastModeAction", () => {
 
     expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON");
     fastMode.onWillDisappear({ action: harness.action } as never);
+  });
+
+  it("refreshes immediately when the app-server reports a config change", async () => {
+    let notifyConfigChanged!: () => void;
+    const unsubscribe = vi.fn();
+    mocks.subscribe.mockImplementation((listener) => {
+      notifyConfigChanged = listener;
+      return unsubscribe;
+    });
+    mocks.fastModeStates
+      .mockResolvedValueOnce(modeStates(false, null))
+      .mockResolvedValue(modeStates(true, null));
+    const harness = actionHarness();
+    const fastMode = new FastModeAction();
+
+    await fastMode.onWillAppear({
+      action: harness.action,
+      payload: { settings: {} },
+    } as never);
+    expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nOFF");
+
+    notifyConfigChanged();
+    await vi.waitFor(() =>
+      expect(harness.action.setTitle).toHaveBeenLastCalledWith("FAST\nON"),
+    );
+
+    fastMode.onWillDisappear({ action: harness.action } as never);
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
   it("detects a local toggle when the desktop still reports a remote project", async () => {

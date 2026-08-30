@@ -9,6 +9,7 @@ import {
 import streamDeck from "@elgato/streamdeck";
 import { normalizeAgentSlot } from "../lib/agent-slots.js";
 import { ActionPoller, pollIntervalMs } from "../lib/action-poller.js";
+import { ActionSubscriptionRegistry } from "../lib/action-subscriptions.js";
 import { CodexStore } from "../lib/codex-store.js";
 import { buildThreadUrl } from "../lib/deep-links.js";
 import { openThreadBySearch, openUrl } from "../lib/codex-controller.js";
@@ -22,16 +23,19 @@ const logger = streamDeck.logger.createScope("Agent Status");
 export class AgentStatusAction extends SingletonAction<AgentSettings> {
   private readonly store = new CodexStore();
   private readonly poller = new ActionPoller();
+  private readonly subscriptions = new ActionSubscriptionRegistry();
   private readonly visibleThreads = new Map<string, CodexThread>();
 
   override async onWillAppear(
     ev: WillAppearEvent<AgentSettings>,
   ): Promise<void> {
+    this.subscribe(ev.action);
     await this.startPolling(ev.action, ev.payload.settings);
   }
 
   override onWillDisappear(ev: WillDisappearEvent<AgentSettings>): void {
     this.poller.stop(ev.action.id);
+    this.subscriptions.remove(ev.action.id);
     this.visibleThreads.delete(ev.action.id);
   }
 
@@ -128,5 +132,16 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
 
   private slot(settings: AgentSettings): number {
     return normalizeAgentSlot(settings.slot);
+  }
+
+  private subscribe(actionInstance: VisibleAction): void {
+    this.subscriptions.replace<void>(
+      actionInstance.id,
+      (listener) => this.store.subscribe(() => listener()),
+      async () => {
+        const settings = await actionInstance.getSettings<AgentSettings>();
+        await this.refresh(actionInstance, settings);
+      },
+    );
   }
 }

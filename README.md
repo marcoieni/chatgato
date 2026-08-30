@@ -90,37 +90,50 @@ npm run pack
 
 ## How live status works
 
-The plugin reads Codex's `state_5.sqlite` from `sqlite_home` in
-`$CODEX_HOME/config.toml` when configured, then `CODEX_SQLITE_HOME`, and otherwise
-`CODEX_HOME` (normally `~/.codex`). Relative SQLite locations resolve from the
-plugin's current working directory. For SSH projects saved in the ChatGPT desktop
-app, it discovers the configured host and project path from Codex's global state,
-then uses the remote host's documented `codex app-server` over the same SSH
-connection to read its recent chat metadata.
+The plugin starts one lazy, long-lived local `codex app-server` process and shares
+its documented stdio JSON-RPC connection across every key. `thread/list` and
+`thread/turns/list` provide recent chat metadata and status, `config/read` provides
+Fast mode, `model/list` provides reasoning choices, and
+`account/rateLimits/read` plus `account/rateLimits/updated` provide usage. Thread,
+config, and rate-limit notifications trigger immediate key refreshes; one-to-two-second
+reconciliation polling covers persisted or unloaded threads.
 
-Rollout files and `models_cache.json` remain under `CODEX_HOME`. See the official
+ChatGato targets the current app-server protocol and does not fall back when a
+required RPC is missing. Usage, Fast mode, model choices, and local task discovery
+show an offline/error state until the shared connection recovers.
+
+Two direct persisted-state reads remain because the current protocol does not
+expose the required information. Rollout JSONL supplies Plan mode and the extra
+detail needed for unloaded or ambiguous active tasks, including approval and user
+input waits. SQLite supplies only the active task's selected model and reasoning
+effort; supported choices still come from `model/list`. ChatGato does not use
+SQLite for task discovery and does not read `models_cache.json` or `config.toml`
+as RPC fallbacks. The SQLite location comes from `sqlite_home` in
+`$CODEX_HOME/config.toml`, then `CODEX_SQLITE_HOME`, and otherwise `CODEX_HOME`
+(normally `~/.codex`). Relative locations resolve from the plugin's current
+working directory. See the official
 [Codex environment-variable documentation](https://learn.chatgpt.com/docs/config-file/environment-variables).
+
+For SSH projects saved in the ChatGPT desktop app, ChatGato discovers the
+configured host and project path from Codex's global state, then uses the remote
+host's documented `codex app-server` over the same SSH connection to read its
+recent chat metadata.
+
 Remote discovery requires the same working SSH alias and remote `codex` command
 as the desktop app's
 [SSH connection setup](https://learn.chatgpt.com/docs/remote-connections#connect-to-an-ssh-host).
 
-Local discovery integrates with Codex's internal, version-sensitive SQLite
-schema, while remote discovery combines the documented app-server API with the
-desktop app's internal saved-project state. Codex releases may change these
-formats and require a corresponding plugin update. The plugin does not send chat
-titles, paths, prompts, or status to a cloud service or third party; remote chat
-metadata only crosses the user-configured SSH connection. Status changes are
-polled every two seconds by default.
-
-The Usage Limits key launches the locally installed `codex app-server` and uses
-its documented `account/rateLimits/read` method on every refresh. It selects the
-canonical `codex` bucket rather than model-specific meters.
-Press the usage key to refresh.
+The normal local path uses the documented app-server API. The two persisted-state
+gaps above and remote-project discovery still include internal, version-sensitive
+formats. The plugin does not send chat titles, paths, prompts, or status to a
+third-party service; remote chat metadata only crosses the user-configured SSH
+connection. The Usage Limits key selects the canonical `codex` bucket rather than
+model-specific meters. Press the usage key to force a refresh.
 
 ## Notes and limitations
 
-- Agent status is inferred from local or SSH-hosted Codex state and rollout events. It intentionally avoids private app IPC and cloud APIs.
-- Usage limits use the public local [Codex app-server protocol](https://learn.chatgpt.com/docs/app-server), with local rollout events as fallback. ChatGato does not read account credentials or call a private remote HTTP endpoint.
+- Agent status prefers app-server runtime and turn state, with rollout inference for unloaded or ambiguous active threads. It intentionally avoids private app IPC and cloud APIs.
+- Usage limits use only the public local [Codex app-server protocol](https://learn.chatgpt.com/docs/app-server). ChatGato does not read account credentials or call a private remote HTTP endpoint.
 
 ## Why this name?
 
