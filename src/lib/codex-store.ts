@@ -87,6 +87,8 @@ export type FastModeStates = {
 };
 
 const TAIL_BYTES = 512 * 1024;
+const ROLLOUT_LINE_SCAN_BYTES = 64 * 1024;
+const ROLLOUT_METADATA_PREFIX_BYTES = 16 * 1024;
 const APPROVAL_CONTEXT_CACHE_LIMIT = 100;
 
 type ApprovalContextCacheEntry = {
@@ -637,9 +639,126 @@ async function readRolloutWindow(
   length: number,
 ): Promise<RolloutRecord[]> {
   const start = Math.max(0, fileSize - length);
+  const records = await readRolloutRange(handle, start, length);
+  if (start === 0 || (await startsAtRolloutBoundary(handle, start))) {
+    return records;
+  }
+
+  // Image-generation results can make one JSONL record several megabytes
+  // larger than the normal tail. If the tail starts inside that record,
+  // parseRolloutLines correctly drops the partial first line but can then lose
+  // the only recent working signal. Recover the records immediately before the
+  // oversized line and a lightweight version of the skipped record without
+  // loading its image payload into memory.
+  const skippedRecordStart = await findRolloutLineStart(handle, start);
+  const contextLength = Math.min(skippedRecordStart, TAIL_BYTES);
+  const contextRecords =
+    contextLength > 0
+      ? await readRolloutRange(
+          handle,
+          skippedRecordStart - contextLength,
+          contextLength,
+        )
+      : [];
+  const skippedRecord = await readRolloutRecordMetadata(
+    handle,
+    skippedRecordStart,
+    fileSize,
+  );
+  return [
+    ...contextRecords,
+    ...(skippedRecord ? [skippedRecord] : []),
+    ...records,
+  ];
+}
+
+async function readRolloutRange(
+  handle: Awaited<ReturnType<typeof open>>,
+  start: number,
+  length: number,
+): Promise<RolloutRecord[]> {
   const buffer = Buffer.alloc(length);
   const { bytesRead } = await handle.read(buffer, 0, length, start);
   return parseRolloutLines(buffer.subarray(0, bytesRead).toString("utf8"));
+}
+
+async function startsAtRolloutBoundary(
+  handle: Awaited<ReturnType<typeof open>>,
+  start: number,
+): Promise<boolean> {
+  const byte = Buffer.alloc(1);
+  const { bytesRead } = await handle.read(byte, 0, 1, start - 1);
+  return bytesRead === 1 && byte[0] === 0x0a;
+}
+
+async function findRolloutLineStart(
+  handle: Awaited<ReturnType<typeof open>>,
+  position: number,
+): Promise<number> {
+  let cursor = position;
+  while (cursor > 0) {
+    const chunkStart = Math.max(0, cursor - ROLLOUT_LINE_SCAN_BYTES);
+    const length = cursor - chunkStart;
+    const buffer = Buffer.alloc(length);
+    const { bytesRead } = await handle.read(buffer, 0, length, chunkStart);
+    const newlineAt = buffer.subarray(0, bytesRead).lastIndexOf(0x0a);
+    if (newlineAt >= 0) return chunkStart + newlineAt + 1;
+    cursor = chunkStart;
+  }
+  return 0;
+}
+
+async function readRolloutRecordMetadata(
+  handle: Awaited<ReturnType<typeof open>>,
+  start: number,
+  fileSize: number,
+): Promise<RolloutRecord | null> {
+  const length = Math.min(
+    ROLLOUT_METADATA_PREFIX_BYTES,
+    Math.max(0, fileSize - start),
+  );
+  if (length === 0) return null;
+  const buffer = Buffer.alloc(length);
+  const { bytesRead } = await handle.read(buffer, 0, length, start);
+  const prefix = buffer.subarray(0, bytesRead).toString("utf8");
+  const payloadAt = prefix.search(/"payload"\s*:/u);
+  if (payloadAt < 0) return null;
+
+  const outer = prefix.slice(0, payloadAt);
+  const payloadPrefix = prefix.slice(payloadAt);
+  const type = rolloutStringProperty(outer, "type");
+  const payloadType = rolloutStringProperty(payloadPrefix, "type");
+  if (!type || !payloadType) return null;
+
+  const payload: NonNullable<RolloutRecord["payload"]> = {
+    type: payloadType,
+  };
+  for (const property of ["name", "call_id", "status", "phase"] as const) {
+    const value = rolloutStringProperty(payloadPrefix, property);
+    if (value !== undefined) payload[property] = value;
+  }
+  return {
+    timestamp: rolloutStringProperty(outer, "timestamp"),
+    type,
+    payload,
+  };
+}
+
+function rolloutStringProperty(
+  value: string,
+  property: string,
+): string | undefined {
+  const encoded = new RegExp(
+    `"${property}"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*")`,
+    "u",
+  ).exec(value)?.[1];
+  if (!encoded) return undefined;
+  try {
+    const decoded = JSON.parse(encoded) as unknown;
+    return typeof decoded === "string" ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function rememberApprovalContext(
