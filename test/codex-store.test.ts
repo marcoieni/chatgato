@@ -208,14 +208,15 @@ describe("CodexStore", () => {
     const home = await temporaryHome();
     const rolloutPath = join(home, "image-generation.jsonl");
     const callId = "image-generation-call";
+    const outputAtMs = Date.now();
     const records: RolloutRecord[] = [
       {
-        timestamp: "2026-09-01T16:24:00.000Z",
+        timestamp: new Date(outputAtMs - 60_000).toISOString(),
         type: "event_msg",
         payload: { type: "task_started" },
       },
       {
-        timestamp: "2026-09-01T16:24:01.000Z",
+        timestamp: new Date(outputAtMs - 59_000).toISOString(),
         type: "response_item",
         payload: {
           type: "custom_tool_call",
@@ -224,7 +225,7 @@ describe("CodexStore", () => {
         },
       },
       {
-        timestamp: "2026-09-01T16:25:00.000Z",
+        timestamp: new Date(outputAtMs).toISOString(),
         type: "response_item",
         payload: {
           type: "custom_tool_call_output",
@@ -233,7 +234,7 @@ describe("CodexStore", () => {
         },
       },
       {
-        timestamp: "2026-09-01T16:25:00.001Z",
+        timestamp: new Date(outputAtMs + 1).toISOString(),
         type: "event_msg",
         payload: { type: "token_count" },
       },
