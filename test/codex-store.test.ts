@@ -204,6 +204,62 @@ describe("CodexStore", () => {
     expect(readRolloutTail).toHaveBeenCalledWith(rolloutPath);
   });
 
+  it("keeps working across an oversized image-generation output record", async () => {
+    const home = await temporaryHome();
+    const rolloutPath = join(home, "image-generation.jsonl");
+    const callId = "image-generation-call";
+    const outputAtMs = Date.now();
+    const records: RolloutRecord[] = [
+      {
+        timestamp: new Date(outputAtMs - 60_000).toISOString(),
+        type: "event_msg",
+        payload: { type: "task_started" },
+      },
+      {
+        timestamp: new Date(outputAtMs - 59_000).toISOString(),
+        type: "response_item",
+        payload: {
+          type: "custom_tool_call",
+          name: "exec",
+          call_id: callId,
+        },
+      },
+      {
+        timestamp: new Date(outputAtMs).toISOString(),
+        type: "response_item",
+        payload: {
+          type: "custom_tool_call_output",
+          call_id: callId,
+          output: [{ type: "image", data: "x".repeat(600 * 1024) }],
+        },
+      },
+      {
+        timestamp: new Date(outputAtMs + 1).toISOString(),
+        type: "event_msg",
+        payload: { type: "token_count" },
+      },
+    ];
+    await writeFile(
+      rolloutPath,
+      `${records.map((record) => JSON.stringify(record)).join("\n")}\n`,
+    );
+    const subject = new CodexStore({
+      appServer: appServer({
+        readThreads: vi.fn(async () => [
+          thread("image-generation", { rolloutPath, status: null }),
+        ]),
+      }),
+      codexHome: home,
+      readRemoteFastMode: async () => null,
+      readRemoteThreads: async () => [],
+    });
+
+    await expect(subject.threadAtSlot(1)).resolves.toMatchObject({
+      id: "image-generation",
+      status: "working",
+    });
+  });
+
   it("surfaces app-server discovery failures instead of reading SQLite", async () => {
     const home = await temporaryHome();
     createReasoningDatabase(home);
