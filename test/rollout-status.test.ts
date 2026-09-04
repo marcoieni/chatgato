@@ -4,6 +4,7 @@ import {
   parseRolloutLines,
   planModeFromRollout,
   STALE_WORKING_TIMEOUT_MS,
+  subtaskStatusesFromRollout,
 } from "../src/lib/rollout-status.js";
 
 describe("Codex rollout status", () => {
@@ -402,6 +403,46 @@ The writable roots are elsewhere.
     expect(inferRolloutStatus([], "running")).toBe("working");
     expect(inferRolloutStatus([], "completed")).toBe("unread");
     expect(inferRolloutStatus([], "failed")).toBe("error");
+  });
+
+  it("tracks subtask activity embedded in a parent rollout", () => {
+    expect(
+      subtaskStatusesFromRollout([
+        {
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            item: {
+              type: "SubAgentActivity",
+              kind: "started",
+              agent_thread_id: "first",
+            },
+          },
+        },
+        {
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            item: {
+              type: "SubAgentActivity",
+              kind: "started",
+              agent_thread_id: "second",
+            },
+          },
+        },
+        {
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            item: {
+              type: "SubAgentActivity",
+              kind: "completed",
+              agent_thread_id: "second",
+            },
+          },
+        },
+      ]),
+    ).toEqual(["working", "unread"]);
   });
 
   it("skips a partial tail line", () => {
