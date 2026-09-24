@@ -4,7 +4,11 @@ import { join, posix, win32 } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { MAX_AGENT_SLOTS } from "./agent-slots.js";
 import { fastModeEnabledFromConfig } from "./fast-mode-config.js";
-import { inferRolloutStatus, parseRolloutLines } from "./rollout-status.js";
+import {
+  inferRolloutStatus,
+  parseRolloutLines,
+  subtaskStatusesFromRollout,
+} from "./rollout-status.js";
 import type { AgentStatus, RolloutRecord } from "../types.js";
 
 const APP_SERVER_TIMEOUT_MS = 8_000;
@@ -766,6 +770,10 @@ function remoteThreadRow(
       : preview || "Untitled chat";
   const updatedAtMs = secondsToMilliseconds(thread.updatedAt);
   const recencyAtMs = secondsToMilliseconds(thread.recencyAt) || updatedAtMs;
+  const subtaskStatuses =
+    rolloutRecords === undefined
+      ? []
+      : subtaskStatusesFromRollout(rolloutRecords);
 
   return {
     cwd: normalizeRemotePath(thread.cwd, platform),
@@ -778,6 +786,7 @@ function remoteThreadRow(
       rolloutRecords === undefined
         ? remoteAgentStatus(thread.status, turn)
         : inferRolloutStatus(rolloutRecords),
+    ...(subtaskStatuses.length > 0 ? { subtaskStatuses } : {}),
     title,
     updatedAtMs,
   };

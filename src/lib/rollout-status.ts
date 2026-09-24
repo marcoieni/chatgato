@@ -314,6 +314,53 @@ export function statusFromSpawnEdge(
   }
 }
 
+export function subtaskStatusesFromRollout(
+  records: readonly RolloutRecord[],
+): AgentStatus[] {
+  const statuses = new Map<string, AgentStatus>();
+
+  for (const record of records) {
+    if (
+      record.type !== "event_msg" ||
+      record.payload?.type !== "item_completed"
+    ) {
+      continue;
+    }
+
+    const item = record.payload.item;
+    if (!item || typeof item !== "object") continue;
+    const activity = item as Record<string, unknown>;
+    if (
+      typeof activity.type !== "string" ||
+      activity.type.toLowerCase() !== "subagentactivity"
+    ) {
+      continue;
+    }
+
+    const threadId = activity.agent_thread_id ?? activity.agentThreadId;
+    const kind =
+      typeof activity.kind === "string" ? activity.kind.toLowerCase() : "";
+    if (typeof threadId !== "string") continue;
+
+    switch (kind) {
+      case "started":
+        statuses.set(threadId, "working");
+        break;
+      case "completed":
+        statuses.set(threadId, "unread");
+        break;
+      case "cancelled":
+      case "canceled":
+      case "failed":
+      case "error":
+        statuses.set(threadId, "error");
+        break;
+    }
+  }
+
+  return [...statuses.values()];
+}
+
 export function inferRolloutStatus(
   records: readonly RolloutRecord[],
   spawnStatus?: string | null,

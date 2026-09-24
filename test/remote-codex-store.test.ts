@@ -509,6 +509,78 @@ lines.on("line", (line) => {
     expect(readRollouts).not.toHaveBeenCalled();
   });
 
+  it("discovers remote subtasks from the parent rollout when thread/list omits them", async () => {
+    const fakeSsh = await fakeSshScript(`
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+const send = (message) => process.stdout.write(JSON.stringify(message) + "\\n");
+lines.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.id === 0) {
+    send({ id: 0, result: { userAgent: "fake" } });
+  } else if (message.method === "thread/list") {
+    send({ id: message.id, result: { data: [{
+      id: "remote-parent",
+      name: "Remote parent",
+      cwd: "/srv/work/project",
+      path: "/parent.jsonl",
+      updatedAt: 12,
+      recencyAt: 11,
+      status: { type: "notLoaded" }
+    }], nextCursor: null } });
+  } else if (message.method === "thread/turns/list") {
+    send({ id: message.id, result: { data: [{ status: "inProgress" }] } });
+  }
+});
+`);
+    const readRollouts = vi.fn<RemoteRolloutTailReader>(
+      async () =>
+        new Map([
+          [
+            "/parent.jsonl",
+            [
+              {
+                type: "event_msg",
+                payload: {
+                  type: "item_completed",
+                  item: {
+                    type: "SubAgentActivity",
+                    kind: "started",
+                    agent_thread_id: "working-child",
+                  },
+                },
+              },
+              {
+                type: "event_msg",
+                payload: {
+                  type: "item_completed",
+                  item: {
+                    type: "SubAgentActivity",
+                    kind: "completed",
+                    agent_thread_id: "finished-child",
+                  },
+                },
+              },
+            ],
+          ],
+        ]),
+    );
+
+    await expect(
+      readThreadsFromHost(
+        { destination: "devbox", hostId: "hidden-subtasks" },
+        ["/srv/work"],
+        fakeSsh,
+        readRollouts,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "remote-parent",
+        subtaskStatuses: ["working", "unread"],
+      }),
+    ]);
+  });
+
   it("caps rollout hydration across projects to the visible slot count", async () => {
     const fakeSsh = await fakeSshScript(`
 import { createInterface } from "node:readline";
