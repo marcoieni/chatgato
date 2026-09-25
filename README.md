@@ -56,6 +56,10 @@ ChatGPT exposes app-scoped Switch chat, Fork chat, Toggle Fast mode, and Toggle 
 
 **Remote Agent Status navigation and the ChatGato Fork, Fast, and Plan buttons will not work until their shortcuts are configured.** Switch chat is only needed for SSH-hosted chats; local chats use exact Codex links. ChatGato reads and validates the relevant binding immediately before sending it, so shortcut changes take effect without rebuilding or restarting the plugin.
 
+## Install
+
+Install with one click from the [Elgato marketplace](https://marketplace.elgato.com/product/chatgato-8a785f44-884c-4938-9b14-d135d04773aa).
+
 ## Build and install for development
 
 ```bash
