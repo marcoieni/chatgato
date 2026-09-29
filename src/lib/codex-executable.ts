@@ -8,17 +8,27 @@ export function defaultCodexExecutable(
 ): string {
   const candidates =
     platform === "darwin"
-      ? [
-          "/Applications/ChatGPT.app/Contents/Resources/codex",
-          join(
-            userHome,
-            "Applications",
-            "ChatGPT.app",
-            "Contents",
-            "Resources",
-            "codex",
-          ),
-        ]
+      ? ["/Applications", join(userHome, "Applications")].flatMap(
+          (applications) => {
+            const resources = join(
+              applications,
+              "ChatGPT.app",
+              "Contents",
+              "Resources",
+            );
+            return [
+              join(
+                resources,
+                "codex-cli",
+                "CodexCLI.app",
+                "Contents",
+                "MacOS",
+                "codex",
+              ),
+              join(resources, "codex"),
+            ];
+          },
+        )
       : platform === "win32"
         ? windowsCodexCandidates()
         : [];
