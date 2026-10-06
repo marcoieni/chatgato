@@ -15,7 +15,7 @@
           "FontSize": 11
         }
       ],
-      "Tooltip": "Show and open one of the 20 most recent top-level Codex chats with live status color. Subagents are excluded. SSH-hosted chats require the Search Chats shortcut shown in the property inspector.",
+      "Tooltip": "Show live status for one of the 20 most recent Codex or T3 Code threads. Choose the app, slot, and optional workspace in settings. T3 Code supports local and SSH status; pressing a T3 key opens the app. Codex keys open the chat.",
       "UUID": "com.marco.chatgato.agent-status"
     },
     {
@@ -443,7 +443,7 @@
   "Category": "ChatGato",
   "CategoryIcon": "imgs/category",
   "CodePath": "bin/plugin.js",
-  "Description": "A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex). ChatGato shows live status for up to 20 local or SSH-hosted chats, displays remaining Codex usage limits, and provides keys for approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, Review, and more. No API key is required; chat data is read from local Codex files or through your configured SSH connection, and usage is read through the local Codex app-server with rollout files as fallback. Requires Stream Deck 7.1 or later, ChatGPT desktop with Codex, and macOS 13+ or Windows 10+. After installation, add ChatGato actions to your profile and assign a unique slot (1–20) to each Agent Status key. For remote chat navigation and the Fork, Fast, and Plan buttons, configure any shortcuts you prefer for ChatGPT's Switch chat, Fork chat, Toggle Fast mode, and Toggle plan mode commands; ChatGato reads them from Codex's keybindings file. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven actions such as Submit and Fork.",
+  "Description": "A Stream Deck plugin for Codex controls and live Codex / T3 Code thread status. Choose an app on each Agent Status key and track up to 20 recent threads per source, locally or over SSH. Press a Codex key to open its chat, or a T3 Code key to open the T3 Code desktop app. T3 Code does not yet support external navigation to a specific thread. Codex controls include usage limits, approvals, voice input, Fast and Plan modes, reasoning level, navigation, Submit, Fork, and Review. No API key is required. Requires Stream Deck 7.1 or later and macOS 13+ or Windows 10+. Remote T3 reads require SSH and Node.js 22.13+ on the host. For remote Codex chat navigation and the Fork, Fast, and Plan buttons, configure keyboard shortcuts in ChatGPT as described in the property inspector. On macOS, grant Elgato Accessibility permission if prompted for keyboard-driven Codex actions.",
   "Icon": "imgs/plugin",
   "Name": "ChatGato",
   "Nodejs": {

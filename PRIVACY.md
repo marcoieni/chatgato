@@ -1,9 +1,9 @@
 # ChatGato Privacy Policy
 
-Effective date: August 9, 2026
+Effective date: October 6, 2026
 
 ChatGato is a Stream Deck plugin that controls Codex in the ChatGPT desktop app
-and displays information about recent Codex chats. This policy explains what
+and displays information about recent Codex and T3 Code threads. This policy explains what
 ChatGato processes and where that data goes.
 
 ## Data ChatGato processes
@@ -21,6 +21,12 @@ ChatGato may process the following data on your computer:
   interval, completion acknowledgement, starter prompt, workspace path,
   auto-submit preference, and related action settings. The Stream Deck software
   stores these settings as part of your local Stream Deck configuration.
+- **T3 Code thread data:** thread identifiers, titles, project/worktree paths,
+  timestamps, and status, including pending approval/input counts. When selected
+  on an Agent Status key, ChatGato reads T3 Code's SQLite database read-only,
+  locally or through your configured SSH host. It does not read T3 credentials
+  or conversation messages. The app choice, optional T3 home path, and SSH host
+  are saved in Stream Deck action settings.
 - **Optional SSH metadata:** for remote projects already configured in the
   ChatGPT desktop app, ChatGato may process the host identifier, SSH destination,
   username, port, identity-file path, remote project paths, and remote Codex chat
@@ -36,6 +42,7 @@ ChatGato may process the following data on your computer:
 This data is used only to provide the plugin's features: showing chat and usage
 status, filtering and opening chats, creating chats with user-configured prompts,
 and controlling Codex actions.
+Pressing a T3 Code key launches or focuses the installed T3 Code desktop app.
 
 ChatGato has no analytics, advertising, tracking, user account, or developer-run
 server. The plugin does not sell data and does not send data to its developer or
@@ -63,7 +70,7 @@ only in memory while the plugin is running and refreshes it as needed. It does
 not create a separate persistent copy of Codex chat or SSH data.
 
 Stream Deck retains action settings and rotated local logs according to its own
-configuration and lifecycle. Codex retains its original chat data independently
+configuration and lifecycle. Codex and T3 Code retain their original chat data independently
 of ChatGato.
 
 ## Your choices and deletion
@@ -73,6 +80,7 @@ You can stop optional processing at any time:
 - Clear prompts and workspace filters, or remove the corresponding action or
   profile, in Stream Deck.
 - Remove remote projects or SSH connections in ChatGPT to stop remote discovery.
+- Remove T3 Code keys or change their app selection to stop T3 data reads.
 - Remove ChatGato's local rotated log files using the paths documented in the
   [README](README.md#finding-the-plugin-logs).
 - Delete the original chat data through ChatGPT/Codex if you no longer want Codex
