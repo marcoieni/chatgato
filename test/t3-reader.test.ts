@@ -34,9 +34,9 @@ async function fixture(v2 = false) {
     CREATE TABLE projection_threads (thread_id TEXT PRIMARY KEY, project_id TEXT, title TEXT,
       worktree_path TEXT, updated_at TEXT, archived_at TEXT, deleted_at TEXT,
       pending_approval_count INTEGER DEFAULT 0, pending_user_input_count INTEGER DEFAULT 0,
-      has_actionable_proposed_plan INTEGER DEFAULT 0);
+      has_actionable_proposed_plan INTEGER DEFAULT 0, latest_turn_id TEXT);
     CREATE TABLE projection_thread_sessions (thread_id TEXT, status TEXT);
-    CREATE TABLE projection_turns (row_id INTEGER PRIMARY KEY, thread_id TEXT, state TEXT,
+    CREATE TABLE projection_turns (row_id INTEGER PRIMARY KEY, thread_id TEXT, turn_id TEXT, state TEXT,
       requested_at TEXT, completed_at TEXT);
   `);
   if (v2)
@@ -62,15 +62,15 @@ async function fixture(v2 = false) {
       ).run(`run-${id}`, id, state, state === "completed" ? at : null);
     } else {
       db.prepare(
-        `INSERT INTO projection_threads (thread_id, project_id, title, updated_at) VALUES (?, 'p', ?, ?)`,
-      ).run(id, `Task ${id}`, at);
+        `INSERT INTO projection_threads (thread_id, project_id, title, updated_at, latest_turn_id) VALUES (?, 'p', ?, ?, ?)`,
+      ).run(id, `Task ${id}`, at, `turn-${id}`);
       db.prepare("INSERT INTO projection_thread_sessions VALUES (?, ?)").run(
         id,
         state === "completed" ? "ready" : state,
       );
       db.prepare(
-        "INSERT INTO projection_turns (thread_id, state, requested_at, completed_at) VALUES (?, ?, ?, ?)",
-      ).run(id, state, at, state === "completed" ? at : null);
+        "INSERT INTO projection_turns (thread_id, turn_id, state, requested_at, completed_at) VALUES (?, ?, ?, ?, ?)",
+      ).run(id, `turn-${id}`, state, at, state === "completed" ? at : null);
     }
   }
   return { home, db, add };
@@ -199,6 +199,41 @@ describe.each([false, true])("T3 read-only database adapter (v2: %s)", (v2) => {
       db.close();
     }
   });
+});
+
+it("uses the legacy thread's selected turn even when another turn was requested later", async () => {
+  const { home, db, add } = await fixture();
+  try {
+    add("current", "interrupted");
+    db.exec(`
+      INSERT INTO projection_turns (thread_id, turn_id, state, requested_at, completed_at)
+      VALUES ('current', 'other-turn', 'completed', '2026-10-06T13:00:00.000Z', '2026-10-06T14:00:00.000Z');
+    `);
+    expect(await read(home)).toEqual([
+      {
+        id: "current",
+        title: "Task current",
+        cwd: "/project",
+        updatedAtMs: Date.parse("2026-10-06T12:00:00.000Z"),
+        status: "idle",
+      },
+    ]);
+  } finally {
+    db.close();
+  }
+});
+
+it("does not reuse a historical completion when a legacy thread has no selected turn", async () => {
+  const { home, db, add } = await fixture();
+  try {
+    add("no-turn");
+    db.exec("UPDATE projection_threads SET latest_turn_id = NULL");
+    expect(
+      (await read(home)).map(({ id, status }) => ({ id, status })),
+    ).toEqual([{ id: "no-turn", status: "idle" }]);
+  } finally {
+    db.close();
+  }
 });
 
 it("prefers v2 over the retained v1 database, excludes child threads, and honors visits", async () => {

@@ -97,9 +97,8 @@ try {
     FROM projection_threads t
     JOIN projection_projects p ON p.project_id = t.project_id
     LEFT JOIN projection_thread_sessions s ON s.thread_id = t.thread_id
-    LEFT JOIN projection_turns r ON r.row_id = (
-      SELECT row_id FROM projection_turns WHERE thread_id = t.thread_id
-      ORDER BY requested_at DESC, row_id DESC LIMIT 1)
+    LEFT JOIN projection_turns r ON r.thread_id = t.thread_id
+      AND r.turn_id = t.latest_turn_id
     WHERE t.deleted_at IS NULL AND t.archived_at IS NULL AND p.deleted_at IS NULL
     ORDER BY t.updated_at DESC, t.thread_id DESC
   `,
