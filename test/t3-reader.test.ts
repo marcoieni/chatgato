@@ -236,16 +236,24 @@ it("does not reuse a historical completion when a legacy thread has no selected 
   }
 });
 
-it("prefers v2 over the retained v1 database, excludes child threads, and honors visits", async () => {
+it("prefers v2 over the retained v1 database, excludes subagents but keeps forks, and honors visits", async () => {
   const { home, db, add } = await fixture(true);
   try {
     const old = new DatabaseSync(join(home, "userdata", "state.sqlite"));
     old.close();
     add("parent", "completed", { lastVisitedAt: "2026-10-06T13:00:00.000Z" });
-    add("child", "running", { lineage: { parentThreadId: "parent" } });
+    add("child", "running", {
+      lineage: { parentThreadId: "parent", relationshipToParent: "subagent" },
+    });
+    add("fork", "running", {
+      lineage: { parentThreadId: "parent", relationshipToParent: "fork" },
+    });
     expect(
       (await read(home)).map(({ id, status }) => ({ id, status })),
-    ).toEqual([{ id: "parent", status: "idle" }]);
+    ).toEqual([
+      { id: "parent", status: "idle" },
+      { id: "fork", status: "working" },
+    ]);
   } finally {
     db.close();
   }

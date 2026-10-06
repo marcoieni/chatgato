@@ -83,7 +83,7 @@ try {
       WHERE thread_id = t.thread_id AND status <> 'queued'
       ORDER BY ordinal DESC LIMIT 1)
     WHERE t.deleted_at IS NULL AND t.archived_at IS NULL AND p.deleted_at IS NULL
-      AND json_extract(t.payload_json, '$.lineage.parentThreadId') IS NULL
+      AND COALESCE(json_extract(t.payload_json, '$.lineage.relationshipToParent'), '') <> 'subagent'
     ORDER BY t.updated_at DESC, t.thread_id DESC
   `
         : `
