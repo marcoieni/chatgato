@@ -42,9 +42,15 @@ async function fixture(v2 = false) {
   if (v2)
     db.exec(`
     CREATE TABLE orchestration_v2_projection_threads (thread_id TEXT PRIMARY KEY, project_id TEXT,
-      title TEXT, updated_at TEXT, archived_at TEXT, deleted_at TEXT, payload_json TEXT);
+      title TEXT, updated_at TEXT, archived_at TEXT, deleted_at TEXT, payload_json TEXT,
+      provider_instance_id TEXT DEFAULT 'provider');
     CREATE TABLE orchestration_v2_projection_runs (run_id TEXT PRIMARY KEY, thread_id TEXT, ordinal INTEGER,
-      status TEXT, completed_at TEXT);
+      status TEXT, completed_at TEXT, payload_json TEXT);
+    CREATE TABLE orchestration_v2_projection_turn_items (turn_item_id TEXT PRIMARY KEY, thread_id TEXT,
+      run_id TEXT, node_id TEXT, type TEXT, status TEXT, updated_at TEXT, ordinal INTEGER, payload_json TEXT);
+    CREATE TABLE orchestration_v2_projection_provider_sessions (provider_session_id TEXT PRIMARY KEY,
+      provider_instance_id TEXT, updated_at TEXT, payload_json TEXT);
+    CREATE TABLE orchestration_v2_projection_provider_session_bindings (provider_session_id TEXT, thread_id TEXT);
     CREATE TABLE orchestration_v2_projection_runtime_requests (thread_id TEXT, status TEXT, kind TEXT);
     CREATE TABLE orchestration_v2_projection_plans (plan_id TEXT PRIMARY KEY, thread_id TEXT,
       run_id TEXT, node_id TEXT, kind TEXT, status TEXT, payload_json TEXT);
@@ -57,11 +63,21 @@ async function fixture(v2 = false) {
     const at = "2026-10-06T12:00:00.000Z";
     if (v2) {
       db.prepare(
-        "INSERT INTO orchestration_v2_projection_threads VALUES (?, 'p', ?, ?, NULL, NULL, ?)",
+        `INSERT INTO orchestration_v2_projection_threads
+        (thread_id, project_id, title, updated_at, payload_json) VALUES (?, 'p', ?, ?, ?)`,
       ).run(id, `Task ${id}`, at, JSON.stringify(overrides));
       db.prepare(
-        "INSERT INTO orchestration_v2_projection_runs VALUES (?, ?, 1, ?, ?)",
-      ).run(`run-${id}`, id, state, state === "completed" ? at : null);
+        "INSERT INTO orchestration_v2_projection_runs VALUES (?, ?, 1, ?, ?, ?)",
+      ).run(
+        `run-${id}`,
+        id,
+        state,
+        state === "completed" ? at : null,
+        JSON.stringify({
+          rootNodeId: `root-${id}`,
+          startedAt: state === "queued" ? null : at,
+        }),
+      );
     } else {
       db.prepare(
         `INSERT INTO projection_threads (thread_id, project_id, title, updated_at, latest_turn_id) VALUES (?, 'p', ?, ?, ?)`,
@@ -269,7 +285,8 @@ it("shows queued v2 runs as working, including after an older completion", async
     add("queued-approval", "queued");
     db.exec(`
       INSERT INTO orchestration_v2_projection_runs
-      VALUES ('queued-next', 'queued-after-completed', 2, 'queued', NULL);
+      (run_id, thread_id, ordinal, status)
+      VALUES ('queued-next', 'queued-after-completed', 2, 'queued');
       INSERT INTO orchestration_v2_projection_runtime_requests
       VALUES ('queued-approval', 'pending', 'command');
     `);
@@ -284,6 +301,145 @@ it("shows queued v2 runs as working, including after an older completion", async
     db.close();
   }
 });
+
+async function usageLimitedFixture() {
+  const context = await fixture(true);
+  context.add("limited", "failed");
+  context.db.exec(`
+    INSERT INTO orchestration_v2_projection_runs (run_id, thread_id, ordinal, status, payload_json)
+    VALUES ('successor', 'limited', 2, 'queued', '{"startedAt":null}');
+    INSERT INTO orchestration_v2_projection_turn_items
+    VALUES ('failure', 'limited', 'run-limited', 'root-limited', 'error', 'failed',
+      '2026-10-06T12:00:00.000Z', 1,
+      '{"failure":{"class":"usage_limit","message":"Plan limit reached."}}');
+  `);
+  return context;
+}
+
+it.each([
+  ["queued", null, "error"],
+  ["cancelled", null, "error"],
+  ["cancelled", "2026-10-06T13:00:00.000Z", "idle"],
+  ["completed", "2026-10-06T13:00:00.000Z", "unread"],
+  ["preparing", null, "working"],
+  ["starting", null, "working"],
+  ["running", "2026-10-06T13:00:00.000Z", "working"],
+  ["waiting", "2026-10-06T13:00:00.000Z", "working"],
+])(
+  "preserves a v2 usage limit until a successor executes (%s, started %s)",
+  async (state, startedAt, expected) => {
+    const { home, db } = await usageLimitedFixture();
+    try {
+      db.prepare(
+        `UPDATE orchestration_v2_projection_runs SET status = ?, payload_json = ?
+        WHERE run_id = 'successor'`,
+      ).run(state, JSON.stringify({ startedAt }));
+      expect((await read(home))[0]!.status).toBe(expected);
+    } finally {
+      db.close();
+    }
+  },
+);
+
+it.each([
+  ["command", "awaiting-approval"],
+  ["user_input", "awaiting-response"],
+])(
+  "prioritizes pending %s requests over a blocked v2 queue",
+  async (kind, expected) => {
+    const { home, db } = await usageLimitedFixture();
+    try {
+      db.prepare(
+        "INSERT INTO orchestration_v2_projection_runtime_requests VALUES ('limited', 'pending', ?)",
+      ).run(kind);
+      expect((await read(home))[0]!.status).toBe(expected);
+    } finally {
+      db.close();
+    }
+  },
+);
+
+it("keeps a real active v2 run working even when a newer queued run follows a limit", async () => {
+  const { home, db } = await usageLimitedFixture();
+  try {
+    db.exec(`
+      INSERT INTO orchestration_v2_projection_runs (run_id, thread_id, ordinal, status)
+      VALUES ('active', 'limited', 0, 'running');
+    `);
+    expect((await read(home))[0]!.status).toBe("working");
+  } finally {
+    db.close();
+  }
+});
+
+it.each([
+  ["node_id", "subagent-root"],
+  ["run_id", "another-run"],
+  ["type", "message"],
+  ["status", "completed"],
+])(
+  "does not block a v2 queue on an unrelated error (%s = %s)",
+  async (column, value) => {
+    const { home, db } = await usageLimitedFixture();
+    try {
+      db.prepare(
+        `UPDATE orchestration_v2_projection_turn_items SET ${column} = ?`,
+      ).run(value);
+      expect((await read(home))[0]!.status).toBe("working");
+    } finally {
+      db.close();
+    }
+  },
+);
+
+it.each([
+  ["2026-10-06T13:00:00.000Z", 0, "earlier-id"],
+  ["2026-10-06T12:00:00.000Z", 2, "earlier-id"],
+  ["2026-10-06T12:00:00.000Z", 1, "later-id"],
+])(
+  "uses the latest failed root error to classify a v2 queue (%s, %s, %s)",
+  async (at, ordinal, id) => {
+    const { home, db } = await usageLimitedFixture();
+    try {
+      db.prepare(
+        `
+      INSERT INTO orchestration_v2_projection_turn_items
+      VALUES (?, 'limited', 'run-limited', 'root-limited', 'error', 'failed', ?, ?,
+        '{"failure":{"class":"unknown","message":"Plan limit reached."}}')
+    `,
+      ).run(id, at, ordinal);
+      expect((await read(home))[0]!.status).toBe("working");
+    } finally {
+      db.close();
+    }
+  },
+);
+
+it.each([
+  [null, "provider", "error"],
+  ["Plan limit reached.", "provider", "error"],
+  ["Session connection failed.", "provider", "working"],
+  ["Session connection failed.", "old-provider", "error"],
+])(
+  "only supersedes a v2 limit with a distinct current-provider session error (%s, %s)",
+  async (lastError, provider, expected) => {
+    const { home, db } = await usageLimitedFixture();
+    try {
+      db.prepare(
+        `
+      INSERT INTO orchestration_v2_projection_provider_sessions
+      VALUES ('session', ?, '2026-10-06T13:00:00.000Z', ?)
+    `,
+      ).run(provider, JSON.stringify({ lastError }));
+      db.exec(`
+      INSERT INTO orchestration_v2_projection_provider_session_bindings VALUES ('session', 'limited');
+    `);
+      expect((await read(home))[0]!.status).toBe(expected);
+    } finally {
+      db.close();
+    }
+  },
+);
 
 it("shows active v2 proposed plans as awaiting response while preserving run status priority", async () => {
   const { home, db, add } = await fixture(true);

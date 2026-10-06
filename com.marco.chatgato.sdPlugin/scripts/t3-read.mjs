@@ -33,11 +33,19 @@ function status(row) {
   if (row.approvals > 0) return "awaiting-approval";
   if (row.inputs > 0) return "awaiting-response";
   if (
-    ["preparing", "queued", "starting", "running", "waiting"].includes(
+    ["preparing", "starting", "running", "waiting"].includes(
       row.active_status,
     )
   )
     return "working";
+  // T3 leaves successors queued when the latest executed run hit a usage limit.
+  if (
+    row.blocking_failure_class === "usage_limit" &&
+    (row.session_error == null ||
+      row.session_error === row.blocking_failure_message)
+  )
+    return "error";
+  if (row.active_status === "queued") return "working";
   if (
     row.session_status === "error" ||
     ["error", "failed"].includes(row.turn_status)
@@ -71,7 +79,16 @@ try {
       r.status AS turn_status,
       (SELECT status FROM orchestration_v2_projection_runs
         WHERE thread_id = t.thread_id AND status IN ('preparing', 'queued', 'starting', 'running', 'waiting')
-        ORDER BY ordinal DESC LIMIT 1) AS active_status,
+        ORDER BY (status = 'queued'), ordinal DESC, run_id DESC LIMIT 1) AS active_status,
+      json_extract(failure.payload_json, '$.failure.class') AS blocking_failure_class,
+      json_extract(failure.payload_json, '$.failure.message') AS blocking_failure_message,
+      (SELECT json_extract(session.payload_json, '$.lastError')
+        FROM orchestration_v2_projection_provider_sessions session
+        JOIN orchestration_v2_projection_provider_session_bindings binding
+          ON binding.provider_session_id = session.provider_session_id
+        WHERE binding.thread_id = t.thread_id
+          AND session.provider_instance_id = t.provider_instance_id
+        ORDER BY session.updated_at DESC, session.provider_session_id DESC LIMIT 1) AS session_error,
       (SELECT COUNT(*) FROM orchestration_v2_projection_runtime_requests
         WHERE thread_id = t.thread_id AND status = 'pending'
         AND kind IN ('command', 'file-read', 'file-change', 'permission')) AS approvals,
@@ -87,6 +104,17 @@ try {
       SELECT run_id FROM orchestration_v2_projection_runs
       WHERE thread_id = t.thread_id
       ORDER BY ordinal DESC LIMIT 1)
+    LEFT JOIN orchestration_v2_projection_runs blocked ON blocked.run_id = (
+      SELECT run_id FROM orchestration_v2_projection_runs
+      WHERE thread_id = t.thread_id AND status <> 'queued'
+        AND NOT (status = 'cancelled' AND json_extract(payload_json, '$.startedAt') IS NULL)
+      ORDER BY ordinal DESC, run_id DESC LIMIT 1) AND blocked.status = 'failed'
+    LEFT JOIN orchestration_v2_projection_turn_items failure ON failure.turn_item_id = (
+      SELECT turn_item_id FROM orchestration_v2_projection_turn_items
+      WHERE thread_id = t.thread_id AND run_id = blocked.run_id
+        AND type = 'error' AND status = 'failed'
+        AND node_id IS json_extract(blocked.payload_json, '$.rootNodeId')
+      ORDER BY updated_at DESC, ordinal DESC, turn_item_id DESC LIMIT 1)
     WHERE t.deleted_at IS NULL AND t.archived_at IS NULL AND p.deleted_at IS NULL
       AND COALESCE(json_extract(t.payload_json, '$.lineage.relationshipToParent'), '') <> 'subagent'
     ORDER BY t.updated_at DESC, t.thread_id DESC
