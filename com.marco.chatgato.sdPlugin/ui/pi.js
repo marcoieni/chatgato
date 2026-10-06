@@ -394,8 +394,13 @@
     );
   }
 
-  function handleSettingChange() {
-    validateForm();
+  function handleSettingChange(event) {
+    if (event.currentTarget.dataset.setting === "source") {
+      settings = collectValidSettings();
+      render();
+    } else {
+      validateForm();
+    }
     scheduleSave();
   }
 
@@ -476,28 +481,25 @@
     saveTimer = setTimeout(save, 120);
   }
 
-  function save() {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    if (!validateForm()) return;
+  function collectValidSettings() {
     const next = { ...settings };
     for (const element of form.querySelectorAll("[data-setting]")) {
+      if (validationMessage(element)) continue;
       const key = element.dataset.setting;
       if (element.type === "checkbox") next[key] = element.checked;
       else if (element.type === "number") next[key] = Number(element.value);
       else next[key] = element.value;
     }
-    settings = next;
+    return next;
+  }
+
+  function save() {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!validateForm()) return;
+    settings = collectValidSettings();
     socket.send(
       JSON.stringify({ event: "setSettings", context, payload: settings }),
     );
-    // App selection changes the fields available for this action.
-    if (
-      actionId === "com.marco.chatgato.agent-status" &&
-      Boolean(form.querySelector('[data-setting="t3Home"]')) !==
-        (settings.source === "t3-code")
-    ) {
-      render();
-    }
   }
 
   window.connectElgatoStreamDeckSocket = (
