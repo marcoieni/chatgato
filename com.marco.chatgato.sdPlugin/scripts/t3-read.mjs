@@ -77,7 +77,10 @@ try {
         AND kind IN ('command', 'file-read', 'file-change', 'permission')) AS approvals,
       (SELECT COUNT(*) FROM orchestration_v2_projection_runtime_requests
         WHERE thread_id = t.thread_id AND status = 'pending'
-        AND kind IN ('user_input', 'mcp-elicitation', 'auth_refresh')) AS inputs
+        AND kind IN ('user_input', 'mcp-elicitation', 'auth_refresh')) AS inputs,
+      (json_extract(t.payload_json, '$.interactionMode') = 'plan' AND r.run_id IS NOT NULL
+        AND EXISTS (SELECT 1 FROM orchestration_v2_projection_plans
+          WHERE thread_id = t.thread_id AND kind = 'proposed_plan' AND status = 'active')) AS plan
     FROM orchestration_v2_projection_threads t
     JOIN projection_projects p ON p.project_id = t.project_id
     LEFT JOIN orchestration_v2_projection_runs r ON r.run_id = (

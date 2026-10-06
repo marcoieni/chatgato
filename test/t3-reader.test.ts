@@ -46,6 +46,8 @@ async function fixture(v2 = false) {
     CREATE TABLE orchestration_v2_projection_runs (run_id TEXT PRIMARY KEY, thread_id TEXT, ordinal INTEGER,
       status TEXT, completed_at TEXT);
     CREATE TABLE orchestration_v2_projection_runtime_requests (thread_id TEXT, status TEXT, kind TEXT);
+    CREATE TABLE orchestration_v2_projection_plans (plan_id TEXT PRIMARY KEY, thread_id TEXT,
+      run_id TEXT, node_id TEXT, kind TEXT, status TEXT, payload_json TEXT);
   `);
   function add(
     id: string,
@@ -277,6 +279,66 @@ it("shows queued v2 runs as working, including after an older completion", async
       "queued-only": "working",
       "queued-after-completed": "working",
       "queued-approval": "awaiting-approval",
+    });
+  } finally {
+    db.close();
+  }
+});
+
+it("shows active v2 proposed plans as awaiting response while preserving run status priority", async () => {
+  const { home, db, add } = await fixture(true);
+  try {
+    for (const id of ["unseen", "seen", "running", "failed", "no-run"]) {
+      add(id, id === "running" || id === "failed" ? id : "completed", {
+        interactionMode: "plan",
+        ...(id === "seen" ? { lastVisitedAt: "2026-10-06T13:00:00.000Z" } : {}),
+      });
+      db.prepare(
+        `INSERT INTO orchestration_v2_projection_plans (plan_id, thread_id, kind, status)
+        VALUES (?, ?, 'proposed_plan', 'active')`,
+      ).run(`plan-${id}`, id);
+    }
+    db.exec(
+      "DELETE FROM orchestration_v2_projection_runs WHERE thread_id = 'no-run'",
+    );
+    expect(
+      Object.fromEntries((await read(home)).map((t) => [t.id, t.status])),
+    ).toEqual({
+      unseen: "awaiting-response",
+      seen: "awaiting-response",
+      running: "working",
+      failed: "error",
+      "no-run": "idle",
+    });
+  } finally {
+    db.close();
+  }
+});
+
+it("ignores inactive v2 plans, todo lists, and plans outside plan mode", async () => {
+  const { home, db, add } = await fixture(true);
+  try {
+    for (const [id, kind, status, interactionMode] of [
+      ["draft", "proposed_plan", "draft", "plan"],
+      ["superseded", "proposed_plan", "superseded", "plan"],
+      ["implemented", "proposed_plan", "completed", "plan"],
+      ["todo", "todo_list", "active", "plan"],
+      ["default-mode", "proposed_plan", "active", "default"],
+    ] as const) {
+      add(id, "completed", { interactionMode });
+      db.prepare(
+        `INSERT INTO orchestration_v2_projection_plans (plan_id, thread_id, kind, status)
+        VALUES (?, ?, ?, ?)`,
+      ).run(`plan-${id}`, id, kind, status);
+    }
+    expect(
+      Object.fromEntries((await read(home)).map((t) => [t.id, t.status])),
+    ).toEqual({
+      draft: "unread",
+      superseded: "unread",
+      implemented: "unread",
+      todo: "unread",
+      "default-mode": "unread",
     });
   } finally {
     db.close();
