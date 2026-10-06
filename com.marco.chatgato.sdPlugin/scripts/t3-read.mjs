@@ -51,6 +51,7 @@ function status(row) {
     ["error", "failed"].includes(row.turn_status)
   )
     return "error";
+  if (row.pending_background > 0) return "working";
   if (row.plan > 0) return "awaiting-response";
   if (row.turn_status === "completed") {
     return row.visited_at &&
@@ -95,6 +96,22 @@ try {
       (SELECT COUNT(*) FROM orchestration_v2_projection_runtime_requests
         WHERE thread_id = t.thread_id AND status = 'pending'
         AND kind IN ('user_input', 'mcp-elicitation', 'auth_refresh')) AS inputs,
+      (r.status IN ('cancelled', 'completed', 'failed', 'interrupted', 'waiting') AND (
+        EXISTS (SELECT 1 FROM orchestration_v2_projection_turn_items item
+          LEFT JOIN orchestration_v2_projection_runs item_run ON item_run.run_id = item.run_id
+          WHERE item.thread_id = t.thread_id
+            AND item.type IN ('command_execution', 'dynamic_tool', 'subagent')
+            AND item.status IN ('pending', 'running', 'waiting')
+            AND (item.run_id IS NULL OR item_run.status <> 'rolled_back')
+            AND (item.type <> 'dynamic_tool'
+              OR json_type(item.payload_json, '$.input.persistent') IS NOT 'true'))
+        OR EXISTS (SELECT 1 FROM orchestration_v2_projection_provider_threads provider_thread
+          CROSS JOIN json_each(provider_thread.payload_json, '$.pendingBackgroundTasks') task
+          WHERE provider_thread.thread_id = t.thread_id
+            AND (json_extract(t.payload_json, '$.activeProviderThreadId') IS NULL
+              OR provider_thread.provider_thread_id = json_extract(t.payload_json, '$.activeProviderThreadId'))
+            AND length(json_extract(task.value, '$.taskId')) > 0)
+      )) AS pending_background,
       (json_extract(t.payload_json, '$.interactionMode') = 'plan' AND r.run_id IS NOT NULL
         AND EXISTS (SELECT 1 FROM orchestration_v2_projection_plans
           WHERE thread_id = t.thread_id AND kind = 'proposed_plan' AND status = 'active')) AS plan

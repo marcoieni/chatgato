@@ -51,6 +51,8 @@ async function fixture(v2 = false) {
     CREATE TABLE orchestration_v2_projection_provider_sessions (provider_session_id TEXT PRIMARY KEY,
       provider_instance_id TEXT, updated_at TEXT, payload_json TEXT);
     CREATE TABLE orchestration_v2_projection_provider_session_bindings (provider_session_id TEXT, thread_id TEXT);
+    CREATE TABLE orchestration_v2_projection_provider_threads (provider_thread_id TEXT PRIMARY KEY,
+      thread_id TEXT, payload_json TEXT);
     CREATE TABLE orchestration_v2_projection_runtime_requests (thread_id TEXT, status TEXT, kind TEXT);
     CREATE TABLE orchestration_v2_projection_plans (plan_id TEXT PRIMARY KEY, thread_id TEXT,
       run_id TEXT, node_id TEXT, kind TEXT, status TEXT, payload_json TEXT);
@@ -440,6 +442,163 @@ it.each([
     }
   },
 );
+
+it.each([
+  ["command_execution", "running"],
+  ["dynamic_tool", "pending"],
+  ["subagent", "waiting"],
+])(
+  "keeps a completed v2 run working until its background %s completes",
+  async (type, status) => {
+    const { home, db, add } = await fixture(true);
+    try {
+      add("background");
+      db.prepare(
+        `
+      INSERT INTO orchestration_v2_projection_turn_items
+      (turn_item_id, thread_id, run_id, type, status, payload_json)
+      VALUES ('task', 'background', 'run-background', ?, ?, '{}')
+    `,
+      ).run(type, status);
+      expect((await read(home))[0]!.status).toBe("working");
+      db.exec(
+        "UPDATE orchestration_v2_projection_turn_items SET status = 'completed'",
+      );
+      expect((await read(home))[0]!.status).toBe("unread");
+    } finally {
+      db.close();
+    }
+  },
+);
+
+it.each([
+  ["subagent", "idle", {}, "unread"],
+  ["subagent", "failed", {}, "unread"],
+  ["message", "running", {}, "unread"],
+  ["dynamic_tool", "running", { input: { persistent: true } }, "unread"],
+  ["dynamic_tool", "running", { input: { persistent: 1 } }, "working"],
+])(
+  "filters inactive and persistent v2 background work (%s, %s, %j)",
+  async (type, status, payload, expected) => {
+    const { home, db, add } = await fixture(true);
+    try {
+      add("background");
+      db.prepare(
+        `
+      INSERT INTO orchestration_v2_projection_turn_items
+      (turn_item_id, thread_id, run_id, type, status, payload_json)
+      VALUES ('task', 'background', 'run-background', ?, ?, ?)
+    `,
+      ).run(type, status, JSON.stringify(payload));
+      expect((await read(home))[0]!.status).toBe(expected);
+    } finally {
+      db.close();
+    }
+  },
+);
+
+it("ignores rolled-back v2 work while allowing runless background tasks after completion", async () => {
+  const { home, db, add } = await fixture(true);
+  try {
+    add("background", "rolled_back");
+    db.exec(`
+      INSERT INTO orchestration_v2_projection_runs (run_id, thread_id, ordinal, status)
+      VALUES ('current', 'background', 2, 'completed');
+      INSERT INTO orchestration_v2_projection_turn_items
+      (turn_item_id, thread_id, run_id, type, status, payload_json)
+      VALUES ('task', 'background', 'run-background', 'command_execution', 'running', '{}');
+    `);
+    expect((await read(home))[0]!.status).toBe("unread");
+    db.exec("UPDATE orchestration_v2_projection_turn_items SET run_id = NULL");
+    expect((await read(home))[0]!.status).toBe("working");
+    db.exec(`
+      INSERT INTO orchestration_v2_projection_provider_threads
+      VALUES ('provider-thread', 'background', '{"pendingBackgroundTasks":[{"taskId":"task"}]}');
+      UPDATE orchestration_v2_projection_runs SET status = 'rolled_back' WHERE run_id = 'current';
+    `);
+    expect((await read(home))[0]!.status).toBe("idle");
+    db.exec("DELETE FROM orchestration_v2_projection_runs");
+    expect((await read(home))[0]!.status).toBe("idle");
+  } finally {
+    db.close();
+  }
+});
+
+it("reads nonempty task IDs only from the selected v2 provider's background roster", async () => {
+  const { home, db, add } = await fixture(true);
+  try {
+    add("background", "completed", { activeProviderThreadId: "active" });
+    db.exec(`
+      INSERT INTO orchestration_v2_projection_provider_threads VALUES
+        ('active', 'background', '{"pendingBackgroundTasks":[{"taskId":""}]}'),
+        ('old', 'background', '{"pendingBackgroundTasks":[{"taskId":"old-task"}]}'),
+        ('other', 'another-thread', '{"pendingBackgroundTasks":[{"taskId":"other-task"}]}');
+    `);
+    expect((await read(home))[0]!.status).toBe("unread");
+    db.exec(`
+      UPDATE orchestration_v2_projection_provider_threads
+      SET payload_json = '{"pendingBackgroundTasks":[{"taskId":"active-task"}]}'
+      WHERE provider_thread_id = 'active';
+    `);
+    expect((await read(home))[0]!.status).toBe("working");
+    db.exec(`
+      UPDATE orchestration_v2_projection_provider_threads
+      SET payload_json = '{"pendingBackgroundTasks":[]}' WHERE provider_thread_id = 'active';
+    `);
+    expect((await read(home))[0]!.status).toBe("unread");
+    db.exec(
+      "UPDATE orchestration_v2_projection_threads SET payload_json = '{}'",
+    );
+    expect((await read(home))[0]!.status).toBe("working");
+    db.exec(
+      "DELETE FROM orchestration_v2_projection_provider_threads WHERE provider_thread_id = 'old'",
+    );
+    expect((await read(home))[0]!.status).toBe("unread");
+  } finally {
+    db.close();
+  }
+});
+
+it("gives v2 failures and requests priority over background work, which outranks plans", async () => {
+  const { home, db, add } = await fixture(true);
+  try {
+    for (const [id, state] of [
+      ["failed", "failed"],
+      ["approval", "completed"],
+      ["input", "completed"],
+      ["plan", "completed"],
+      ["cancelled", "cancelled"],
+      ["interrupted", "interrupted"],
+    ] as const) {
+      add(id, state, { interactionMode: "plan" });
+      db.prepare(
+        `
+        INSERT INTO orchestration_v2_projection_turn_items
+        (turn_item_id, thread_id, type, status, payload_json)
+        VALUES (?, ?, 'command_execution', 'running', '{}')
+      `,
+      ).run(`task-${id}`, id);
+    }
+    db.exec(`
+      INSERT INTO orchestration_v2_projection_runtime_requests VALUES
+        ('approval', 'pending', 'command'), ('input', 'pending', 'user_input');
+      INSERT INTO orchestration_v2_projection_plans (plan_id, thread_id, kind, status)
+      VALUES ('plan', 'plan', 'proposed_plan', 'active');
+    `);
+    expect(
+      Object.fromEntries((await read(home)).map((t) => [t.id, t.status])),
+    ).toEqual({
+      failed: "error",
+      approval: "awaiting-approval",
+      input: "awaiting-response",
+      plan: "working",
+      cancelled: "working",
+      interrupted: "working",
+    });
+  } finally {
+    db.close();
+  }
+});
 
 it("shows active v2 proposed plans as awaiting response while preserving run status priority", async () => {
   const { home, db, add } = await fixture(true);
