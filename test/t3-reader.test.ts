@@ -259,6 +259,30 @@ it("prefers v2 over the retained v1 database, excludes subagents but keeps forks
   }
 });
 
+it("shows queued v2 runs as working, including after an older completion", async () => {
+  const { home, db, add } = await fixture(true);
+  try {
+    add("queued-only", "queued");
+    add("queued-after-completed");
+    add("queued-approval", "queued");
+    db.exec(`
+      INSERT INTO orchestration_v2_projection_runs
+      VALUES ('queued-next', 'queued-after-completed', 2, 'queued', NULL);
+      INSERT INTO orchestration_v2_projection_runtime_requests
+      VALUES ('queued-approval', 'pending', 'command');
+    `);
+    expect(
+      Object.fromEntries((await read(home)).map((t) => [t.id, t.status])),
+    ).toEqual({
+      "queued-only": "working",
+      "queued-after-completed": "working",
+      "queued-approval": "awaiting-approval",
+    });
+  } finally {
+    db.close();
+  }
+});
+
 it("reports missing state without creating a database", async () => {
   const home = await mkdtemp(join(tmpdir(), "chatgato-t3-missing-"));
   homes.push(home);

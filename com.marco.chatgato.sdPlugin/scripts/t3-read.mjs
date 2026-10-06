@@ -33,7 +33,9 @@ function status(row) {
   if (row.approvals > 0) return "awaiting-approval";
   if (row.inputs > 0) return "awaiting-response";
   if (
-    ["preparing", "starting", "running", "waiting"].includes(row.active_status)
+    ["preparing", "queued", "starting", "running", "waiting"].includes(
+      row.active_status,
+    )
   )
     return "working";
   if (
@@ -68,7 +70,7 @@ try {
       json_extract(t.payload_json, '$.lastVisitedAt') AS visited_at,
       r.status AS turn_status,
       (SELECT status FROM orchestration_v2_projection_runs
-        WHERE thread_id = t.thread_id AND status IN ('preparing', 'starting', 'running', 'waiting')
+        WHERE thread_id = t.thread_id AND status IN ('preparing', 'queued', 'starting', 'running', 'waiting')
         ORDER BY ordinal DESC LIMIT 1) AS active_status,
       (SELECT COUNT(*) FROM orchestration_v2_projection_runtime_requests
         WHERE thread_id = t.thread_id AND status = 'pending'
@@ -80,7 +82,7 @@ try {
     JOIN projection_projects p ON p.project_id = t.project_id
     LEFT JOIN orchestration_v2_projection_runs r ON r.run_id = (
       SELECT run_id FROM orchestration_v2_projection_runs
-      WHERE thread_id = t.thread_id AND status <> 'queued'
+      WHERE thread_id = t.thread_id
       ORDER BY ordinal DESC LIMIT 1)
     WHERE t.deleted_at IS NULL AND t.archived_at IS NULL AND p.deleted_at IS NULL
       AND COALESCE(json_extract(t.payload_json, '$.lineage.relationshipToParent'), '') <> 'subagent'
