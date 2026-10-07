@@ -11,6 +11,7 @@ import {
   type ReasoningDirection,
 } from "./codex-store.js";
 import { ReasoningTracker } from "./reasoning-tracker.js";
+import type { CodexThread } from "../types.js";
 
 export { normalizeThreadSearchQuery } from "./codex-store.js";
 
@@ -61,12 +62,18 @@ const CUSTOM_SHORTCUT_COMMANDS: Record<
 };
 // Stream Deck can deliver adjacent key/dial events before the first automation finishes.
 let reasoningQueue: Promise<unknown> = Promise.resolve();
+let t3NavigationQueue: Promise<unknown> = Promise.resolve();
 
-function runSubprocess(executable: string, args: string[]): Promise<void> {
+function runSubprocess(
+  executable: string,
+  args: string[],
+  timeout?: number,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
       stdio: ["ignore", "ignore", "pipe"],
       windowsHide: true,
+      ...(timeout === undefined ? {} : { timeout }),
     });
     let stderr = "";
 
@@ -140,11 +147,35 @@ export async function openUrl(url: string): Promise<void> {
   await runSubprocess("xdg-open", [url]);
 }
 
-/** T3 Code has no external thread-navigation handler yet. */
-export async function openT3Code(): Promise<void> {
+/** T3's desktop protocol only focuses the app; use its ID-aware switcher on macOS. */
+export async function openT3Code(
+  thread: CodexThread["t3ThreadRef"],
+): Promise<void> {
   if (process.platform === "darwin") {
-    await runSubprocess("/usr/bin/open", ["-b", "com.t3tools.t3code"]);
-    return;
+    if (
+      !thread ||
+      !/^[a-z0-9_-]+$/iu.test(thread.threadId) ||
+      (thread.environmentId !== undefined &&
+        !/^[a-z0-9_-]+$/iu.test(thread.environmentId))
+    ) {
+      throw new Error("Missing or invalid T3 Code thread identity");
+    }
+    // Serialise presses so one key cannot type into another key's search.
+    const pending = t3NavigationQueue.then(() =>
+      runSubprocess(
+        "/usr/bin/osascript",
+        [
+          "-l",
+          "JavaScript",
+          join(pluginDir, "scripts", "t3-control.jxa.js"),
+          thread.threadId,
+          thread.environmentId ?? "",
+        ],
+        30_000,
+      ),
+    );
+    t3NavigationQueue = pending.catch(() => undefined);
+    return pending;
   }
   // The registered protocol starts the app; its single-instance handler
   // reveals an existing window on Windows and Linux.

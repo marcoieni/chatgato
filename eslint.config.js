@@ -8,6 +8,10 @@ export default [
   },
   eslint.configs.recommended,
   {
+    files: ["**/*.jxa.js"],
+    languageOptions: { sourceType: "script" },
+  },
+  {
     files: ["**/*.ts"],
     languageOptions: {
       parser: babelParser,

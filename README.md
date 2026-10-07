@@ -11,7 +11,7 @@ No API key or login required.
 
 <img src="assets/logo.png" alt="ChatGato logo" width="240" align="right">
 
-- Keep track of up to 20 **Agent Status** slots per source, showing each top-level chat's project and status (working, done, require approval, etc). Choose Codex or T3 Code on each key. Pressing a Codex key opens the chat; pressing a T3 Code key opens the T3 Code app. Codex keys also show subagent progress.
+- Keep track of up to 20 **Agent Status** slots per source, showing each top-level chat's project and status (working, done, require approval, etc). Choose Codex or T3 Code on each key. Pressing a Codex key opens the chat; pressing a T3 Code key opens the chat on macOS or focuses the T3 Code app on Windows. Codex keys also show subagent progress.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
 - **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
@@ -80,10 +80,14 @@ T3 Connect/relay and direct URL connections are not read by this SQLite adapter.
 No remote helper installation is required. Existing per-key SSH host settings
 are ignored; save those connections in T3 Code if they are not already there.
 
-**Pressing a T3 Code thread key opens or focuses the locally installed T3 Code
-desktop app.** It also acknowledges completion on that key. T3 Code currently
-does not expose external navigation to an individual thread, so the app keeps
-its existing selection. This applies to both local and remote threads. Other
+**On macOS, pressing a T3 Code thread key opens that exact chat**, including
+chats on saved SSH connections. ChatGato uses T3’s Command-K palette to search
+by thread ID, then verifies the selected thread and environment before
+acknowledging completion. This requires a recent T3 version with thread-ID
+search, the default Command-K search shortcut, and Stream Deck Accessibility
+permission. If the chat cannot be opened, the key alerts and stays unacknowledged.
+On Windows, pressing the key still focuses T3 Code and acknowledges the key.
+T3’s desktop protocol does not yet support individual thread links. Other
 ChatGato actions, including approval shortcuts, remain Codex controls.
 
 T3 status comes from read-only SQLite queries, supporting both

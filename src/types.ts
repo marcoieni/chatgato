@@ -13,6 +13,7 @@ export type CodexThread = {
   cwd: string;
   rolloutPath: string | null;
   remoteHostId?: string;
+  t3ThreadRef?: { threadId: string; environmentId?: string };
   updatedAtMs: number;
   reasoningEffort: string | null;
   spawnStatus: string | null;

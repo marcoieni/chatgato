@@ -69,7 +69,7 @@ export class AgentStatusAction extends SingletonAction<AgentSettings> {
       }
 
       if (ev.payload.settings.source === "t3-code") {
-        await openT3Code();
+        await openT3Code(thread.t3ThreadRef);
       } else if (thread.remoteHostId) {
         // Codex's external thread deep link only checks the local app server.
         // Its chat switcher retains each result's host-aware thread key.

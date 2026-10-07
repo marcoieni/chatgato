@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   openThreadBySearch:
     vi.fn<(title: string, resultIndex: number) => Promise<void>>(),
   openUrl: vi.fn<(url: string) => Promise<void>>(),
-  openT3Code: vi.fn<() => Promise<void>>(),
+  openT3Code: vi.fn<(ref: CodexThread["t3ThreadRef"]) => Promise<void>>(),
   t3ThreadAtSlot:
     vi.fn<
       (slot: number, settings: AgentSettings) => Promise<CodexThread | null>
@@ -124,7 +124,7 @@ describe("AgentStatusAction navigation", () => {
   });
 
   it.each([undefined, "devbox"])(
-    "shows T3 threads and opens T3 Code with legacy SSH setting: %s",
+    "shows T3 threads and opens the displayed chat with legacy SSH setting: %s",
     async (t3SshHost) => {
       const settings: AgentSettings & { t3SshHost?: string } = {
         source: "t3-code",
@@ -133,6 +133,10 @@ describe("AgentStatusAction navigation", () => {
       };
       const selected = thread({
         id: "t3:thread-1",
+        t3ThreadRef: {
+          threadId: "thread-1",
+          environmentId: "remote-environment",
+        },
         title: "T3 task",
         status: "working",
       });
@@ -151,7 +155,7 @@ describe("AgentStatusAction navigation", () => {
         mocks.t3ThreadAtSlot.mockResolvedValue(thread({ id: "different" }));
         await agentStatus.onKeyDown({ action, payload: { settings } } as never);
         expect(mocks.t3ThreadAtSlot).toHaveBeenCalledWith(2, settings);
-        expect(mocks.openT3Code).toHaveBeenCalledOnce();
+        expect(mocks.openT3Code).toHaveBeenCalledWith(selected.t3ThreadRef);
         expect(mocks.openUrl).not.toHaveBeenCalled();
         expect(mocks.threadAtSlot).not.toHaveBeenCalled();
         expect(mocks.subscribe).not.toHaveBeenCalled();
