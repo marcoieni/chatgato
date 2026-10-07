@@ -50,6 +50,46 @@ afterEach(async () => {
   );
 });
 
+it("discovers only enabled T3 Connect environments without retaining relay credentials", async () => {
+  const home = await fixture();
+  await write(home, "connection-catalog.json", {
+    version: 1,
+    encryptedCatalog: "e30=",
+  });
+  const data = {
+    ...catalog(),
+    targets: [
+      ...catalog().targets,
+      { _tag: "RelayConnectionTarget", environmentId: "relay" },
+      { _tag: "RelayConnectionTarget", environmentId: "relay" },
+      { _tag: "RelayConnectionTarget", environmentId: "disabled" },
+      { _tag: "RelayConnectionTarget", environmentId: "" },
+    ],
+    remoteDpopTokens: [
+      { environmentId: "relay", accessToken: "must-not-retain" },
+    ],
+    disabledEnvironmentIds: ["disabled"],
+  };
+  expect(
+    await new T3Connections(async () => JSON.stringify(data)).discover(home),
+  ).toEqual([{ host: "marco@devbox", port: 2222 }, { environmentId: "relay" }]);
+});
+
+it("discovers relay environment identities in the legacy registry", async () => {
+  const home = await fixture();
+  await write(home, "saved-environments.json", {
+    records: [
+      {
+        environmentId: "relay",
+        relayManaged: { relayUrl: "https://relay.example" },
+      },
+    ],
+  });
+  expect(await new T3Connections().discover(home)).toEqual([
+    { environmentId: "relay" },
+  ]);
+});
+
 it("reads only saved SSH connections, retaining username and port and deduplicating them", async () => {
   const home = await fixture();
   await write(home, "saved-environments.json", {

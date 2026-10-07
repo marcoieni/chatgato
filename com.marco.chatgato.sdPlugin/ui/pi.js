@@ -205,7 +205,7 @@
       );
     note.innerHTML =
       (isT3
-        ? "Slots show the most recent threads across this computer and SSH connections saved in T3 Code. On macOS, pressing a key opens that chat using T3’s Command-K search and verifies the selected thread before acknowledging completion. Requires thread-ID search, the default Command-K binding, and Stream Deck Accessibility permission. On Windows, pressing a key focuses the T3 Code app and acknowledges completion.<br><br>"
+        ? "Slots show the most recent threads across this computer, saved SSH connections, and T3 Connect environments. Keep T3 Code open and connected to refresh T3 Connect status. On macOS, pressing a key opens that chat using T3’s Command-K search and verifies the selected thread before acknowledging completion. Requires thread-ID search, the default Command-K binding, and Stream Deck Accessibility permission. On Windows, pressing a key focuses the T3 Code app and acknowledges completion.<br><br>"
         : `<strong>Remote chat setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br>`) +
       `<strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>

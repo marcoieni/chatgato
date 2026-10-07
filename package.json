@@ -22,7 +22,8 @@
     "link": "npm run build && streamdeck link com.marco.chatgato.sdPlugin && npm run restart"
   },
   "dependencies": {
-    "@elgato/streamdeck": "2.1.2"
+    "@elgato/streamdeck": "2.1.2",
+    "snappyjs": "^0.7.0"
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
@@ -32,6 +33,7 @@
     "@eslint/js": "^10.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@types/node": "^26.4.0",
+    "@types/snappyjs": "^0.7.1",
     "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
