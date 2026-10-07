@@ -79,7 +79,15 @@ function secretCommand(
 export async function decryptT3Catalog(encoded: string): Promise<string> {
   const encrypted = Buffer.from(encoded, "base64");
   if (process.platform === "darwin") {
-    for (const app of ["T3 Code (Alpha)", "T3 Code (Nightly)", "T3 Code"]) {
+    // Packaged T3 uses its package name for Electron safeStorage, which can
+    // initialize before the app switches to its release-specific display name.
+    // Electron's Keychain account includes the " Key" suffix.
+    for (const app of [
+      "t3code",
+      "T3 Code (Alpha)",
+      "T3 Code (Nightly)",
+      "T3 Code",
+    ]) {
       try {
         const password = await secretCommand(
           "/usr/bin/security",
@@ -89,7 +97,7 @@ export async function decryptT3Catalog(encoded: string): Promise<string> {
             "-s",
             `${app} Safe Storage`,
             "-a",
-            app,
+            `${app} Key`,
           ],
           // Keychain may wait for the user to answer an access/password prompt.
           { timeout: 0 },

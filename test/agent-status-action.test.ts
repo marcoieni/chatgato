@@ -231,6 +231,10 @@ describe("AgentStatusAction navigation", () => {
       expect(decodedSvg(action.setImage.mock.calls.at(-1)![0])).toContain(
         "#FF0033",
       );
+      const errorSvg = decodedSvg(action.setImage.mock.calls.at(-1)![0]);
+      expect(errorSvg).toContain(">T3 CODE</text>");
+      expect(errorSvg).toContain(">T3 Code offline</text>");
+      expect(errorSvg).not.toContain("Codex");
       await agentStatus.onKeyDown({ action, payload: { settings } } as never);
       expect(mocks.openT3Code).not.toHaveBeenCalled();
       expect(action.showAlert).toHaveBeenCalledOnce();

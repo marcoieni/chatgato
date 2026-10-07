@@ -85,6 +85,34 @@ it("rejects unknown encryption versions", () => {
   ).toThrow("Unsupported");
 });
 
+it("unlocks packaged T3 using the package-name service and Electron Key account", async () => {
+  const plaintext = JSON.stringify({
+    schemaVersion: 1,
+    profiles: [],
+    targets: [],
+  });
+  const password = "packaged-t3-keychain-password";
+  nativeSecrets("darwin", password);
+  const encrypted = encryptMacCatalog(plaintext, password);
+
+  await expect(decryptT3Catalog(encrypted.toString("base64"))).resolves.toBe(
+    plaintext,
+  );
+  expect(mocks.execFile).toHaveBeenCalledExactlyOnceWith(
+    "/usr/bin/security",
+    [
+      "find-generic-password",
+      "-w",
+      "-s",
+      "t3code Safe Storage",
+      "-a",
+      "t3code Key",
+    ],
+    expect.objectContaining({ timeout: 0 }),
+    expect.any(Function),
+  );
+});
+
 it("tries the next macOS release when a wrong key produces valid CBC padding", async () => {
   const plaintext = JSON.stringify({
     schemaVersion: 1,
@@ -108,14 +136,18 @@ it("tries the next macOS release when a wrong key produces valid CBC padding", a
     plaintext,
   );
   expect(mocks.execFile).toHaveBeenCalledTimes(2);
-  for (const [index, app] of [
-    "T3 Code (Alpha)",
-    "T3 Code (Nightly)",
-  ].entries()) {
+  for (const [index, app] of ["t3code", "T3 Code (Alpha)"].entries()) {
     expect(mocks.execFile).toHaveBeenNthCalledWith(
       index + 1,
       "/usr/bin/security",
-      ["find-generic-password", "-w", "-s", `${app} Safe Storage`, "-a", app],
+      [
+        "find-generic-password",
+        "-w",
+        "-s",
+        `${app} Safe Storage`,
+        "-a",
+        `${app} Key`,
+      ],
       expect.objectContaining({ timeout: 0 }),
       expect.any(Function),
     );
@@ -132,12 +164,12 @@ it.each([
   "rejects decrypted data that is not a version 1 catalog: %s",
   async (plaintext) => {
     const password = "keychain-password";
-    nativeSecrets("darwin", password, password, password);
+    nativeSecrets("darwin", password, password, password, password);
     const encrypted = encryptMacCatalog(plaintext, password);
     await expect(
       decryptT3Catalog(encrypted.toString("base64")),
     ).rejects.toThrow("Could not unlock T3 Code connection catalog");
-    expect(mocks.execFile).toHaveBeenCalledTimes(3);
+    expect(mocks.execFile).toHaveBeenCalledTimes(4);
   },
 );
 
