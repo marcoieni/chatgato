@@ -98,12 +98,14 @@ function connectionsFromDocument(
 
 /** Cache only SSH metadata, never the decrypted catalog or its credentials. */
 export class T3Connections {
-  private cached?: {
-    path: string;
-    encrypted: string;
-    connections: Promise<T3SshConnection[]>;
-    retryAt: number;
-  };
+  private readonly catalogs = new Map<
+    string,
+    {
+      encrypted: string;
+      connections: Promise<T3SshConnection[]>;
+      retryAt: number;
+    }
+  >();
   constructor(private readonly decrypt = decryptT3Catalog) {}
 
   readonly discover = async (home?: string): Promise<T3SshConnection[]> => {
@@ -145,14 +147,10 @@ export class T3Connections {
       )
         throw new Error();
       const encrypted = document.encryptedCatalog;
-      if (
-        this.cached?.path === path &&
-        this.cached.encrypted === encrypted &&
-        this.cached.retryAt > Date.now()
-      )
-        return await this.cached.connections;
+      const previous = this.catalogs.get(path);
+      if (previous?.encrypted === encrypted && previous.retryAt > Date.now())
+        return await previous.connections;
       const cached = {
-        path,
         encrypted,
         retryAt: Infinity,
         connections: this.decrypt(encrypted)
@@ -163,7 +161,7 @@ export class T3Connections {
             throw new Error("Could not decode T3 connection metadata");
           }),
       };
-      this.cached = cached;
+      this.catalogs.set(path, cached);
       void cached.connections.catch(() => {
         cached.retryAt = Date.now() + 60_000;
       });

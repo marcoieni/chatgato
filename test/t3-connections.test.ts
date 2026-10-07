@@ -99,31 +99,49 @@ it("prefers the encrypted catalog and never revives legacy, disabled or orphaned
   expect(decrypt).toHaveBeenCalledWith("e30=");
 });
 
-it("caches only extracted connections and refreshes when the encrypted catalog changes", async () => {
+it("caches extracted connections per home and only refreshes a changed catalog", async () => {
   const home = await fixture();
+  const otherHome = await fixture();
   await write(home, "connection-catalog.json", {
     version: 1,
     encryptedCatalog: "e30=",
   });
-  const decrypt = vi.fn(async () => JSON.stringify(catalog()));
+  await write(otherHome, "connection-catalog.json", {
+    version: 1,
+    encryptedCatalog: "e31=",
+  });
+  const decrypt = vi.fn(async (encrypted: string) =>
+    JSON.stringify(
+      catalog({ ...ssh, alias: encrypted === "e30=" ? "devbox" : "other" }),
+    ),
+  );
   const connections = new T3Connections(decrypt);
   expect(await connections.discover(home)).toEqual([
     { host: "marco@devbox", port: 2222 },
   ]);
+  expect(await connections.discover(otherHome)).toEqual([
+    { host: "marco@other", port: 2222 },
+  ]);
   await connections.discover(home);
-  expect(decrypt).toHaveBeenCalledOnce();
+  await connections.discover(otherHome);
+  expect(decrypt).toHaveBeenCalledTimes(2);
   await write(home, "connection-catalog.json", {
     version: 1,
-    encryptedCatalog: "e31=",
+    encryptedCatalog: "e32=",
   });
   decrypt.mockResolvedValue(JSON.stringify({ ...catalog(), targets: [] }));
   expect(await connections.discover(home)).toEqual([]);
-  expect(decrypt).toHaveBeenCalledTimes(2);
+  expect(await connections.discover(otherHome)).toEqual([
+    { host: "marco@other", port: 2222 },
+  ]);
+  expect(decrypt).toHaveBeenCalledTimes(3);
+  expect(decrypt).toHaveBeenLastCalledWith("e32=");
 });
 
-it("does not expose decrypted secrets or fall back after a failed unlock, and backs off retries", async () => {
+it("does not expose decrypted secrets or fall back, and backs off retries per home", async () => {
   vi.useFakeTimers();
   const home = await fixture();
+  const otherHome = await fixture();
   await write(home, "saved-environments.json", {
     records: [{ desktopSsh: ssh }],
   });
@@ -131,16 +149,59 @@ it("does not expose decrypted secrets or fall back after a failed unlock, and ba
     version: 1,
     encryptedCatalog: "e30=",
   });
+  await write(otherHome, "connection-catalog.json", {
+    version: 1,
+    encryptedCatalog: "e31=",
+  });
   const decrypt = vi.fn(async () => "must-not-leak");
   const connections = new T3Connections(decrypt);
   await expect(connections.discover(home)).rejects.toThrow(
     "Could not read or unlock T3 Code connection catalog",
   );
+  vi.advanceTimersByTime(30_000);
+  await expect(connections.discover(otherHome)).rejects.not.toThrow(
+    "must-not-leak",
+  );
   await expect(connections.discover(home)).rejects.not.toThrow("must-not-leak");
-  expect(decrypt).toHaveBeenCalledOnce();
-  vi.advanceTimersByTime(60_000);
+  await expect(connections.discover(otherHome)).rejects.not.toThrow(
+    "must-not-leak",
+  );
+  expect(decrypt).toHaveBeenCalledTimes(2);
+  vi.advanceTimersByTime(30_000);
   decrypt.mockResolvedValue(JSON.stringify(catalog()));
   expect(await connections.discover(home)).toHaveLength(1);
+  await expect(connections.discover(otherHome)).rejects.not.toThrow(
+    "must-not-leak",
+  );
+  expect(decrypt).toHaveBeenCalledTimes(3);
+  vi.advanceTimersByTime(30_000);
+  expect(await connections.discover(otherHome)).toHaveLength(1);
+  expect(decrypt).toHaveBeenCalledTimes(4);
+});
+
+it("shares pending unlocks even when another home is discovered in between", async () => {
+  const home = await fixture();
+  const otherHome = await fixture();
+  for (const path of [home, otherHome]) {
+    await write(path, "connection-catalog.json", {
+      version: 1,
+      encryptedCatalog: "e30=",
+    });
+  }
+  const unlock = Promise.withResolvers<string>();
+  const decrypt = vi.fn(() => unlock.promise);
+  const connections = new T3Connections(decrypt);
+  const first = connections.discover(home);
+  await vi.waitFor(() => expect(decrypt).toHaveBeenCalledOnce());
+  const other = connections.discover(otherHome);
+  await vi.waitFor(() => expect(decrypt).toHaveBeenCalledTimes(2));
+  const repeated = connections.discover(home);
+  unlock.resolve(JSON.stringify(catalog()));
+  expect(await Promise.all([first, other, repeated])).toEqual([
+    [{ host: "marco@devbox", port: 2222 }],
+    [{ host: "marco@devbox", port: 2222 }],
+    [{ host: "marco@devbox", port: 2222 }],
+  ]);
   expect(decrypt).toHaveBeenCalledTimes(2);
 });
 
