@@ -4,6 +4,7 @@ import { isAbsolute, join } from "node:path";
 import { decryptT3Catalog } from "./t3-safe-storage.js";
 
 export type T3SshConnection = { host: string; port?: number };
+export type T3Connection = T3SshConnection | { environmentId: string };
 
 export function isT3SshHost(host: string): boolean {
   return /^[a-z0-9_][a-z0-9_.@:[\]-]*$/i.test(host);
@@ -46,7 +47,7 @@ function connection(value: unknown): T3SshConnection | null {
 function connectionsFromDocument(
   document: unknown,
   catalog: boolean,
-): T3SshConnection[] {
+): T3Connection[] {
   const data = object(document);
   let targets: unknown[];
   if (catalog) {
@@ -88,7 +89,34 @@ function connectionsFromDocument(
       .filter((value) => !object(value).relayManaged)
       .map((value) => object(value).desktopSsh);
   }
-  const connections = targets.map(connection).filter((value) => value !== null);
+  const connections: T3Connection[] = targets
+    .map(connection)
+    .filter((value) => value !== null);
+  if (catalog) {
+    const disabled = new Set(
+      data.disabledEnvironmentIds as unknown[] | undefined,
+    );
+    for (const value of data.targets as unknown[]) {
+      const target = object(value);
+      if (
+        target._tag === "RelayConnectionTarget" &&
+        typeof target.environmentId === "string" &&
+        target.environmentId &&
+        !disabled.has(target.environmentId)
+      )
+        connections.push({ environmentId: target.environmentId });
+    }
+  } else {
+    for (const value of data.records as unknown[]) {
+      const record = object(value);
+      if (
+        record.relayManaged &&
+        typeof record.environmentId === "string" &&
+        record.environmentId
+      )
+        connections.push({ environmentId: record.environmentId });
+    }
+  }
   return [
     ...new Map(
       connections.map((value) => [JSON.stringify(value), value]),
@@ -96,19 +124,19 @@ function connectionsFromDocument(
   ];
 }
 
-/** Cache only SSH metadata, never the decrypted catalog or its credentials. */
+/** Cache only connection metadata, never the decrypted catalog or its credentials. */
 export class T3Connections {
   private readonly catalogs = new Map<
     string,
     {
       encrypted: string;
-      connections: Promise<T3SshConnection[]>;
+      connections: Promise<T3Connection[]>;
       retryAt: number;
     }
   >();
   constructor(private readonly decrypt = decryptT3Catalog) {}
 
-  readonly discover = async (home?: string): Promise<T3SshConnection[]> => {
+  readonly discover = async (home?: string): Promise<T3Connection[]> => {
     const t3Home = home || process.env.T3CODE_HOME || join(homedir(), ".t3");
     if (!isAbsolute(t3Home))
       throw new Error("T3 Code home must be an absolute path");

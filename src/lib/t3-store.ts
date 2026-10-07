@@ -6,8 +6,9 @@ import { MAX_AGENT_SLOTS } from "./agent-slots.js";
 import {
   T3Connections,
   isT3SshHost,
-  type T3SshConnection,
+  type T3Connection,
 } from "./t3-connections.js";
+import { T3DesktopCache } from "./t3-desktop-cache.js";
 import type { AgentSettings, AgentStatus, CodexThread } from "../types.js";
 
 const readerPath = join(
@@ -70,13 +71,18 @@ export function t3SshArguments(
 }
 
 export type T3ThreadSource = {
+  environmentId?: string;
   host?: string;
   port?: number;
   home?: string;
   cwdFilter?: string;
 };
 
+const desktopCache = new T3DesktopCache();
+
 async function readThreads(source: T3ThreadSource): Promise<CodexThread[]> {
+  if (source.environmentId)
+    return desktopCache.read(source.environmentId, source.cwdFilter);
   const options = Buffer.from(
     JSON.stringify({
       home: source.home,
@@ -161,7 +167,7 @@ export class T3Store {
     private readonly read = readThreads,
     private readonly discoverHosts: (
       home?: string,
-    ) => Promise<T3SshConnection[]> = new T3Connections().discover,
+    ) => Promise<T3Connection[]> = new T3Connections().discover,
   ) {}
 
   private async recentThreads(settings: AgentSettings): Promise<CodexThread[]> {
@@ -174,7 +180,9 @@ export class T3Store {
       (await this.read(source)).map((thread) => ({
         ...thread,
         // A thread's identity is independent of slots and workspace filters.
-        id: `t3:${JSON.stringify([source.host ?? "", source.port ?? "", source.home ?? "", thread.id])}`,
+        id: source.environmentId
+          ? `t3:${JSON.stringify(["relay", source.environmentId, thread.id])}`
+          : `t3:${JSON.stringify([source.host ?? "", source.port ?? "", source.home ?? "", thread.id])}`,
       }));
     const connections = await this.discoverHosts(local.home);
     const sources = [

@@ -47,8 +47,9 @@ Optionally set an absolute workspace path to filter the keys to one project.
 
 1. Add an **Agent Status** key and choose **App → T3 Code**.
 2. Assign slots 1–20. All T3 keys show the most recent threads across the local
-   computer and SSH connections saved in T3 Code. You do not select a machine on
-   each key. Connections that are removed or disabled in T3 are excluded.
+   computer, SSH connections, and T3 Connect environments saved in T3 Code.
+   You do not select a machine on each key. Connections that are removed or
+   disabled in T3 are excluded.
 3. Leave **T3 home** empty for the local `~/.t3` installation, or enter the
    absolute local directory containing `userdata`. This also selects the saved
    connection registry. Remote machines use their own `~/.t3` directory. The
@@ -76,7 +77,11 @@ terminal first to establish trust; ChatGato does not prompt for SSH passwords
 or accept unknown host keys. Saved usernames and ports are honored, and your
 SSH config supplies options such as identity files and jump hosts. ChatGato
 only contacts SSH connections saved in T3; it does not scan your SSH config.
-T3 Connect/relay and direct URL connections are not read by this SQLite adapter.
+T3 Connect threads are read from T3's local desktop thread cache. Keep T3 Code
+open and connected so that cache stays current. ChatGato reads the cache files
+without locking or modifying them, decodes only thread summaries, and makes no
+relay API requests. Disabled or removed environments are excluded.
+Direct URL connections are not currently supported.
 No remote helper installation is required. Existing per-key SSH host settings
 are ignored; save those connections in T3 Code if they are not already there.
 
@@ -98,6 +103,7 @@ with missing or incompatible databases or failed SSH reads are omitted and
 retried; if no machine can be read, the key shows an error. A successful read
 with no matching threads shows an empty key.
 Status reflects persisted state and may remain stale if T3 stops unexpectedly.
+T3 Connect status can also remain stale while its environment is disconnected.
 Reads are shared across keys and refresh every two seconds by default.
 A slow or unreachable SSH host can delay a refresh by up to ten seconds.
 

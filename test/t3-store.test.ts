@@ -24,6 +24,32 @@ const localThread = {
 afterEach(() => vi.useRealTimers());
 
 describe("T3Store", () => {
+  it("includes T3 Connect threads alongside SSH and local threads", async () => {
+    const read = vi.fn(async (source: T3ThreadSource) => [
+      {
+        ...thread,
+        title: source.environmentId ? "relay" : source.host ? "ssh" : "local",
+        updatedAtMs: source.environmentId ? 3 : source.host ? 2 : 1,
+      },
+    ]);
+    const store = new T3Store(read, async () => [
+      { host: "devbox" },
+      { environmentId: "remote" },
+    ]);
+    const result = await Promise.all(
+      [1, 2, 3].map((slot) =>
+        store.threadAtSlot(slot, { cwdFilter: "/project" }),
+      ),
+    );
+    expect(result.map((t) => t!.title)).toEqual(["relay", "ssh", "local"]);
+    expect(result[0]!.id).toBe(
+      `t3:${JSON.stringify(["relay", "remote", thread.id])}`,
+    );
+    expect(read).toHaveBeenCalledWith({
+      environmentId: "remote",
+      cwdFilter: "/project",
+    });
+  });
   it("preserves the raw thread and environment IDs while namespacing key identity", async () => {
     const t3ThreadRef = {
       threadId: "original-thread",
