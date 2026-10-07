@@ -154,7 +154,34 @@
 
   function renderAgent() {
     subtitle.textContent = "Live chat status and navigation";
+    const isT3 = selected("source", "codex") === "t3-code";
     form.innerHTML =
+      field(
+        "App",
+        `<select data-setting="source">${option("codex", "ChatGPT / Codex", selected("source", "codex"))}${option("t3-code", "T3 Code", selected("source", "codex"))}</select>`,
+      ) +
+      (isT3
+        ? field(
+            "SSH host",
+            input(
+              "t3SshHost",
+              selected("t3SshHost", ""),
+              "text",
+              'placeholder="Local computer" spellcheck="false"',
+            ),
+            "Optional SSH alias or user@hostname. Uses your SSH config; connect in a terminal first. Remote Node.js 22.13+ is required.",
+          ) +
+          field(
+            "T3 home",
+            input(
+              "t3Home",
+              selected("t3Home", ""),
+              "text",
+              'placeholder="Default: ~/.t3" data-validation="absolute-path" spellcheck="false"',
+            ),
+            "Optional absolute T3 data directory on the selected computer (the directory containing userdata).",
+          )
+        : "") +
       field(
         "Agent slot",
         `<select data-setting="slot">${Array.from(
@@ -184,9 +211,13 @@
           "number",
           'min="1" max="30" step="1" required',
         ),
-        "Seconds between local status reads.",
+        "Seconds between status reads.",
       );
-    note.innerHTML = `<strong>Remote chat setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br><strong>Status colors</strong><div class="legend">
+    note.innerHTML =
+      (isT3
+        ? "Pressing a thread key opens or focuses the installed T3 Code app and acknowledges completion on this key. T3 Code does not currently support selecting a specific thread through an external link. Local and SSH keys can be used together.<br><br>"
+        : `<strong>Remote chat setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br>`) +
+      `<strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>
       <span><i style="background:#ff6d00"></i>Approval</span><span><i style="background:#9e5bff"></i>Needs response</span>
       <span><i style="background:#ff0033"></i>Error</span>
@@ -363,8 +394,13 @@
     );
   }
 
-  function handleSettingChange() {
-    validateForm();
+  function handleSettingChange(event) {
+    if (event.currentTarget.dataset.setting === "source") {
+      settings = collectValidSettings();
+      render();
+    } else {
+      validateForm();
+    }
     scheduleSave();
   }
 
@@ -419,11 +455,13 @@
     }
 
     if (
-      element.dataset.validation === "workspace-path" &&
+      ["workspace-path", "absolute-path"].includes(
+        element.dataset.validation,
+      ) &&
       value &&
       !isAbsoluteWorkspacePath(value)
     ) {
-      return "Workspace must be an absolute path, such as /Users/name/project or C:\\Users\\name\\project.";
+      return `${name} must be an absolute path, such as /Users/name/project or C:\\Users\\name\\project.`;
     }
 
     return "";
@@ -443,17 +481,22 @@
     saveTimer = setTimeout(save, 120);
   }
 
-  function save() {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    if (!validateForm()) return;
+  function collectValidSettings() {
     const next = { ...settings };
     for (const element of form.querySelectorAll("[data-setting]")) {
+      if (validationMessage(element)) continue;
       const key = element.dataset.setting;
       if (element.type === "checkbox") next[key] = element.checked;
       else if (element.type === "number") next[key] = Number(element.value);
       else next[key] = element.value;
     }
-    settings = next;
+    return next;
+  }
+
+  function save() {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!validateForm()) return;
+    settings = collectValidSettings();
     socket.send(
       JSON.stringify({ event: "setSettings", context, payload: settings }),
     );

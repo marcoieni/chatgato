@@ -2,7 +2,7 @@
 
 <img src="assets/15keys-sd.png" alt="Example 15-key layout" width="600" align="left">
 
-**A Stream Deck plugin to control the OpenAI ChatGPT desktop app (Codex).**<br>
+**A Stream Deck plugin for Codex controls and live Codex / T3 Code thread status.**<br>
 No API key or login required.
 
 <br clear="left">
@@ -11,7 +11,7 @@ No API key or login required.
 
 <img src="assets/logo.png" alt="ChatGato logo" width="240" align="right">
 
-- Keep track of up to 20 **Agent Status** keys, showing each top-level chat's project and status (working, done, require approval, etc). Subagents progress is shown as well. On press, the keys open the chat.
+- Keep track of up to 20 **Agent Status** slots per source, showing each top-level chat's project and status (working, done, require approval, etc). Choose Codex or T3 Code on each key. Pressing a Codex key opens the chat; pressing a T3 Code key opens the T3 Code app. Codex keys also show subagent progress.
 - **Usage Limits** shows the percentage left in Codex's current rate-limit windows and refreshes from Codex's local app-server.
 - **Prompt** starts a chat with any custom prompt
 - Buttons to run shortcuts in Codex, such as:
@@ -33,15 +33,48 @@ No API key or login required.
 - Stream Deck 7.1 or newer
 - macOS 13+ or Windows 10+
 - A Stream Deck device; Stream Deck+ is optional for dial control
-- The Switch chat, Fork chat, Toggle Fast mode, and Toggle plan mode keyboard shortcuts configured in ChatGPT as described below
+- For Codex controls: the Switch chat, Fork chat, Toggle Fast mode, and Toggle plan mode keyboard shortcuts configured in ChatGPT as described below
 - On macOS, allow Elgato Accessibility permission if prompted to allow keyboard-driven
   actions such as Submit and Fork.
 
 ## Setup
 
 Install the plugin and assign the keys you want.
-For each Agent Status key, choose a different slot from 1–20.
+For each Agent Status key, choose an app and a different slot from 1–20 for that source.
 Optionally set an absolute workspace path to filter the keys to one project.
+
+### T3 Code
+
+1. Add an **Agent Status** key and choose **App → T3 Code**.
+2. Leave **SSH host** empty for threads on the Stream Deck computer. For remote
+   threads, enter an SSH alias or `user@hostname`. Use additional keys for other
+   hosts; local, remote, and Codex keys can coexist.
+3. Leave **T3 home** empty for the normal `~/.t3` installation, or enter the
+   absolute directory containing `userdata` on the selected computer. The
+   reader also honors `T3CODE_HOME` when available in its environment.
+4. Assign slots 1–20. Threads are ordered by recent activity, excluding archived
+   and deleted threads. The workspace filter includes project worktrees.
+
+Remote reads require SSH key/agent authentication and Node.js 22.13+ available
+as `node` in the remote SSH shell. Connect with `ssh your-alias` in a terminal
+first to establish trust; ChatGato does not prompt for passwords or accept
+unknown host keys. Configure ports and identity files in your SSH config.
+T3 Connect alone is not sufficient: ChatGato needs SSH access to the machine
+holding the threads. No remote helper installation is required.
+
+**Pressing a T3 Code thread key opens or focuses the locally installed T3 Code
+desktop app.** It also acknowledges completion on that key. T3 Code currently
+does not expose external navigation to an individual thread, so the app keeps
+its existing selection. This applies to both local and remote threads. Other
+ChatGato actions, including approval shortcuts, remain Codex controls.
+
+T3 status comes from read-only SQLite queries, supporting both
+`userdata/state.sqlite` and the newer `userdata/statev2.sqlite` (preferred when
+present). It shows working, done, approval/input waits, errors, and idle states
+across T3's providers. These are internal, version-sensitive schemas; a missing
+or incompatible database or failed SSH read shows an error key and is retried.
+Status reflects persisted state and may remain stale if T3 stops unexpectedly.
+Reads are shared across keys and refresh every two seconds by default.
 
 ### Keyboard shortcuts
 
@@ -95,7 +128,7 @@ npm run pack
 
 ## How live status works
 
-The plugin starts one lazy, long-lived local `codex app-server` process and shares
+For Codex keys, the plugin starts one lazy, long-lived local `codex app-server` process and shares
 its documented stdio JSON-RPC connection across every key. `thread/list` and
 `thread/turns/list` provide recent chat metadata and status, `config/read` provides
 Fast mode, `model/list` provides reasoning choices, and
@@ -107,12 +140,12 @@ ChatGato targets the current app-server protocol and does not fall back when a
 required RPC is missing. Usage, Fast mode, model choices, and local task discovery
 show an offline/error state until the shared connection recovers.
 
-Two direct persisted-state reads remain because the current protocol does not
+Two direct Codex persisted-state reads remain because the current protocol does not
 expose the required information. Rollout JSONL supplies Plan mode and the extra
 detail needed for unloaded or ambiguous active tasks, including approval and user
 input waits. SQLite supplies only the active task's selected model and reasoning
 effort; supported choices still come from `model/list`. ChatGato does not use
-SQLite for task discovery and does not read `models_cache.json` or `config.toml`
+Codex SQLite for task discovery and does not read `models_cache.json` or `config.toml`
 as RPC fallbacks. The SQLite location comes from `sqlite_home` in
 `$CODEX_HOME/config.toml`, then `CODEX_SQLITE_HOME`, and otherwise `CODEX_HOME`
 (normally `~/.codex`). Relative locations resolve from the plugin's current
@@ -137,7 +170,7 @@ model-specific meters. Press the usage key to force a refresh.
 
 ## Notes and limitations
 
-- Agent status prefers app-server runtime and turn state, with rollout inference for unloaded or ambiguous active threads. It intentionally avoids private app IPC and cloud APIs.
+- Codex agent status prefers app-server runtime and turn state, with rollout inference for unloaded or ambiguous active threads. It intentionally avoids private app IPC and cloud APIs.
 - Usage limits use only the public local [Codex app-server protocol](https://learn.chatgpt.com/docs/app-server). ChatGato does not read account credentials or call a private remote HTTP endpoint.
 
 ## Why this name?
@@ -153,6 +186,6 @@ The name **ChatGato** combines both:
 - ChatGato is an independent Stream Deck plugin and is not affiliated with or endorsed by OpenAI or Elgato.
 
 > [!NOTE]
-> ChatGato processes Codex chat data and plugin settings locally and does not send
+> ChatGato processes Codex and T3 Code thread data and plugin settings locally and does not send
 > them to the developer or third parties. See the [Privacy Policy](PRIVACY.md) for
 > the data it reads, optional SSH behavior, retention, and deletion instructions.

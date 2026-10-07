@@ -140,6 +140,28 @@ export async function openUrl(url: string): Promise<void> {
   await runSubprocess("xdg-open", [url]);
 }
 
+/** T3 Code has no external thread-navigation handler yet. */
+export async function openT3Code(): Promise<void> {
+  if (process.platform === "darwin") {
+    await runSubprocess("/usr/bin/open", ["-b", "com.t3tools.t3code"]);
+    return;
+  }
+  // The registered protocol starts the app; its single-instance handler
+  // reveals an existing window on Windows and Linux.
+  if (process.platform === "win32") {
+    await runSubprocess("powershell.exe", [
+      "-NoProfile",
+      "-NonInteractive",
+      "-File",
+      powerShellScript,
+      "url",
+      "t3code://app/",
+    ]);
+    return;
+  }
+  await runSubprocess("xdg-open", ["t3code://app/"]);
+}
+
 export async function runShortcut(shortcut: string): Promise<void> {
   const customShortcut = CUSTOM_SHORTCUT_COMMANDS[shortcut];
   if (customShortcut) {

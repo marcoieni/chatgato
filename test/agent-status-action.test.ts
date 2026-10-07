@@ -6,6 +6,11 @@ const mocks = vi.hoisted(() => ({
   openThreadBySearch:
     vi.fn<(title: string, resultIndex: number) => Promise<void>>(),
   openUrl: vi.fn<(url: string) => Promise<void>>(),
+  openT3Code: vi.fn<() => Promise<void>>(),
+  t3ThreadAtSlot:
+    vi.fn<
+      (slot: number, settings: AgentSettings) => Promise<CodexThread | null>
+    >(),
   subscribe: vi.fn<(listener: () => void) => () => void>(),
   threadSearchResult:
     vi.fn<
@@ -31,6 +36,14 @@ vi.mock("@elgato/streamdeck", () => ({
 vi.mock("../src/lib/codex-controller.js", () => ({
   openThreadBySearch: mocks.openThreadBySearch,
   openUrl: mocks.openUrl,
+  openT3Code: mocks.openT3Code,
+}));
+
+vi.mock("../src/lib/t3-store.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/t3-store.js")>()),
+  T3Store: class {
+    threadAtSlot = mocks.t3ThreadAtSlot;
+  },
 }));
 
 vi.mock("../src/lib/codex-store.js", () => ({
@@ -78,6 +91,8 @@ describe("AgentStatusAction navigation", () => {
     mocks.logError.mockReset();
     mocks.openUrl.mockReset();
     mocks.openUrl.mockResolvedValue();
+    mocks.openT3Code.mockReset().mockResolvedValue();
+    mocks.t3ThreadAtSlot.mockReset().mockResolvedValue(null);
     mocks.openThreadBySearch.mockReset();
     mocks.openThreadBySearch.mockResolvedValue();
     mocks.threadSearchResult.mockReset();
@@ -106,6 +121,118 @@ describe("AgentStatusAction navigation", () => {
       expect.objectContaining({ acknowledgedThreadId: "thread-1", slot: 2 }),
     );
     expect(action.showAlert).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, "devbox"])(
+    "shows T3 threads and opens T3 Code (SSH host: %s)",
+    async (t3SshHost) => {
+      const settings: AgentSettings = { source: "t3-code", t3SshHost, slot: 2 };
+      const selected = thread({
+        id: "t3:thread-1",
+        title: "T3 task",
+        status: "working",
+      });
+      mocks.t3ThreadAtSlot.mockResolvedValue(selected);
+      const action = actionHarness(settings);
+      const agentStatus = new AgentStatusAction();
+      try {
+        await agentStatus.onWillAppear({
+          action,
+          payload: { settings },
+        } as never);
+        expect(decodedSvg(action.setImage.mock.calls[0]![0])).toContain(
+          "T3 task",
+        );
+        // A reorder after painting must not change the thread acknowledged on press.
+        mocks.t3ThreadAtSlot.mockResolvedValue(thread({ id: "different" }));
+        await agentStatus.onKeyDown({ action, payload: { settings } } as never);
+        expect(mocks.t3ThreadAtSlot).toHaveBeenCalledWith(2, settings);
+        expect(mocks.openT3Code).toHaveBeenCalledOnce();
+        expect(mocks.openUrl).not.toHaveBeenCalled();
+        expect(mocks.threadAtSlot).not.toHaveBeenCalled();
+        expect(mocks.subscribe).not.toHaveBeenCalled();
+        expect(action.setSettings).toHaveBeenCalledWith(
+          expect.objectContaining({ acknowledgedThreadId: selected.id }),
+        );
+      } finally {
+        agentStatus.onWillDisappear({ action } as never);
+      }
+    },
+  );
+
+  it("discards a pending Codex read when switching the key to T3 Code", async () => {
+    let finish!: (thread: CodexThread) => void;
+    mocks.threadAtSlot.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    mocks.t3ThreadAtSlot.mockResolvedValue(
+      thread({ id: "t3:one", title: "T3 task" }),
+    );
+    const action = actionHarness();
+    const agentStatus = new AgentStatusAction();
+    try {
+      const appearing = agentStatus.onWillAppear({
+        action,
+        payload: { settings: {} },
+      } as never);
+      const settings: AgentSettings = { source: "t3-code" };
+      await agentStatus.onDidReceiveSettings({
+        action,
+        payload: { settings },
+      } as never);
+      finish(thread({ title: "Old Codex task" }));
+      await appearing;
+      expect(action.setImage).toHaveBeenCalledOnce();
+      expect(decodedSvg(action.setImage.mock.calls[0]![0])).toContain(
+        "T3 task",
+      );
+      await agentStatus.onKeyDown({ action, payload: { settings } } as never);
+      expect(mocks.openT3Code).toHaveBeenCalledOnce();
+      expect(mocks.openUrl).not.toHaveBeenCalled();
+    } finally {
+      agentStatus.onWillDisappear({ action } as never);
+    }
+  });
+
+  it("does not acknowledge completion when T3 Code cannot be opened", async () => {
+    mocks.t3ThreadAtSlot.mockResolvedValue(thread());
+    mocks.openT3Code.mockRejectedValue(new Error("T3 Code unavailable"));
+    const settings: AgentSettings = { source: "t3-code" };
+    const action = actionHarness(settings);
+    await new AgentStatusAction().onKeyDown({
+      action,
+      payload: { settings },
+    } as never);
+    expect(action.setSettings).not.toHaveBeenCalled();
+    expect(action.showAlert).toHaveBeenCalledOnce();
+  });
+
+  it("shows an error and clears stale T3 threads after a failed read", async () => {
+    const settings: AgentSettings = { source: "t3-code" };
+    const action = actionHarness(settings);
+    const agentStatus = new AgentStatusAction();
+    mocks.t3ThreadAtSlot.mockResolvedValue(thread());
+    try {
+      await agentStatus.onWillAppear({
+        action,
+        payload: { settings },
+      } as never);
+      mocks.t3ThreadAtSlot.mockRejectedValue(new Error("SSH unavailable"));
+      await agentStatus.onDidReceiveSettings({
+        action,
+        payload: { settings },
+      } as never);
+      expect(decodedSvg(action.setImage.mock.calls.at(-1)![0])).toContain(
+        "#FF0033",
+      );
+      await agentStatus.onKeyDown({ action, payload: { settings } } as never);
+      expect(mocks.openT3Code).not.toHaveBeenCalled();
+      expect(action.showAlert).toHaveBeenCalledOnce();
+    } finally {
+      agentStatus.onWillDisappear({ action } as never);
+    }
   });
 
   it("navigates SSH-hosted chats through the host-aware chat search", async () => {
