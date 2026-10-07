@@ -124,9 +124,13 @@ describe("AgentStatusAction navigation", () => {
   });
 
   it.each([undefined, "devbox"])(
-    "shows T3 threads and opens T3 Code (SSH host: %s)",
+    "shows T3 threads and opens T3 Code with legacy SSH setting: %s",
     async (t3SshHost) => {
-      const settings: AgentSettings = { source: "t3-code", t3SshHost, slot: 2 };
+      const settings: AgentSettings & { t3SshHost?: string } = {
+        source: "t3-code",
+        t3SshHost,
+        slot: 2,
+      };
       const selected = thread({
         id: "t3:thread-1",
         title: "T3 task",

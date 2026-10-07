@@ -2,6 +2,12 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MAX_AGENT_SLOTS } from "./agent-slots.js";
+import {
+  T3Connections,
+  isT3SshHost,
+  type T3SshConnection,
+} from "./t3-connections.js";
 import type { AgentSettings, AgentStatus, CodexThread } from "../types.js";
 
 const readerPath = join(
@@ -20,21 +26,29 @@ const statuses = new Set<AgentStatus>([
 
 export function t3SourceKey(settings: AgentSettings): string {
   return JSON.stringify([
-    settings.t3SshHost?.trim() || "",
     settings.t3Home?.trim() || "",
     settings.cwdFilter?.trim() || "",
   ]);
 }
 
-export function t3SshArguments(host: string, encodedOptions: string): string[] {
+export function t3SshArguments(
+  host: string,
+  encodedOptions: string,
+  port?: number,
+): string[] {
   // SSH interprets leading options, and forwards the command through a shell.
   // Keep the destination a single host/alias and the payload base64-only.
-  if (!/^[a-z0-9_][a-z0-9_.@:[\]-]*$/i.test(host)) {
+  if (!isT3SshHost(host)) {
     throw new Error("T3 Code SSH host must be an SSH alias or user@hostname");
   }
   if (!/^[a-z0-9+/]+=*$/i.test(encodedOptions)) {
     throw new Error("Invalid T3 Code reader options");
   }
+  if (
+    port !== undefined &&
+    (!Number.isInteger(port) || port < 1 || port > 65535)
+  )
+    throw new Error("Invalid T3 Code SSH port");
   return [
     "-T",
     "-o",
@@ -43,20 +57,36 @@ export function t3SshArguments(host: string, encodedOptions: string): string[] {
     "ConnectTimeout=5",
     "-o",
     "StrictHostKeyChecking=yes",
+    "-o",
+    "ClearAllForwardings=yes",
+    "-o",
+    "ForwardAgent=no",
+    "-o",
+    "PermitLocalCommand=no",
+    ...(port === undefined ? [] : ["-p", String(port)]),
     host,
     `node --input-type=module - ${encodedOptions}`,
   ];
 }
 
-async function readThreads(settings: AgentSettings): Promise<CodexThread[]> {
+export type T3ThreadSource = {
+  host?: string;
+  port?: number;
+  home?: string;
+  cwdFilter?: string;
+};
+
+async function readThreads(source: T3ThreadSource): Promise<CodexThread[]> {
   const options = Buffer.from(
     JSON.stringify({
-      home: settings.t3Home?.trim(),
-      cwdFilter: settings.cwdFilter?.trim(),
+      home: source.home,
+      cwdFilter: source.cwdFilter,
     }),
   ).toString("base64");
-  const host = settings.t3SshHost?.trim();
-  const args = host ? t3SshArguments(host, options) : [readerPath, options];
+  const host = source.host;
+  const args = host
+    ? t3SshArguments(host, options, source.port)
+    : [readerPath, options];
   const script = host ? await readFile(readerPath, "utf8") : undefined;
   const output = await new Promise<string>((resolve, reject) => {
     const child = execFile(
@@ -100,7 +130,7 @@ async function readThreads(settings: AgentSettings): Promise<CodexThread[]> {
       throw new Error("Invalid T3 Code thread");
     }
     return {
-      id: `t3:${t3SourceKey(settings)}:${value.id}`,
+      id: value.id,
       title: value.title,
       cwd: value.cwd,
       updatedAtMs: value.updatedAtMs,
@@ -121,7 +151,35 @@ export class T3Store {
     }
   >();
 
-  constructor(private readonly read = readThreads) {}
+  constructor(
+    private readonly read = readThreads,
+    private readonly discoverHosts: (
+      home?: string,
+    ) => Promise<T3SshConnection[]> = new T3Connections().discover,
+  ) {}
+
+  private async recentThreads(settings: AgentSettings): Promise<CodexThread[]> {
+    const cwdFilter = settings.cwdFilter?.trim() || undefined;
+    const local: T3ThreadSource = {
+      home: settings.t3Home?.trim() || undefined,
+      cwdFilter,
+    };
+    const readSource = async (source: T3ThreadSource) =>
+      (await this.read(source)).map((thread) => ({
+        ...thread,
+        // A thread's identity is independent of slots and workspace filters.
+        id: `t3:${JSON.stringify([source.host ?? "", source.port ?? "", source.home ?? "", thread.id])}`,
+      }));
+    const connections = await this.discoverHosts(local.home);
+    const sources = [
+      local,
+      ...connections.map((connection) => ({ ...connection, cwdFilter })),
+    ];
+    const results = await Promise.allSettled(sources.map(readSource));
+    return successfulThreads(results)
+      .sort((a, b) => b.updatedAtMs - a.updatedAtMs || a.id.localeCompare(b.id))
+      .slice(0, MAX_AGENT_SLOTS);
+  }
 
   async threadAtSlot(
     slot: number,
@@ -130,11 +188,11 @@ export class T3Store {
     const key = t3SourceKey(settings);
     let cached = this.cache.get(key);
     if (!cached || cached.expiresAtMs <= Date.now()) {
-      // Share each host read across keys, including in-flight SSH reads.
+      // Share the merged read across keys, including in-flight SSH reads.
       for (const [key, entry] of this.cache) {
         if (entry.expiresAtMs <= Date.now()) this.cache.delete(key);
       }
-      cached = { expiresAtMs: Infinity, threads: this.read(settings) };
+      cached = { expiresAtMs: Infinity, threads: this.recentThreads(settings) };
       this.cache.set(key, cached);
       const entry = cached;
       void entry.threads.then(
@@ -148,4 +206,17 @@ export class T3Store {
     }
     return (await cached.threads)[slot - 1] ?? null;
   }
+}
+
+function successfulThreads(
+  results: PromiseSettledResult<CodexThread[]>[],
+): CodexThread[] {
+  const successful = results.filter((result) => result.status === "fulfilled");
+  if (results.length > 0 && successful.length === 0) {
+    throw new AggregateError(
+      results.map((result) => (result as PromiseRejectedResult).reason),
+      "Unable to read T3 Code threads from any machine",
+    );
+  }
+  return successful.flatMap((result) => result.value);
 }
