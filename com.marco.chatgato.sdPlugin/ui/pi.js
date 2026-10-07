@@ -162,16 +162,6 @@
       ) +
       (isT3
         ? field(
-            "SSH host",
-            input(
-              "t3SshHost",
-              selected("t3SshHost", ""),
-              "text",
-              'placeholder="Local computer" spellcheck="false"',
-            ),
-            "Optional SSH alias or user@hostname. Uses your SSH config; connect in a terminal first. Remote Node.js 22.13+ is required.",
-          ) +
-          field(
             "T3 home",
             input(
               "t3Home",
@@ -179,7 +169,7 @@
               "text",
               'placeholder="Default: ~/.t3" data-validation="absolute-path" spellcheck="false"',
             ),
-            "Optional absolute T3 data directory on the selected computer (the directory containing userdata).",
+            "Optional absolute T3 data directory on this computer (the directory containing userdata). Remote machines use their own default T3 home.",
           )
         : "") +
       field(
@@ -215,7 +205,7 @@
       );
     note.innerHTML =
       (isT3
-        ? "Pressing a thread key opens or focuses the installed T3 Code app and acknowledges completion on this key. T3 Code does not currently support selecting a specific thread through an external link. Local and SSH keys can be used together.<br><br>"
+        ? "Slots show the most recent threads across this computer and SSH connections saved in T3 Code. Pressing a thread key opens or focuses the installed T3 Code app and acknowledges completion on this key. T3 Code does not currently support selecting a specific thread through an external link.<br><br>"
         : `<strong>Remote chat setup:</strong> In ChatGPT desktop, open Settings → Keyboard Shortcuts, search for “Switch chat”, and assign any shortcut you prefer. ChatGato reads the current binding from <code>.codex/keybindings.json</code>, so changes take effect immediately. ${setupGuideLink()} It verifies the binding and moves to the safe Settings surface before entering a title, so it cannot type into the terminal or composer.<br><br>`) +
       `<strong>Status colors</strong><div class="legend">
       <span><i style="background:#304ffe"></i>Working</span><span><i style="background:#00ff4c"></i>Done / unread</span>

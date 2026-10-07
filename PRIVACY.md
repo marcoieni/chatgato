@@ -1,6 +1,6 @@
 # ChatGato Privacy Policy
 
-Effective date: October 6, 2026
+Effective date: October 7, 2026
 
 ChatGato is a Stream Deck plugin that controls Codex in the ChatGPT desktop app
 and displays information about recent Codex and T3 Code threads. This policy explains what
@@ -24,14 +24,22 @@ ChatGato may process the following data on your computer:
 - **T3 Code thread data:** thread identifiers, titles, project/worktree paths,
   timestamps, and status, including pending approval/input counts. When selected
   on an Agent Status key, ChatGato reads T3 Code's SQLite database read-only,
-  locally or through your configured SSH host. It does not read T3 credentials
-  or conversation messages. The app choice, optional T3 home path, and SSH host
-  are saved in Stream Deck action settings.
+  locally and through SSH connections saved in T3 Code. ChatGato reads T3's
+  saved environment registry or unlocks its encrypted connection catalog using
+  the macOS Keychain or Windows user key. On macOS, choose **Allow** for the
+  current Keychain request, not **Always Allow**: access is requested by the
+  shared `/usr/bin/security` utility, so a persistent grant would also let other
+  processes use that utility to access the same entry. The decrypted catalog can
+  contain T3 credentials; ChatGato uses it only to extract enabled SSH connection
+  metadata and does not use, log, or persist those credentials. It does not read T3
+  conversation messages. The app choice and optional local T3 home path are
+  saved in Stream Deck action settings; a machine selection is not required.
 - **Optional SSH metadata:** for remote projects already configured in the
   ChatGPT desktop app, ChatGato may process the host identifier, SSH destination,
   username, port, identity-file path, remote project paths, and remote Codex chat
   metadata. ChatGato passes the identity-file path to your system SSH client; it
-  does not read or store the private key itself.
+  does not read or store the private key itself. T3 reads use saved SSH aliases,
+  usernames, and ports; the system SSH client resolves other connection options.
 - **Operational logs:** Stream Deck keeps local plugin logs containing action
   names, status messages, and errors. Remote connection errors may include a host
   identifier or diagnostic output from SSH. ChatGato does not intentionally log
@@ -81,6 +89,7 @@ You can stop optional processing at any time:
   profile, in Stream Deck.
 - Remove remote projects or SSH connections in ChatGPT to stop remote discovery.
 - Remove T3 Code keys or change their app selection to stop T3 data reads.
+  Remove or disable a saved connection in T3 Code to stop its discovery.
 - Remove ChatGato's local rotated log files using the paths documented in the
   [README](README.md#finding-the-plugin-logs).
 - Delete the original chat data through ChatGPT/Codex if you no longer want Codex

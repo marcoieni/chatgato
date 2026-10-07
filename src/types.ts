@@ -23,7 +23,6 @@ export type CodexThread = {
 export type AgentSettings = {
   source?: "codex" | "t3-code";
   t3Home?: string;
-  t3SshHost?: string;
   slot?: number;
   cwdFilter?: string;
   pollSeconds?: number;

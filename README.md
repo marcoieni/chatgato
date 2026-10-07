@@ -46,21 +46,39 @@ Optionally set an absolute workspace path to filter the keys to one project.
 ### T3 Code
 
 1. Add an **Agent Status** key and choose **App → T3 Code**.
-2. Leave **SSH host** empty for threads on the Stream Deck computer. For remote
-   threads, enter an SSH alias or `user@hostname`. Use additional keys for other
-   hosts; local, remote, and Codex keys can coexist.
-3. Leave **T3 home** empty for the normal `~/.t3` installation, or enter the
-   absolute directory containing `userdata` on the selected computer. The
-   reader also honors `T3CODE_HOME` when available in its environment.
-4. Assign slots 1–20. Threads are ordered by recent activity, excluding archived
-   and deleted threads. The workspace filter includes project worktrees.
+2. Assign slots 1–20. All T3 keys show the most recent threads across the local
+   computer and SSH connections saved in T3 Code. You do not select a machine on
+   each key. Connections that are removed or disabled in T3 are excluded.
+3. Leave **T3 home** empty for the local `~/.t3` installation, or enter the
+   absolute local directory containing `userdata`. This also selects the saved
+   connection registry. Remote machines use their own `~/.t3` directory. The
+   reader honors `T3CODE_HOME` when available in the environment on that machine.
+4. Optionally set a workspace filter, which applies on every machine and
+   includes project worktrees. Archived and deleted threads are excluded.
+
+ChatGato reads `userdata/connection-catalog.json`, or the older
+`userdata/saved-environments.json` when no catalog exists. The encrypted catalog
+is unlocked locally using T3's macOS Keychain entry or Windows user key; macOS
+may request Keychain access. Choose **Allow** for the current request, not
+**Always Allow**. The requester is the shared `/usr/bin/security` utility;
+persistent permission would let other processes use that utility to access the
+same entry. ChatGato uses this system utility to avoid distributing a native
+Keychain helper. It waits for you to answer the prompt, so T3 keys may remain
+pending until you allow or deny access. Only SSH connection metadata is retained
+in memory.
+If the catalog cannot be unlocked, the key shows an error and unlock attempts
+are retried at most once a minute. Encrypted catalog discovery is supported on
+macOS and Windows, the platforms supported by Stream Deck.
 
 Remote reads require SSH key/agent authentication and Node.js 22.13+ available
-as `node` in the remote SSH shell. Connect with `ssh your-alias` in a terminal
-first to establish trust; ChatGato does not prompt for passwords or accept
-unknown host keys. Configure ports and identity files in your SSH config.
-T3 Connect alone is not sufficient: ChatGato needs SSH access to the machine
-holding the threads. No remote helper installation is required.
+as `node` in the remote SSH shell. Connect with the saved destination in a
+terminal first to establish trust; ChatGato does not prompt for SSH passwords
+or accept unknown host keys. Saved usernames and ports are honored, and your
+SSH config supplies options such as identity files and jump hosts. ChatGato
+only contacts SSH connections saved in T3; it does not scan your SSH config.
+T3 Connect/relay and direct URL connections are not read by this SQLite adapter.
+No remote helper installation is required. Existing per-key SSH host settings
+are ignored; save those connections in T3 Code if they are not already there.
 
 **Pressing a T3 Code thread key opens or focuses the locally installed T3 Code
 desktop app.** It also acknowledges completion on that key. T3 Code currently
@@ -71,10 +89,13 @@ ChatGato actions, including approval shortcuts, remain Codex controls.
 T3 status comes from read-only SQLite queries, supporting both
 `userdata/state.sqlite` and the newer `userdata/statev2.sqlite` (preferred when
 present). It shows working, done, approval/input waits, errors, and idle states
-across T3's providers. These are internal, version-sensitive schemas; a missing
-or incompatible database or failed SSH read shows an error key and is retried.
+across T3's providers. These are internal, version-sensitive schemas. Machines
+with missing or incompatible databases or failed SSH reads are omitted and
+retried; if no machine can be read, the key shows an error. A successful read
+with no matching threads shows an empty key.
 Status reflects persisted state and may remain stale if T3 stops unexpectedly.
 Reads are shared across keys and refresh every two seconds by default.
+A slow or unreachable SSH host can delay a refresh by up to ten seconds.
 
 ### Keyboard shortcuts
 

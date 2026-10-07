@@ -124,9 +124,13 @@ describe("AgentStatusAction navigation", () => {
   });
 
   it.each([undefined, "devbox"])(
-    "shows T3 threads and opens T3 Code (SSH host: %s)",
+    "shows T3 threads and opens T3 Code with legacy SSH setting: %s",
     async (t3SshHost) => {
-      const settings: AgentSettings = { source: "t3-code", t3SshHost, slot: 2 };
+      const settings: AgentSettings & { t3SshHost?: string } = {
+        source: "t3-code",
+        t3SshHost,
+        slot: 2,
+      };
       const selected = thread({
         id: "t3:thread-1",
         title: "T3 task",
@@ -227,6 +231,10 @@ describe("AgentStatusAction navigation", () => {
       expect(decodedSvg(action.setImage.mock.calls.at(-1)![0])).toContain(
         "#FF0033",
       );
+      const errorSvg = decodedSvg(action.setImage.mock.calls.at(-1)![0]);
+      expect(errorSvg).toContain(">T3 CODE</text>");
+      expect(errorSvg).toContain(">T3 Code offline</text>");
+      expect(errorSvg).not.toContain("Codex");
       await agentStatus.onKeyDown({ action, payload: { settings } } as never);
       expect(mocks.openT3Code).not.toHaveBeenCalled();
       expect(action.showAlert).toHaveBeenCalledOnce();

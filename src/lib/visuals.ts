@@ -242,6 +242,7 @@ export function agentSvg(
   slot: number,
   status: AgentStatus,
   thread?: AgentVisualThread,
+  source: "codex" | "t3-code" = "codex",
 ): string {
   const color = STATUS_COLORS[status];
   const statusLabel = STATUS_LABELS[status];
@@ -249,9 +250,10 @@ export function agentSvg(
   const statusLabelRow = statusLabel
     ? `<text x="36" y="31" fill="${statusLabelColor}" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-weight="800" font-size="11" letter-spacing=".3">${statusLabel}</text>`
     : "";
-  const project = thread ? projectName(thread.cwd) : "CODEX";
+  const appName = source === "t3-code" ? "T3 Code" : "Codex";
+  const project = thread ? projectName(thread.cwd) : appName.toUpperCase();
   const title =
-    thread?.title || (status === "error" ? "Codex offline" : "Empty slot");
+    thread?.title || (status === "error" ? `${appName} offline` : "Empty slot");
   const titleLines = chatTitleLines(title);
   const firstTitleY =
     titleLines.length === 1 ? 102 : titleLines.length === 2 ? 92 : 82;
@@ -296,8 +298,9 @@ export function agentImage(
   slot: number,
   status: AgentStatus,
   thread?: AgentVisualThread,
+  source: "codex" | "t3-code" = "codex",
 ): string {
-  return svgDataUri(agentSvg(slot, status, thread));
+  return svgDataUri(agentSvg(slot, status, thread, source));
 }
 
 export function reasoningSvg(
