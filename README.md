@@ -59,7 +59,13 @@ Optionally set an absolute workspace path to filter the keys to one project.
 ChatGato reads `userdata/connection-catalog.json`, or the older
 `userdata/saved-environments.json` when no catalog exists. The encrypted catalog
 is unlocked locally using T3's macOS Keychain entry or Windows user key; macOS
-may request Keychain access. Only SSH connection metadata is retained in memory.
+may request Keychain access. Choose **Allow** for the current request, not
+**Always Allow**. The requester is the shared `/usr/bin/security` utility;
+persistent permission would let other processes use that utility to access the
+same entry. ChatGato uses this system utility to avoid distributing a native
+Keychain helper. It waits for you to answer the prompt, so T3 keys may remain
+pending until you allow or deny access. Only SSH connection metadata is retained
+in memory.
 If the catalog cannot be unlocked, the key shows an error and unlock attempts
 are retried at most once a minute. Encrypted catalog discovery is supported on
 macOS and Windows, the platforms supported by Stream Deck.

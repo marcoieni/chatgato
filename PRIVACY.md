@@ -26,9 +26,12 @@ ChatGato may process the following data on your computer:
   on an Agent Status key, ChatGato reads T3 Code's SQLite database read-only,
   locally and through SSH connections saved in T3 Code. ChatGato reads T3's
   saved environment registry or unlocks its encrypted connection catalog using
-  the macOS Keychain or Windows user key. The decrypted catalog can contain T3
-  credentials; ChatGato uses it only to extract enabled SSH connection metadata
-  and does not use, log, or persist those credentials. It does not read T3
+  the macOS Keychain or Windows user key. On macOS, choose **Allow** for the
+  current Keychain request, not **Always Allow**: access is requested by the
+  shared `/usr/bin/security` utility, so a persistent grant would also let other
+  processes use that utility to access the same entry. The decrypted catalog can
+  contain T3 credentials; ChatGato uses it only to extract enabled SSH connection
+  metadata and does not use, log, or persist those credentials. It does not read T3
   conversation messages. The app choice and optional local T3 home path are
   saved in Stream Deck action settings; a machine selection is not required.
 - **Optional SSH metadata:** for remote projects already configured in the

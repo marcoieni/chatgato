@@ -116,7 +116,7 @@ it("tries the next macOS release when a wrong key produces valid CBC padding", a
       index + 1,
       "/usr/bin/security",
       ["find-generic-password", "-w", "-s", `${app} Safe Storage`, "-a", app],
-      expect.anything(),
+      expect.objectContaining({ timeout: 0 }),
       expect.any(Function),
     );
   }
@@ -201,7 +201,7 @@ it("unwraps a Windows user key through native helper stdin before decrypting the
   expect(mocks.execFile).toHaveBeenCalledWith(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-Command", expect.any(String)],
-    expect.anything(),
+    expect.objectContaining({ timeout: 10_000 }),
     expect.any(Function),
   );
   expect(stdin.end).toHaveBeenCalledWith(wrappedKey.toString("base64"));

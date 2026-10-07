@@ -53,13 +53,17 @@ function validateCatalog(plaintext: string): string {
 function secretCommand(
   command: string,
   args: string[],
-  input?: string,
+  options: { input?: string; timeout?: number } = {},
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = execFile(
       command,
       args,
-      { timeout: 10_000, maxBuffer: 64 * 1024, windowsHide: true },
+      {
+        timeout: options.timeout ?? 10_000,
+        maxBuffer: 64 * 1024,
+        windowsHide: true,
+      },
       (error, stdout) => {
         // Never propagate process output or arguments from secret-store operations.
         if (error)
@@ -68,7 +72,7 @@ function secretCommand(
       },
     );
     child.stdin?.on("error", () => undefined);
-    child.stdin?.end(input);
+    child.stdin?.end(options.input);
   });
 }
 
@@ -77,14 +81,19 @@ export async function decryptT3Catalog(encoded: string): Promise<string> {
   if (process.platform === "darwin") {
     for (const app of ["T3 Code (Alpha)", "T3 Code (Nightly)", "T3 Code"]) {
       try {
-        const password = await secretCommand("/usr/bin/security", [
-          "find-generic-password",
-          "-w",
-          "-s",
-          `${app} Safe Storage`,
-          "-a",
-          app,
-        ]);
+        const password = await secretCommand(
+          "/usr/bin/security",
+          [
+            "find-generic-password",
+            "-w",
+            "-s",
+            `${app} Safe Storage`,
+            "-a",
+            app,
+          ],
+          // Keychain may wait for the user to answer an access/password prompt.
+          { timeout: 0 },
+        );
         const key = pbkdf2Sync(password, "saltysalt", 1003, 16, "sha1");
         try {
           // CBC padding alone cannot distinguish the owning release's key.
@@ -116,7 +125,7 @@ export async function decryptT3Catalog(encoded: string): Promise<string> {
             "-Command",
             "$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.Security; $bytes = [Convert]::FromBase64String([Console]::In.ReadToEnd()); [Convert]::ToBase64String([Security.Cryptography.ProtectedData]::Unprotect($bytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser))",
           ],
-          wrapped.subarray(5).toString("base64"),
+          { input: wrapped.subarray(5).toString("base64") },
         );
         const key = Buffer.from(raw, "base64");
         try {
