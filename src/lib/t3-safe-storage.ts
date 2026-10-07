@@ -16,14 +16,11 @@ export function decryptT3CatalogWithKey(
   const decipher =
     platform === "darwin"
       ? createDecipheriv("aes-128-cbc", key, Buffer.alloc(16, 32))
-      : createDecipheriv("aes-256-gcm", key, encrypted.subarray(3, 15));
-  if (platform === "win32") {
-    (
-      decipher as ReturnType<typeof createDecipheriv> & {
-        setAuthTag(tag: Buffer): void;
-      }
-    ).setAuthTag(encrypted.subarray(-16));
-  }
+      : createDecipheriv(
+          "aes-256-gcm",
+          key,
+          encrypted.subarray(3, 15),
+        ).setAuthTag(encrypted.subarray(-16));
   return Buffer.concat([
     decipher.update(
       platform === "darwin"
@@ -32,6 +29,25 @@ export function decryptT3CatalogWithKey(
     ),
     decipher.final(),
   ]).toString("utf8");
+}
+
+function validateCatalog(plaintext: string): string {
+  const document: unknown = JSON.parse(plaintext);
+  if (
+    !document ||
+    typeof document !== "object" ||
+    !("schemaVersion" in document) ||
+    document.schemaVersion !== 1 ||
+    !("profiles" in document) ||
+    !Array.isArray(document.profiles) ||
+    !("targets" in document) ||
+    !Array.isArray(document.targets) ||
+    ("disabledEnvironmentIds" in document &&
+      document.disabledEnvironmentIds !== undefined &&
+      !Array.isArray(document.disabledEnvironmentIds))
+  )
+    throw new Error("Unsupported T3 connection catalog");
+  return plaintext;
 }
 
 function secretCommand(
@@ -71,7 +87,10 @@ export async function decryptT3Catalog(encoded: string): Promise<string> {
         ]);
         const key = pbkdf2Sync(password, "saltysalt", 1003, 16, "sha1");
         try {
-          return decryptT3CatalogWithKey(encrypted, key, "darwin");
+          // CBC padding alone cannot distinguish the owning release's key.
+          return validateCatalog(
+            decryptT3CatalogWithKey(encrypted, key, "darwin"),
+          );
         } finally {
           key.fill(0);
         }
@@ -101,7 +120,9 @@ export async function decryptT3Catalog(encoded: string): Promise<string> {
         );
         const key = Buffer.from(raw, "base64");
         try {
-          return decryptT3CatalogWithKey(encrypted, key, "win32");
+          return validateCatalog(
+            decryptT3CatalogWithKey(encrypted, key, "win32"),
+          );
         } finally {
           key.fill(0);
         }
