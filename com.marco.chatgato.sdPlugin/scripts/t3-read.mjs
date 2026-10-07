@@ -1,6 +1,6 @@
 // This dependency-free reader also runs over SSH via stdin. Never write to
 // T3's live database or copy a database file away from its WAL.
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { Buffer } from "node:buffer";
 import process from "node:process";
 import { homedir } from "node:os";
@@ -13,6 +13,10 @@ const options = JSON.parse(
 const home = options.home || process.env.T3CODE_HOME || join(homedir(), ".t3");
 if (!isAbsolute(home)) throw new Error("T3 Code home must be an absolute path");
 const stateDir = join(home, "userdata");
+const environmentPath = join(stateDir, "environment-id");
+const environmentId = existsSync(environmentPath)
+  ? readFileSync(environmentPath, "utf8").trim()
+  : undefined;
 const v2Path = join(stateDir, "statev2.sqlite");
 const db = new DatabaseSync(
   existsSync(v2Path) ? v2Path : join(stateDir, "state.sqlite"),
@@ -164,6 +168,7 @@ try {
     .slice(0, 20)
     .map((row) => ({
       id: row.id,
+      environmentId,
       title: row.title || "Untitled thread",
       cwd: row.project_cwd,
       updatedAtMs: Math.max(

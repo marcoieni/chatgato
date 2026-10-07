@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -124,6 +124,25 @@ async function read(
 }
 
 describe.each([false, true])("T3 read-only database adapter (v2: %s)", (v2) => {
+  it("returns the machine's environment identity for exact chat navigation", async () => {
+    const { home, db, add } = await fixture(v2);
+    try {
+      add("exact-thread");
+      await writeFile(
+        join(home, "userdata", "environment-id"),
+        "remote-environment\n",
+      );
+      expect(await read(home, undefined, true)).toEqual([
+        expect.objectContaining({
+          id: "exact-thread",
+          environmentId: "remote-environment",
+        }),
+      ]);
+    } finally {
+      db.close();
+    }
+  });
+
   it("reads live WAL data and maps running, completed, interrupted, and failed threads", async () => {
     const { home, db, add } = await fixture(v2);
     try {

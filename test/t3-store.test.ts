@@ -24,6 +24,22 @@ const localThread = {
 afterEach(() => vi.useRealTimers());
 
 describe("T3Store", () => {
+  it("preserves the raw thread and environment IDs while namespacing key identity", async () => {
+    const t3ThreadRef = {
+      threadId: "original-thread",
+      environmentId: "remote-environment",
+    };
+    const store = new T3Store(
+      async ({ host }) =>
+        host ? [{ ...thread, id: t3ThreadRef.threadId, t3ThreadRef }] : [],
+      async () => [{ host: "devbox" }],
+    );
+    expect(await store.threadAtSlot(1, {})).toMatchObject({
+      id: `t3:${JSON.stringify(["devbox", "", "", "original-thread"])}`,
+      t3ThreadRef,
+    });
+  });
+
   it("ranks threads from all machines together and preserves machine identities", async () => {
     const read = vi.fn(async ({ host }: T3ThreadSource) => [
       { ...thread, updatedAtMs: host === "devbox" ? 3 : host ? 2 : 1 },

@@ -131,6 +131,12 @@ async function readThreads(source: T3ThreadSource): Promise<CodexThread[]> {
     }
     return {
       id: value.id,
+      t3ThreadRef: {
+        threadId: value.id,
+        ...(typeof value.environmentId === "string" && value.environmentId
+          ? { environmentId: value.environmentId }
+          : {}),
+      },
       title: value.title,
       cwd: value.cwd,
       updatedAtMs: value.updatedAtMs,
