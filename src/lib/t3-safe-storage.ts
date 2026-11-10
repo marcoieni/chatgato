@@ -118,7 +118,7 @@ export async function decryptT3Catalog(encoded: string): Promise<string> {
   } else if (process.platform === "win32") {
     const appData =
       process.env.APPDATA || join(homedir(), "AppData", "Roaming");
-    for (const directory of ["T3 Code (Alpha)", "t3code"]) {
+    for (const directory of ["t3code-v2", "T3 Code (Alpha)", "t3code"]) {
       try {
         const state = JSON.parse(
           await readFile(join(appData, directory, "Local State"), "utf8"),

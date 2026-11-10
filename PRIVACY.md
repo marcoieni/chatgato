@@ -24,15 +24,16 @@ ChatGato may process the following data on your computer:
 - **T3 Code thread data:** thread identifiers, titles, project/worktree paths,
   timestamps, and status, including pending approval/input counts. When selected
   on an Agent Status key, ChatGato reads T3 Code's SQLite database read-only,
-  locally and through SSH connections saved in T3 Code. ChatGato reads T3's
+  locally and through SSH connections saved in T3 Code. For T3 Connect
+  environments it reads thread summaries from the local desktop cache. ChatGato reads T3's
   saved environment registry or unlocks its encrypted connection catalog using
   the macOS Keychain or Windows user key. On macOS, choose **Allow** for the
   current Keychain request, not **Always Allow**: access is requested by the
   shared `/usr/bin/security` utility, so a persistent grant would also let other
   processes use that utility to access the same entry. The decrypted catalog can
-  contain T3 credentials; ChatGato uses it only to extract enabled SSH connection
-  metadata and does not use, log, or persist those credentials. It does not read T3
-  conversation messages. The app choice and optional local T3 home path are
+  contain T3 credentials. ChatGato uses the catalog to identify enabled SSH
+  connections and T3 Connect environments. It does not use, log, or persist those credentials.
+  The app choice and optional local T3 home path are
   saved in Stream Deck action settings; a machine selection is not required.
 - **Optional SSH metadata:** for remote projects already configured in the
   ChatGPT desktop app, ChatGato may process the host identifier, SSH destination,
@@ -50,7 +51,7 @@ ChatGato may process the following data on your computer:
 This data is used only to provide the plugin's features: showing chat and usage
 status, filtering and opening chats, creating chats with user-configured prompts,
 and controlling Codex actions.
-Pressing a T3 Code key launches or focuses the installed T3 Code desktop app.
+Pressing a T3 Code key passes its environment and thread IDs to the installed T3 Code desktop app to open the chat.
 
 ChatGato has no analytics, advertising, tracking, user account, or developer-run
 server. The plugin does not sell data and does not send data to its developer or

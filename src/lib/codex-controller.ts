@@ -129,6 +129,10 @@ async function runControlScript(
 export async function openUrl(url: string): Promise<void> {
   if (!/^(codex|https):\/\//.test(url))
     throw new Error("Unsupported URL scheme");
+  await launchUrl(url);
+}
+
+async function launchUrl(url: string): Promise<void> {
   if (process.platform === "darwin") {
     await runSubprocess("/usr/bin/open", [url]);
     return;
@@ -147,22 +151,27 @@ export async function openUrl(url: string): Promise<void> {
   await runSubprocess("xdg-open", [url]);
 }
 
-/** T3's desktop protocol only focuses the app; use its ID-aware switcher on macOS. */
 export async function openT3Code(
   thread: CodexThread["t3ThreadRef"],
 ): Promise<void> {
+  // Orchestrator-created thread IDs can contain colons and percent escapes.
+  const validId = /^[a-z0-9_:%-]+$/iu;
+  if (
+    !thread ||
+    !validId.test(thread.threadId) ||
+    (thread.environmentId !== undefined && !validId.test(thread.environmentId))
+  ) {
+    throw new Error("Missing or invalid T3 Code thread identity");
+  }
+  const url = thread.environmentId
+    ? `t3code://threads/${encodeURIComponent(thread.environmentId)}/${encodeURIComponent(thread.threadId)}`
+    : undefined;
   if (process.platform === "darwin") {
-    if (
-      !thread ||
-      !/^[a-z0-9_-]+$/iu.test(thread.threadId) ||
-      (thread.environmentId !== undefined &&
-        !/^[a-z0-9_-]+$/iu.test(thread.environmentId))
-    ) {
-      throw new Error("Missing or invalid T3 Code thread identity");
-    }
-    // Serialise presses so one key cannot type into another key's search.
-    const pending = t3NavigationQueue.then(() =>
-      runSubprocess(
+    const pending = t3NavigationQueue.then(async () => {
+      if (url) await launchUrl(url);
+      // Verify the destination before acknowledging. Older desktops can still
+      // navigate through the palette if they only focused the window.
+      await runSubprocess(
         "/usr/bin/osascript",
         [
           "-l",
@@ -172,25 +181,12 @@ export async function openT3Code(
           thread.environmentId ?? "",
         ],
         30_000,
-      ),
-    );
+      );
+    });
     t3NavigationQueue = pending.catch(() => undefined);
     return pending;
   }
-  // The registered protocol starts the app; its single-instance handler
-  // reveals an existing window on Windows and Linux.
-  if (process.platform === "win32") {
-    await runSubprocess("powershell.exe", [
-      "-NoProfile",
-      "-NonInteractive",
-      "-File",
-      powerShellScript,
-      "url",
-      "t3code://app/",
-    ]);
-    return;
-  }
-  await runSubprocess("xdg-open", ["t3code://app/"]);
+  await launchUrl(url ?? "t3code://app/");
 }
 
 export async function runShortcut(shortcut: string): Promise<void> {

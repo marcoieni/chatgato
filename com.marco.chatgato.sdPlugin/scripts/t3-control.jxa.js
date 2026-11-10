@@ -72,7 +72,8 @@ function waitFor(read, message, seconds = 5) {
     if (result) return result;
     delay(0.1);
   } while (Date.now() < deadline);
-  throw new Error(message);
+  if (message) throw new Error(message);
+  return null;
 }
 
 // T3's palette handles pointer selection; AXPress reports success without
@@ -125,8 +126,8 @@ function clickElement(element, requireFrontmost) {
 function run(argv) {
   const [threadId, environmentId] = argv;
   if (
-    !/^[a-z0-9_-]+$/i.test(threadId || "") ||
-    (environmentId && !/^[a-z0-9_-]+$/i.test(environmentId))
+    !/^[a-z0-9_:%-]+$/i.test(threadId || "") ||
+    (environmentId && !/^[a-z0-9_:%-]+$/i.test(environmentId))
   )
     throw new Error("Invalid T3 Code thread identity");
 
@@ -167,10 +168,12 @@ function run(argv) {
     const url = String(ObjC.unwrap(value.absoluteString));
     const route = url.split("#")[1]?.split("?")[0]?.split("/");
     return (
-      route?.[2] === threadId && (!environmentId || route[1] === environmentId)
+      route?.[2] &&
+      decodeURIComponent(route[2]) === threadId &&
+      (!environmentId || decodeURIComponent(route[1]) === environmentId)
     );
   }
-  if (routeMatches()) return;
+  if (environmentId ? waitFor(routeMatches, null, 2) : routeMatches()) return;
 
   function searchField() {
     return find(
