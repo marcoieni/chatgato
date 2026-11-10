@@ -227,7 +227,7 @@ it("unwraps a Windows user key through native helper stdin before decrypting the
     plaintext,
   );
   expect(mocks.readFile).toHaveBeenCalledWith(
-    join("/test/roaming", "T3 Code (Alpha)", "Local State"),
+    join("/test/roaming", "t3code-v2", "Local State"),
     "utf8",
   );
   expect(mocks.execFile).toHaveBeenCalledWith(

@@ -26,13 +26,24 @@ function launcher(platform: string, exitCode = 0) {
   });
 }
 
-const target = { threadId: "thread-123", environmentId: "environment-456" };
+const target = {
+  threadId: "thread:mcp%3A123",
+  environmentId: "environment-456",
+};
+const threadUrl = "t3code://threads/environment-456/thread%3Amcp%253A123";
 
 describe("T3 Code desktop launcher", () => {
-  it("opens the exact thread through the macOS search helper", async () => {
+  it("opens the scoped link on macOS and verifies the original thread identity", async () => {
     launcher("darwin");
     await openT3Code(target);
-    expect(mocks.spawn).toHaveBeenCalledWith(
+    expect(mocks.spawn).toHaveBeenNthCalledWith(
+      1,
+      "/usr/bin/open",
+      [threadUrl],
+      expect.anything(),
+    );
+    expect(mocks.spawn).toHaveBeenNthCalledWith(
+      2,
       "/usr/bin/osascript",
       [
         "-l",
@@ -56,7 +67,23 @@ describe("T3 Code desktop launcher", () => {
         "-File",
         expect.stringContaining("codex-control.ps1"),
         "url",
-        "t3code://app/",
+        threadUrl,
+      ],
+      expect.anything(),
+    );
+  });
+
+  it("keeps legacy thread-ID search when the environment is unknown on macOS", async () => {
+    launcher("darwin");
+    await openT3Code({ threadId: "legacy-thread" });
+    expect(mocks.spawn).toHaveBeenCalledExactlyOnceWith(
+      "/usr/bin/osascript",
+      [
+        "-l",
+        "JavaScript",
+        expect.stringContaining("t3-control.jxa.js"),
+        "legacy-thread",
+        "",
       ],
       expect.anything(),
     );
@@ -97,8 +124,12 @@ describe("T3 Code desktop launcher", () => {
     children[0]!.emit("exit", 1);
     await rejected;
     await vi.waitFor(() => expect(children).toHaveLength(2));
-    expect(mocks.spawn.mock.calls[1]![1]).toContain("second-thread");
+    expect(mocks.spawn.mock.calls[1]![1]).toEqual([
+      "t3code://threads/environment-456/second-thread",
+    ]);
     children[1]!.emit("exit", 0);
+    await vi.waitFor(() => expect(children).toHaveLength(3));
+    children[2]!.emit("exit", 0);
     await second;
   });
 });

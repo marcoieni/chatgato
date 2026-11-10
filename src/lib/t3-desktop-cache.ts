@@ -132,7 +132,7 @@ async function readShellDocuments(directory: string, leveldb: LevelDbReader) {
     }
     const document = object(JSON.parse(decodeIndexedDbString(raw)));
     if (
-      document.schemaVersion !== 1 ||
+      (document.schemaVersion !== 1 && document.schemaVersion !== 3) ||
       document.environmentId !== environmentId
     )
       throw new Error("Unsupported T3 shell cache");
@@ -151,7 +151,49 @@ function withinWorkspace(cwd: string, filter: string): boolean {
       !path.isAbsolute(child))
   );
 }
+function orchestratorStatus(thread: Record<string, unknown>): AgentStatus {
+  const request = object(thread.pendingRuntimeRequest).kind;
+  if (
+    ["user_input", "auth_refresh", "mcp-elicitation"].includes(String(request))
+  )
+    return "awaiting-response";
+  if (request) return "awaiting-approval";
+  if (Number(thread.pendingGuestMessageCount) > 0) return "awaiting-response";
+  const run = thread.activityRunStatus ?? thread.status;
+  if (["preparing", "starting", "running", "waiting"].includes(String(run)))
+    return "working";
+  if (
+    run === "failed" ||
+    (run === "queued" && thread.lastErrorClass === "usage_limit")
+  )
+    return "error";
+  if (run === "queued") return "working";
+  if (
+    Array.isArray(thread.pendingBackgroundTasks) &&
+    thread.pendingBackgroundTasks.some((value) => {
+      const task = object(value);
+      return (
+        task.awaited === true ||
+        task.kind === "subagent" ||
+        task.kind === "background_task"
+      );
+    })
+  )
+    return "working";
+  if (thread.hasActionableProposedPlan === true) return "awaiting-response";
+  if (run === "completed") {
+    const completed = Date.parse(
+      String(thread.latestRunCompletedAt ?? thread.updatedAt),
+    );
+    return Date.parse(String(thread.lastVisitedAt)) >= completed
+      ? "idle"
+      : "unread";
+  }
+  return "idle";
+}
+
 function status(thread: Record<string, unknown>): AgentStatus {
+  if (typeof thread.status === "string") return orchestratorStatus(thread);
   if (thread.hasPendingApprovals === true) return "awaiting-approval";
   if (thread.hasPendingUserInput === true) return "awaiting-response";
   const session = object(thread.session),
@@ -225,7 +267,12 @@ export function threadsFromT3Shell(
           cwd,
           updatedAtMs: Math.max(
             Date.parse(String(thread.updatedAt)) || 0,
-            Date.parse(String(object(thread.latestTurn).completedAt)) || 0,
+            Date.parse(
+              String(
+                thread.latestRunCompletedAt ??
+                  object(thread.latestTurn).completedAt,
+              ),
+            ) || 0,
           ),
           status: status(thread),
           rolloutPath: null,
@@ -243,9 +290,14 @@ function cacheDirectories(): string[] {
     process.platform === "darwin"
       ? join(homedir(), "Library", "Application Support")
       : process.env.APPDATA || join(homedir(), "AppData", "Roaming");
-  return ["t3code", "T3 Code (Alpha)", "T3 Code (Nightly)", "T3 Code"].map(
-    (name) =>
-      join(appData, name, "IndexedDB", "t3code_app_0.indexeddb.leveldb"),
+  return [
+    "t3code-v2",
+    "t3code",
+    "T3 Code (Alpha)",
+    "T3 Code (Nightly)",
+    "T3 Code",
+  ].map((name) =>
+    join(appData, name, "IndexedDB", "t3code_app_0.indexeddb.leveldb"),
   );
 }
 

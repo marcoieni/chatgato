@@ -142,6 +142,96 @@ it("reads large shell strings stored in external blobs", async () => {
   ]);
 });
 
+it("uses the orchestrator shell in the current desktop profile after an upgrade", async () => {
+  const root = await mkdtemp(join(tmpdir(), "chatgato-t3-profiles-"));
+  directories.push(root);
+  const appCache = (profile: string) =>
+    join(root, profile, "IndexedDB", "t3code_app_0.indexeddb.leveldb");
+  const current = appCache("t3code-v2");
+  const retained = appCache("t3code");
+  // T3 leaves a readable legacy cache on disk when it starts the new profile.
+  for (const path of [current, retained]) {
+    await mkdir(path, { recursive: true });
+    await writeFile(join(path, "CURRENT"), "MANIFEST-000001\n");
+    await writeFile(join(path, "MANIFEST-000001"), manifest([2]));
+  }
+  const completedAt = "2026-11-02T11:00:00Z";
+  const base = {
+    projectId: "p",
+    updatedAt: "2026-11-02T10:00:00Z",
+    status: "completed",
+    latestRunCompletedAt: completedAt,
+  };
+  const threads = [
+    { ...base, id: "new" },
+    { ...base, id: "visited", lastVisitedAt: completedAt },
+    { ...base, id: "active", status: "queued", activityRunStatus: "running" },
+    {
+      ...base,
+      id: "approve",
+      status: "running",
+      pendingRuntimeRequest: { kind: "permission" },
+    },
+    {
+      ...base,
+      id: "question",
+      status: "running",
+      pendingRuntimeRequest: { kind: "user_input" },
+    },
+    { ...base, id: "failed", status: "failed" },
+    { ...base, id: "plan", hasActionableProposedPlan: true },
+    { ...base, id: "child", lineage: { relationshipToParent: "subagent" } },
+    {
+      ...base,
+      id: "background",
+      pendingBackgroundTasks: [{ kind: "command", awaited: true }],
+    },
+    { ...base, id: "monitor", pendingBackgroundTasks: [{ kind: "monitor" }] },
+  ];
+  const snapshot = {
+    ...shell,
+    threads,
+    archivedThreads: [{ ...base, id: "archived" }],
+  };
+  const currentDocument = JSON.stringify({
+    schemaVersion: 3,
+    environmentId: "remote",
+    snapshot,
+  });
+  for (const [path, value] of [
+    [current, currentDocument],
+    [retained, document()],
+  ] as const) {
+    await writeFile(
+      join(path, "000002.ldb"),
+      table(1, [...shellMetadata, [idbKey(2, "remote"), stringValue(value)]]),
+    );
+  }
+  const platform = process.platform;
+  Object.defineProperty(process, "platform", { value: "win32" });
+  vi.stubEnv("APPDATA", root);
+  try {
+    const rows = await new T3DesktopCache().read("remote");
+    expect(Object.fromEntries(rows.map((t) => [t.id, t.status]))).toEqual({
+      new: "unread",
+      visited: "idle",
+      active: "working",
+      approve: "awaiting-approval",
+      question: "awaiting-response",
+      failed: "error",
+      plan: "awaiting-response",
+      background: "working",
+      monitor: "unread",
+    });
+    expect(rows.find((t) => t.id === "new")?.updatedAtMs).toBe(
+      Date.parse(completedAt),
+    );
+  } finally {
+    Object.defineProperty(process, "platform", { value: platform });
+    vi.unstubAllEnvs();
+  }
+});
+
 it("maps remote waits, failures, background work, completion, and worktree filters", () => {
   const threads = [
     { ...thread, id: "approval", hasPendingApprovals: true },
